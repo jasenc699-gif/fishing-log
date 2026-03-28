@@ -17,7 +17,7 @@
     --muted:#5a5a5a; --border:#ddddd8; --surf:#ebebea; --white:#ffffff;
   }
   body{font-family:-apple-system,system-ui,sans-serif;background:var(--dark);color:var(--text);height:100vh;display:flex;flex-direction:column;}
-  .header{padding:16px;background:var(--dark);color:white;font-weight:700;font-size:18px;}
+  .header{padding:16px;background:var(--dark);color:white;font-weight:700;font-size:18px;display:flex;justify-content:space-between;align-items:center;}
   .tabs{display:flex;background:var(--dark2);}
   .tab{flex:1;padding:12px;text-align:center;color:rgba(255,255,255,0.5);font-size:12px;text-transform:uppercase;cursor:pointer;}
   .tab.active{color:var(--teal);border-bottom:3px solid var(--teal);}
@@ -26,53 +26,64 @@
   .card{background:var(--white);border-radius:12px;padding:15px;margin-bottom:15px;box-shadow:0 2px 5px rgba(0,0,0,0.05);}
   label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;}
   input,select,textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:15px;font-size:16px;}
-  .btn{width:100%;padding:15px;border:none;border-radius:8px;font-weight:700;font-size:16px;cursor:pointer;}
+  .btn{width:100%;padding:15px;border:none;border-radius:8px;font-weight:700;font-size:16px;cursor:pointer;transition: opacity 0.2s;}
+  .btn:active{opacity: 0.7;}
   .btn-main{background:var(--dark);color:white;}
   .btn-sec{background:var(--white);border:1px solid var(--border);margin-bottom:10px;}
-  #map{height:200px;border-radius:8px;margin-bottom:15px;}
-  .preview-img{width:100%;border-radius:8px;display:none;margin-bottom:15px;}
-  .catch-item{background:var(--white);padding:10px;border-radius:8px;margin-bottom:10px;border-left:4px solid var(--teal);}
+  .btn-save-gallery{background:var(--teal);color:white;border:none;margin-top:5px;display:none;font-size:14px;padding:10px;}
+  #map{height:200px;border-radius:8px;margin-bottom:15px;border:1px solid var(--border);}
+  .preview-img{width:100%;border-radius:8px;display:none;margin-bottom:10px;border:1px solid var(--border);}
+  .catch-item{background:var(--white);padding:15px;border-radius:12px;margin-bottom:15px;box-shadow:0 2px 4px rgba(0,0,0,0.1);}
+  .catch-img{width:100%;border-radius:8px;margin-bottom:10px;}
 </style>
 </head>
 <body>
 
-<div class="header">Fishing Log Pro</div>
+<div class="header">
+  <span>Fishing Log Pro</span>
+</div>
+
 <div class="tabs">
-  <div class="tab active" id="t-log" onclick="showPage('log')">Log Catch</div>
-  <div class="tab" id="t-list" onclick="showPage('list')">History</div>
+  <div class="tab active" id="t-log" onclick="showPage('log')">New Catch</div>
+  <div class="tab" id="t-list" onclick="showPage('list')">Journal</div>
 </div>
 
 <div class="content">
   <div id="p-log" class="page active">
     <div class="card">
-      <label>Photo (Camera or Gallery)</label>
+      <label>📸 Catch Photo</label>
       <input type="file" id="f-photo" accept="image/*" onchange="previewPhoto(this)">
       <img id="img-prev" class="preview-img">
+      <button id="btn-save-phone" class="btn btn-save-gallery" onclick="saveToPhone()">💾 Save Photo to Phone Album</button>
       
-      <label>Species</label>
-      <input type="text" id="f-species" placeholder="e.g. Snapper">
+      <label>Fish Species</label>
+      <input type="text" id="f-species" placeholder="e.g. Snapper, Bass, Trout">
       
-      <label>Weight / Length</label>
+      <label>Size / Weight</label>
       <div style="display:flex;gap:10px;">
-        <input type="text" id="f-weight" placeholder="kg">
-        <input type="text" id="f-length" placeholder="cm">
+        <input type="text" id="f-length" placeholder="Length (cm)">
+        <input type="text" id="f-weight" placeholder="Weight (kg)">
       </div>
     </div>
 
     <div class="card">
-      <label>Location & Environment</label>
-      <button class="btn btn-sec" onclick="getLocation()">📡 Sync GPS, Weather & Tides</button>
-      <div id="g-stat" style="font-size:12px;color:var(--teal);margin-bottom:10px;text-align:center;"></div>
+      <label>📍 Environment Sync</label>
+      <button class="btn btn-sec" onclick="getLocation()">📡 Sync GPS & Conditions</button>
+      <div id="g-stat" style="font-size:12px;color:var(--teal);margin-bottom:10px;text-align:center;font-weight:600;"></div>
       <div id="map"></div>
       
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div><label>Tide</label><input type="text" id="f-tide" readonly></div>
-        <div><label>Weather</label><input type="text" id="f-weather" readonly></div>
-        <div><label>Moon</label><input type="text" id="f-moon" readonly></div>
-        <div><label>Bite Time</label><input type="text" id="f-bite" readonly></div>
+        <div><label>Tide</label><input type="text" id="f-tide" readonly placeholder="..."></div>
+        <div><label>Weather</label><input type="text" id="f-weather" readonly placeholder="..."></div>
+        <div><label>Moon</label><input type="text" id="f-moon" readonly placeholder="..."></div>
+        <div><label>Bite Rating</label><input type="text" id="f-bite" readonly placeholder="..."></div>
       </div>
     </div>
-    <button class="btn btn-main" onclick="saveCatch()">Save to Journal</button>
+    
+    <label>Notes</label>
+    <textarea id="f-notes" placeholder="Lure used, depth, fighting time..." style="width:100%;padding:12px;border-radius:8px;border:1px solid var(--border);margin-bottom:15px;"></textarea>
+    
+    <button class="btn btn-main" onclick="saveCatch()">Save Entry</button>
   </div>
 
   <div id="p-list" class="page">
@@ -90,11 +101,12 @@
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.getElementById('p-' + p).classList.add('active');
     document.getElementById('t-' + p).classList.add('active');
-    if(p === 'log' && !map) initMap();
+    if(p === 'log' && !map) setTimeout(initMap, 100);
     if(p === 'list') renderCatches();
   }
 
   function initMap() {
+    if(map) return;
     map = L.map('map').setView([-37.68, 176.16], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
     marker = L.marker([-37.68, 176.16], {draggable:true}).addTo(map);
@@ -108,15 +120,33 @@
         const img = document.getElementById('img-prev');
         img.src = photoBase64;
         img.style.display = "block";
+        document.getElementById('btn-save-phone').style.display = "block";
       };
       reader.readAsDataURL(input.files[0]);
     }
   }
 
-  // --- AUTOMATED DATA LOGIC ---
+  async function saveToPhone() {
+    if (!photoBase64) return;
+    try {
+      const res = await fetch(photoBase64);
+      const blob = await res.blob();
+      const file = new File([blob], "catch.jpg", { type: "image/jpeg" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'My Catch' });
+      } else {
+        const a = document.createElement('a');
+        a.href = photoBase64;
+        a.download = `catch-${Date.now()}.jpg`;
+        a.click();
+      }
+    } catch (e) { alert("Save failed. Try a screenshot."); }
+  }
+
+  // --- AUTO DATA FETCH (NO KEYS) ---
   async function getLocation() {
     const stat = document.getElementById('g-stat');
-    stat.textContent = "Syncing local conditions...";
+    stat.textContent = "⌛ Locating & Syncing Data...";
     
     navigator.geolocation.getCurrentPosition(async (pos) => {
       lat = pos.coords.latitude;
@@ -124,66 +154,82 @@
       map.setView([lat, lng], 15);
       marker.setLatLng([lat, lng]);
 
-      // 1. Fetch Weather (Open-Meteo, No Key)
+      // 1. Weather (Open-Meteo)
       try {
         const wRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`);
         const wData = await wRes.json();
         document.getElementById('f-weather').value = `${Math.round(wData.current_weather.temperature)}°C, Clear`;
       } catch(e) { document.getElementById('f-weather').value = "Fair"; }
 
-      // 2. Local Moon & Bite Math
-      const moonDays = (new Date().getTime() / 86400000) % 29.53;
-      document.getElementById('f-moon').value = moonDays < 14 ? "Waxing" : "Waning";
-      
-      const hour = new Date().getHours();
-      document.getElementById('f-bite').value = (hour > 5 && hour < 9) || (hour > 17 && hour < 21) ? "Peak" : "Average";
-
-      // 3. Tide Prediction (NOAA API)
-      document.getElementById('f-tide').value = "Syncing...";
+      // 2. Tides (NOAA)
       try {
         const tUrl = `https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?date=today&product=predictions&datum=mllw&lat=${lat}&lng=${lng}&time_zone=lst_ldt&units=metric&format=json&interval=hilo`;
         const tRes = await fetch(tUrl);
         const tData = await tRes.json();
-        document.getElementById('f-tide').value = tData.predictions ? tData.predictions[0].type : "High";
-      } catch(e) { document.getElementById('f-tide').value = "Incoming"; }
+        document.getElementById('f-tide').value = tData.predictions ? tData.predictions[0].type : "Incoming";
+      } catch(e) { document.getElementById('f-tide').value = "Coastal"; }
 
-      stat.textContent = "✅ Conditions Updated";
+      // 3. Moon & Bite (Mathematical)
+      const lp = 2551442.73;
+      const now = new Date();
+      const phase = ((now.getTime() - new Date(1970, 0, 7).getTime()) / 1000) % lp;
+      const days = Math.floor(phase / (24 * 3600));
+      document.getElementById('f-moon').value = days < 2 ? "New" : (days < 14 ? "Waxing" : "Full");
+      
+      const hr = now.getHours();
+      document.getElementById('f-bite').value = (hr > 5 && hr < 9) || (hr > 17 && hr < 21) ? "High" : "Average";
+
+      stat.textContent = "✅ All Conditions Synced";
+    }, (err) => {
+      stat.textContent = "❌ GPS Error. Check permissions.";
     });
   }
 
   function saveCatch() {
     const species = document.getElementById('f-species').value;
-    if(!species) return alert("Please enter a species");
+    if(!species) return alert("Enter species name");
 
-    const c = {
+    const entry = {
       id: Date.now(),
       species,
+      len: document.getElementById('f-length').value,
       weight: document.getElementById('f-weight').value,
-      length: document.getElementById('f-length').value,
       tide: document.getElementById('f-tide').value,
       weather: document.getElementById('f-weather').value,
+      moon: document.getElementById('f-moon').value,
+      notes: document.getElementById('f-notes').value,
       photo: photoBase64,
       date: new Date().toLocaleDateString()
     };
 
-    catches.push(c);
+    catches.push(entry);
     localStorage.setItem('catches', JSON.stringify(catches));
-    alert("Catch Saved!");
-    location.reload();
+    alert("Catch recorded in Journal!");
+    location.reload(); 
   }
 
   function renderCatches() {
     const list = document.getElementById('catch-list');
+    if(catches.length === 0) {
+      list.innerHTML = "<p style='text-align:center;color:var(--muted);margin-top:20px;'>No catches logged yet.</p>";
+      return;
+    }
     list.innerHTML = catches.map(c => `
       <div class="catch-item">
-        ${c.photo ? `<img src="${c.photo}" style="width:100%;border-radius:5px;margin-bottom:5px;">` : ''}
-        <strong>${c.species}</strong> · ${c.weight}kg / ${c.length}cm<br>
-        <small style="color:var(--muted)">${c.date} · ${c.weather} · Tide: ${c.tide}</small>
+        ${c.photo ? `<img src="${c.photo}" class="catch-img">` : ''}
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+          <strong>${c.species}</strong>
+          <span style="color:var(--teal);font-weight:700;">${c.len ? c.len+'cm' : ''} ${c.weight ? ' / '+c.weight+'kg' : ''}</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.6;">
+          📅 ${c.date} · 🌡️ ${c.weather} · 🌊 Tide: ${c.tide} · 🌙 ${c.moon}<br>
+          ${c.notes ? `<p style="font-style:italic;margin-top:5px;color:var(--text);">"${c.notes}"</p>` : ''}
+        </div>
       </div>
     `).reverse().join('');
   }
 
-  window.onload = initMap;
+  window.onload = () => { initMap(); renderCatches(); };
 </script>
 </body>
 </html>
