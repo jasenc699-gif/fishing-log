@@ -13,14 +13,14 @@
 <style>
     :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --danger: #ff4d4d; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); }
+    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); overflow-x: hidden; }
     
     .header { background: #2c2c2c; color: white; padding: 15px; text-align: center; font-weight: bold; letter-spacing: 1px; }
     .nav { display: flex; background: #383838; overflow-x: auto; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid #444; }
     .nav-btn { flex: 1; padding: 12px 15px; color: #999; border: none; background: none; font-size: 10px; text-transform: uppercase; cursor: pointer; min-width: 75px; }
     .nav-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
 
-    .section { display: none; padding: 15px; animation: fadeIn 0.3s; }
+    .section { display: none; padding: 15px; animation: fadeIn 0.2s; }
     .section.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -41,10 +41,13 @@
     .catch-card { background: white; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #eee; }
     .badge { display: inline-block; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; color: white; margin-top: 5px; }
     .badge-tide { background: #3498db; }
+    
+    #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 25px; border-radius: 50px; font-size: 14px; opacity: 0; transition: 0.3s; z-index: 9999; pointer-events: none; }
 </style>
 </head>
 <body>
 
+<div id="toast">Catch Logged! 🎣</div>
 <div class="header">FISHING LOG PRO</div>
 
 <div class="nav">
@@ -59,76 +62,68 @@
 
 <div id="log" class="section active">
     <div class="card">
+        <label>📍 Drag Pin to Location</label>
+        <div id="map" style="height: 200px; margin-bottom: 15px;"></div>
+
         <label>📅 Date & Time</label>
         <input type="datetime-local" id="f-datetime">
+        
         <label>📸 Catch Photo</label>
         <input type="file" id="f-photo" accept="image/*" onchange="previewFile(this)">
         <div class="preview-box"><img id="img-prev-el" style="width:100%; display:none; border-radius:8px; margin-bottom:10px;"></div>
+        
         <label>Species</label>
         <select id="f-species"><option>Snapper</option><option>Kingfish</option><option>Trout</option><option>Kahawai</option></select>
+        
+        <label>Method</label>
+        <select id="f-method" onchange="toggleFlyField(this.value)">
+            <option>Bait Fishing</option>
+            <option>Fly Fishing</option>
+            <option>Lure/Spinning</option>
+            <option>Soft Plastic</option>
+        </select>
+
+        <div id="fly-wrap" style="display:none;">
+            <label>Fly / Lure Name</label>
+            <input type="text" id="f-fly" placeholder="e.g. Clouser, Woolly Bugger">
+        </div>
+
         <label>Weight (kg)</label>
         <input type="number" id="f-weight" step="0.1" placeholder="0.0">
+        
         <label>📝 Notes</label>
         <textarea id="f-notes" placeholder="Notes..."></textarea>
+        
         <button class="btn-action" onclick="saveCatch()">SAVE CATCH ENTRY</button>
-        <button class="btn-action" style="background:#444; margin-top:10px;" onclick="syncAll()">🔄 REFRESH DATA</button>
     </div>
 </div>
 
-<div id="tide" class="section">
-    <div class="card">
-        <span class="visual-icon" id="tide-icon">🌊</span>
-        <label>Tide Status</label>
-        <span id="tide-val" class="data-display">--</span>
-        <span id="tide-desc" class="data-sub">Loading...</span>
-    </div>
-</div>
-
-<div id="moon" class="section">
-    <div class="card">
-        <span class="visual-icon" id="moon-icon">🌕</span>
-        <label>Moon Phase</label>
-        <span id="moon-val" class="data-display">--</span>
-    </div>
-</div>
-
-<div id="bite" class="section">
-    <div class="card">
-        <span class="visual-icon" id="bite-icon">🎣</span>
-        <label>Bite Probability</label>
-        <span id="bite-val" class="data-display">--</span>
-    </div>
-</div>
-
-<div id="weather" class="section">
-    <div class="card">
-        <span class="visual-icon" id="weather-icon">⛅</span>
-        <label>Temperature</label>
-        <span id="weather-val" class="data-display">--</span>
-        <div class="weather-grid">
-            <div class="stat-box"><label>Wind</label><span id="wind-val">--</span> km/h</div>
-            <div class="stat-box"><label>Rain</label><span id="rain-val">--</span> mm</div>
-        </div>
-    </div>
-</div>
-
-<div id="map-tab" class="section"><div id="map"></div></div>
+<div id="tide" class="section"><div class="card"><span class="visual-icon" id="tide-icon">🌊</span><label>Tide Status</label><span id="tide-val" class="data-display">--</span><span id="tide-desc" class="data-sub">Move map to update</span></div></div>
+<div id="moon" class="section"><div class="card"><span class="visual-icon" id="moon-icon">🌕</span><label>Moon Phase</label><span id="moon-val" class="data-display">--</span></div></div>
+<div id="bite" class="section"><div class="card"><span class="visual-icon" id="bite-icon">🎣</span><label>Bite Probability</label><span id="bite-val" class="data-display">--</span></div></div>
+<div id="weather" class="section"><div class="card"><span class="visual-icon" id="weather-icon">⛅</span><label>Weather</label><span id="weather-val" class="data-display">--</span><div class="weather-grid"><div class="stat-box"><label>Wind</label><span id="wind-val">--</span> km/h</div><div class="stat-box"><label>Rain</label><span id="rain-val">--</span> mm</div></div></div></div>
+<div id="map-tab" class="section"><div id="big-map" style="height: 400px; border-radius: 12px;"></div></div>
 <div id="catches" class="section"><div id="catch-list"></div></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    let map, marker, lat, lng, photoBase64 = "";
+    let map, bigMap, marker, lat, lng, photoBase64 = "";
     let catches = JSON.parse(localStorage.getItem('catches') || '[]');
-    let mapMarkers = [];
+    let catchMarkers = [];
 
     function showTab(id, btn) {
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         btn.classList.add('active');
-        if(id === 'map-tab' && map) {
-            setTimeout(() => { map.invalidateSize(); renderPins(); }, 300);
+        if(id === 'log' && map) setTimeout(() => map.invalidateSize(), 200);
+        if(id === 'map-tab' && bigMap) {
+            setTimeout(() => { bigMap.invalidateSize(); renderHistoryPins(); }, 300);
         }
+    }
+
+    function toggleFlyField(val) {
+        document.getElementById('fly-wrap').style.display = (val === 'Fly Fishing' || val === 'Lure/Spinning') ? 'block' : 'none';
     }
 
     function previewFile(input) {
@@ -143,44 +138,36 @@
         }
     }
 
-    async function syncAll() {
-        navigator.geolocation.getCurrentPosition(async (p) => {
-            lat = p.coords.latitude; lng = p.coords.longitude;
+    async function syncDataFromCoords(newLat, newLng) {
+        lat = newLat; lng = newLng;
+        try {
+            const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&hourly=rain`).then(r => r.json());
+            document.getElementById('weather-val').innerText = Math.round(w.current_weather.temperature) + "°C";
+            document.getElementById('wind-val').innerText = w.current_weather.windspeed;
+            document.getElementById('rain-val').innerText = w.hourly.rain[new Date().getHours()];
             
-            // Weather, Wind, Rain
-            try {
-                const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&hourly=rain`).then(r => r.json());
-                document.getElementById('weather-val').innerText = Math.round(w.current_weather.temperature) + "°C";
-                document.getElementById('wind-val').innerText = w.current_weather.windspeed;
-                document.getElementById('rain-val').innerText = w.hourly.rain[new Date().getHours()];
-                document.getElementById('weather-icon').innerText = w.current_weather.weathercode < 3 ? "☀️" : "☁️";
-            } catch(e) {}
-
-            // Tide Logic (Simple simulation based on time for reliability)
             const hr = new Date().getHours();
             const isIncoming = (hr % 12 < 6);
             document.getElementById('tide-val').innerText = isIncoming ? "Incoming" : "Outgoing";
-            document.getElementById('tide-desc').innerText = isIncoming ? "Tide is Rising" : "Tide is Falling";
-            document.getElementById('tide-icon').innerText = isIncoming ? "📈" : "📉";
-
-            // Bite Logic
+            document.getElementById('tide-desc').innerText = isIncoming ? "Rising at this location" : "Falling at this location";
+            
             const bite = (hr > 5 && hr < 8) || (hr > 17 && hr < 20) ? "EXCELLENT" : "AVERAGE";
             document.getElementById('bite-val').innerText = bite;
-            document.getElementById('bite-icon').innerText = bite === "EXCELLENT" ? "🔥" : "🎣";
+        } catch(e) {}
+    }
 
-            // Moon Phase
-            const moonDays = ((new Date().getTime() / 86400000) - 6.4) % 29.53;
-            const phase = moonDays < 1.8 ? "New" : (moonDays < 13 ? "Waxing" : (moonDays < 16 ? "Full" : "Waning"));
-            document.getElementById('moon-val').innerText = phase;
-
-            if(map) { map.setView([lat, lng], 13); marker.setLatLng([lat, lng]); }
-        });
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerText = msg; t.style.opacity = '1';
+        setTimeout(() => t.style.opacity = '0', 2500);
     }
 
     function saveCatch() {
         const entry = {
             id: Date.now(),
             species: document.getElementById('f-species').value,
+            method: document.getElementById('f-method').value,
+            fly: document.getElementById('f-fly').value || "",
             weight: document.getElementById('f-weight').value || "0",
             notes: document.getElementById('f-notes').value,
             date: document.getElementById('f-datetime').value,
@@ -191,17 +178,17 @@
         catches.push(entry);
         localStorage.setItem('catches', JSON.stringify(catches));
         renderCatches();
-        alert("Catch Logged!");
+        showToast("Catch Saved! 🎣");
     }
 
-    function renderPins() {
-        mapMarkers.forEach(m => map.removeLayer(m));
-        mapMarkers = [];
+    function renderHistoryPins() {
+        catchMarkers.forEach(m => bigMap.removeLayer(m));
+        catchMarkers = [];
         catches.forEach(c => {
             if(c.lat) {
-                const m = L.marker([c.lat, c.lng]).addTo(map)
-                 .bindPopup(`<b>${c.species}</b><br>${c.weight}kg<br><small>${c.date}</small>`);
-                mapMarkers.push(m);
+                const m = L.marker([c.lat, c.lng]).addTo(bigMap)
+                 .bindPopup(`<b>${c.species}</b><br>${c.weight}kg<br>${c.method} ${c.fly ? '('+c.fly+')' : ''}<br><small>${c.date}</small>`);
+                catchMarkers.push(m);
             }
         });
     }
@@ -213,6 +200,7 @@
                 ${c.photo ? `<img src="${c.photo}" style="width:100%">` : ''}
                 <div style="padding:15px;">
                     <strong>${c.species} (${c.weight}kg)</strong><br>
+                    <small>🎣 ${c.method} ${c.fly ? '- ' + c.fly : ''}</small><br>
                     <span class="badge badge-tide">${c.tide}</span>
                     <p style="font-size:13px; color:#666;">${c.notes}</p>
                     <small>${c.date}</small>
@@ -226,12 +214,29 @@
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('f-datetime').value = now.toISOString().slice(0,16);
 
+        // Main Log Map (Draggable Pin)
         map = L.map('map').setView([-37.68, 176.16], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(map);
         
+        marker.on('dragend', function(e) {
+            const pos = marker.getLatLng();
+            syncDataFromCoords(pos.lat, pos.lng);
+        });
+
+        // History Tab Map
+        bigMap = L.map('big-map').setView([-37.68, 176.16], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(bigMap);
+
+        navigator.geolocation.getCurrentPosition(p => {
+            const myLat = p.coords.latitude; const myLng = p.coords.longitude;
+            map.setView([myLat, myLng], 12);
+            marker.setLatLng([myLat, myLng]);
+            bigMap.setView([myLat, myLng], 10);
+            syncDataFromCoords(myLat, myLng);
+        });
+
         renderCatches();
-        syncAll();
     };
 </script>
 </body>
