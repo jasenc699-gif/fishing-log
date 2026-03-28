@@ -6,32 +6,36 @@
 <title>Fishing Log Pro</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; }
+    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --danger: #ff4d4d; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 60px; color: var(--text); }
+    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); }
     
-    /* Header & Navigation */
-    .header { background: #2c2c2c; color: white; padding: 15px; text-align: center; font-weight: bold; }
-    .nav { display: flex; background: #383838; overflow-x: auto; white-space: nowrap; sticky: top; }
-    .nav-btn { flex: 1; padding: 12px 15px; color: #999; border: none; background: none; font-size: 11px; text-transform: uppercase; cursor: pointer; }
+    /* Navigation & Tabs */
+    .header { background: #2c2c2c; color: white; padding: 15px; text-align: center; font-weight: bold; letter-spacing: 1px; }
+    .nav { display: flex; background: #383838; overflow-x: auto; white-space: nowrap; position: sticky; top: 0; z-index: 1000; }
+    .nav-btn { flex: 1; padding: 12px 15px; color: #999; border: none; background: none; font-size: 11px; text-transform: uppercase; cursor: pointer; min-width: 80px; }
     .nav-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
 
-    /* Sections */
+    /* Layout Sections */
     .section { display: none; padding: 15px; }
     .section.active { display: block; }
-    .card { background: var(--card); border-radius: 8px; padding: 15px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .card { background: var(--card); border-radius: 8px; padding: 15px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     
-    /* Form Elements */
-    label { display: block; font-size: 11px; font-weight: bold; margin-bottom: 5px; color: #666; }
-    input, select, textarea { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
-    .btn-action { background: var(--primary); color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+    /* Inputs */
+    label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #888; text-transform: uppercase; }
+    input, select, textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; background: #fafafa; }
+    .btn-action { background: var(--primary); color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
     .btn-sync { background: #2c2c2c; margin-bottom: 15px; }
 
-    /* Features */
-    #map { height: 250px; border-radius: 8px; width: 100%; }
-    .preview-box img { width: 100%; border-radius: 6px; margin-bottom: 10px; display: none; }
-    .data-display { font-size: 24px; font-weight: bold; color: var(--primary); text-align: center; padding: 20px 0; }
-    .catch-card { background: white; margin-bottom: 10px; border-radius: 8px; overflow: hidden; border-left: 4px solid var(--primary); }
+    /* Map & Media */
+    #map { height: 300px; border-radius: 8px; width: 100%; border: 1px solid #ddd; }
+    .preview-box img { width: 100%; border-radius: 6px; margin-bottom: 10px; display: none; border: 1px solid #ddd; }
+    .data-display { font-size: 28px; font-weight: bold; color: var(--primary); text-align: center; padding: 30px 0; }
+    
+    /* Catch History List */
+    .catch-card { background: white; margin-bottom: 15px; border-radius: 10px; overflow: hidden; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .catch-info { padding: 12px; }
+    .delete-btn { position: absolute; top: 10px; right: 10px; background: rgba(255, 77, 77, 0.9); color: white; border: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; cursor: pointer; z-index: 10; }
 </style>
 </head>
 <body>
@@ -39,32 +43,32 @@
 <div class="header">FISHING LOG PRO</div>
 
 <div class="nav">
-    <button class="nav-btn active" onclick="showTab('log')">Log</button>
-    <button class="nav-btn" onclick="showTab('tide')">Tide</button>
-    <button class="nav-btn" onclick="showTab('moon')">Moon</button>
-    <button class="nav-btn" onclick="showTab('bite')">Bite</button>
-    <button class="nav-btn" onclick="showTab('weather')">Weather</button>
-    <button class="nav-btn" onclick="showTab('map-tab')">Map</button>
-    <button class="nav-btn" onclick="showTab('catches')">Catches</button>
+    <button class="nav-btn active" onclick="showTab('log', this)">Log</button>
+    <button class="nav-btn" onclick="showTab('tide', this)">Tide</button>
+    <button class="nav-btn" onclick="showTab('moon', this)">Moon</button>
+    <button class="nav-btn" onclick="showTab('bite', this)">Bite</button>
+    <button class="nav-btn" onclick="showTab('weather', this)">Weather</button>
+    <button class="nav-btn" onclick="showTab('map-tab', this)">Map</button>
+    <button class="nav-btn" onclick="showTab('catches', this)">Catches</button>
 </div>
 
 <div id="log" class="section active">
     <div class="card">
-        <label>PHOTO (CAMERA OR GALLERY)</label>
+        <label>📸 Photo (Gallery or Camera)</label>
         <input type="file" id="f-photo" accept="image/*" onchange="previewFile(this)">
         <div class="preview-box"><img id="preview-img"></div>
-        <button id="btn-save-gallery" class="btn-action" style="display:none; margin-bottom:10px; background:#444;" onclick="saveToPhone()">💾 Save to Gallery</button>
+        <button id="btn-save-gallery" class="btn-action" style="display:none; margin-bottom:15px; background:#444;" onclick="saveToPhone()">💾 Save to Gallery</button>
 
-        <label>SPECIES</label>
-        <input type="text" id="f-species" placeholder="Enter species...">
+        <label>Species</label>
+        <input type="text" id="f-species" placeholder="What did you catch?">
         
-        <label>LENGTH (CM)</label>
+        <label>Length (cm)</label>
         <input type="number" id="f-length" placeholder="0">
         
-        <label>WEIGHT (KG)</label>
+        <label>Weight (kg)</label>
         <input type="number" id="f-weight" placeholder="0.0">
 
-        <label>FISHING METHOD</label>
+        <label>Fishing Method</label>
         <select id="f-method">
             <option>Bait Fishing</option>
             <option>Lure/Spinning</option>
@@ -73,35 +77,35 @@
             <option>Soft Plastic</option>
         </select>
 
-        <button class="btn-action" onclick="saveCatch()">SAVE CATCH</button>
+        <button class="btn-action" onclick="saveCatch()">SAVE CATCH ENTRY</button>
     </div>
 </div>
 
 <div id="tide" class="section">
     <div class="card">
-        <label>CURRENT TIDE STATE</label>
+        <label>Current Tide Status</label>
         <div id="tide-val" class="data-display">--</div>
-        <button class="btn-action btn-sync" onclick="syncAll()">REFRESH DATA</button>
+        <button class="btn-action btn-sync" onclick="syncAll()">REFRESH ALL DATA</button>
     </div>
 </div>
 
 <div id="moon" class="section">
     <div class="card">
-        <label>MOON PHASE</label>
+        <label>Current Moon Phase</label>
         <div id="moon-val" class="data-display">--</div>
     </div>
 </div>
 
 <div id="bite" class="section">
     <div class="card">
-        <label>BITE ACTIVITY</label>
+        <label>Current Bite Rating</label>
         <div id="bite-val" class="data-display">--</div>
     </div>
 </div>
 
 <div id="weather" class="section">
     <div class="card">
-        <label>LOCAL WEATHER</label>
+        <label>Temperature & Conditions</label>
         <div id="weather-val" class="data-display">--</div>
     </div>
 </div>
@@ -119,45 +123,47 @@
     let map, marker, lat, lng, photoBase64 = "";
     let catches = JSON.parse(localStorage.getItem('catches') || '[]');
 
-    function showTab(id) {
+    function showTab(id, btn) {
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(id).classList.add('active');
-        event.currentTarget.classList.add('active');
+        btn.classList.add('active');
         if(id === 'map-tab') { setTimeout(() => map.invalidateSize(), 200); }
     }
 
-    // --- PHOTO LOGIC (Gallery + Save) ---
+    // Photo Management
     function previewFile(input) {
-        const file = input.files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            photoBase64 = e.target.result;
-            const img = document.getElementById('preview-img');
-            img.src = photoBase64;
-            img.style.display = 'block';
-            document.getElementById('btn-save-gallery').style.display = 'block';
-        };
-        reader.readAsDataURL(file);
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                photoBase64 = e.target.result;
+                const img = document.getElementById('preview-img');
+                img.src = photoBase64;
+                img.style.display = 'block';
+                document.getElementById('btn-save-gallery').style.display = 'block';
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
     }
 
     async function saveToPhone() {
+        if (!photoBase64) return;
         const res = await fetch(photoBase64);
         const blob = await res.blob();
         const file = new File([blob], "catch.jpg", { type: "image/jpeg" });
         if(navigator.share) navigator.share({ files: [file] });
     }
 
-    // --- DATA SYNC (No API Keys Needed) ---
+    // Automated Data Sync
     function syncAll() {
         navigator.geolocation.getCurrentPosition(async (p) => {
             lat = p.coords.latitude; lng = p.coords.longitude;
             map.setView([lat, lng], 14);
             marker.setLatLng([lat, lng]);
 
-            // Weather
+            // Weather (Open-Meteo)
             const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`).then(r => r.json());
-            document.getElementById('weather-val').textContent = w.current_weather.temperature + "°C";
+            document.getElementById('weather-val').textContent = Math.round(w.current_weather.temperature) + "°C";
 
             // Tide (NOAA)
             try {
@@ -166,14 +172,16 @@
             } catch(e) { document.getElementById('tide-val').textContent = "Coastal"; }
 
             // Moon & Bite
-            const days = (new Date().getTime() / 86400000) % 29.53;
-            document.getElementById('moon-val').textContent = days < 14 ? "Waxing" : "Waning";
+            const moonDays = (new Date().getTime() / 86400000) % 29.53;
+            document.getElementById('moon-val').textContent = moonDays < 14 ? "Waxing" : "Waning";
             const hr = new Date().getHours();
             document.getElementById('bite-val').textContent = (hr > 5 && hr < 9) || (hr > 17 && hr < 21) ? "High" : "Average";
         });
     }
 
     function saveCatch() {
+        if(!document.getElementById('f-species').value) return alert("Please enter a species!");
+        
         const entry = {
             id: Date.now(),
             species: document.getElementById('f-species').value,
@@ -187,18 +195,35 @@
         };
         catches.push(entry);
         localStorage.setItem('catches', JSON.stringify(catches));
-        alert("Catch Saved!");
+        alert("Catch Logged!");
+        
+        // Clear form
+        document.getElementById('f-species').value = "";
+        document.getElementById('preview-img').style.display = 'none';
+        photoBase64 = "";
         renderCatches();
+    }
+
+    function deleteCatch(id) {
+        if(confirm("Permanently delete this catch log?")) {
+            catches = catches.filter(c => c.id !== id);
+            localStorage.setItem('catches', JSON.stringify(catches));
+            renderCatches();
+        }
     }
 
     function renderCatches() {
         const list = document.getElementById('catch-list');
         list.innerHTML = catches.map(c => `
             <div class="catch-card">
-                ${c.photo ? `<img src="${c.photo}" style="width:100%">` : ''}
-                <div style="padding:10px;">
-                    <strong>${c.species}</strong> - ${c.len}cm / ${c.weight}kg<br>
-                    <small>${c.date} | ${c.method} | ${c.tide}</small>
+                <button class="delete-btn" onclick="deleteCatch(${c.id})">🗑️ Delete</button>
+                ${c.photo ? `<img src="${c.photo}" style="width:100%; display:block;">` : ''}
+                <div class="catch-info">
+                    <div style="font-size:18px; font-weight:bold; margin-bottom:5px;">${c.species}</div>
+                    <div style="font-size:13px; color:#666;">
+                        📏 ${c.len}cm | ⚖️ ${c.weight}kg | 🎣 ${c.method}<br>
+                        📅 ${c.date} | 🌡️ ${c.weather} | 🌊 ${c.tide}
+                    </div>
                 </div>
             </div>
         `).reverse().join('');
@@ -209,7 +234,7 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(map);
         renderCatches();
-        syncAll(); // Auto-sync on load
+        syncAll(); 
     };
 </script>
 </body>
