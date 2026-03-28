@@ -4,52 +4,45 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Fishing Log Pro</title>
-
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --accent: #3498db; --danger: #e74c3c; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); overflow-x: hidden; }
+    body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); }
     
-    .header { background: #2c2c2c; color: white; padding: 15px; text-align: center; font-weight: bold; letter-spacing: 1px; }
-    .nav { display: flex; background: #383838; position: sticky; top: 0; z-index: 2000; border-bottom: 1px solid #444; }
-    .nav-btn { flex: 1; padding: 12px 5px; color: #999; border: none; background: none; font-size: 10px; text-transform: uppercase; cursor: pointer; }
+    .header { background: #2c2c2c; color: white; padding: 15px; text-align: center; font-weight: bold; }
+    .nav { display: flex; background: #383838; position: sticky; top: 0; z-index: 2000; }
+    .nav-btn { flex: 1; padding: 15px 5px; color: #999; border: none; background: none; font-size: 11px; text-transform: uppercase; cursor: pointer; }
     .nav-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
 
-    .section { display: none; padding: 15px; animation: fadeIn 0.1s; }
+    .section { display: none; padding: 15px; }
     .section.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 12px; color: #888; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    .card { background: var(--card); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 8px; color: #888; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 4px; }
     
-    .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
     .env-item { background: #f9f9f9; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #eee; }
-    .env-label { font-size: 9px; color: #999; text-transform: uppercase; display: block; }
-    .env-val { font-size: 14px; font-weight: bold; color: var(--text); }
+    .env-val { font-size: 14px; font-weight: bold; display: block; }
+    .env-lab { font-size: 9px; color: #999; text-transform: uppercase; }
 
-    input, select, textarea { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #eee; border-radius: 8px; font-size: 16px; background: #fdfdfd; -webkit-appearance: none; }
+    #map, #big-map { height: 300px; border-radius: 12px; width: 100%; margin-bottom: 15px; background: #ddd; z-index: 1; }
     
-    .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
-    .search-row input { margin-bottom: 0; flex: 2; }
-    .btn-geo { background: #555; color: white; border: none; padding: 0 15px; border-radius: 8px; cursor: pointer; font-size: 18px; display: flex; align-items: center; }
+    .manage-row { display: flex; gap: 5px; margin-bottom: 10px; }
+    .manage-row input { flex: 1; margin-bottom: 0; padding: 10px; border-radius: 8px; border: 1px solid #ddd; }
+    .btn-add { background: var(--primary); color: white; border: none; padding: 0 15px; border-radius: 8px; font-weight: bold; font-size: 20px; }
 
-    #map, #big-map { height: 280px; border-radius: 12px; width: 100%; border: 1px solid #ddd; margin-bottom: 15px; z-index: 1; background: #eee; }
-    
     .pill-box { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
-    .pill { background: #eee; padding: 8px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; color: #444; }
-    .pill:active { background: var(--primary); color: white; }
+    .pill { background: #eee; padding: 6px 12px; border-radius: 15px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; display: flex; align-items: center; }
+    .pill.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .pill .del { margin-left: 8px; opacity: 0.4; font-weight: bold; font-size: 14px; }
 
-    .catch-card { background: white; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #eee; position: relative; }
-    .delete-btn { position: absolute; top: 10px; right: 10px; background: var(--danger); color: white; border: none; border-radius: 8px; padding: 5px 10px; font-size: 10px; font-weight: bold; z-index: 10; }
-
-    .badge-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-    .badge { padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; color: white; }
-    .bg-tide { background: var(--accent); }
-    .bg-weather { background: #f39c12; }
-    .bg-bite { background: #e67e22; }
+    input[type="number"], textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #eee; border-radius: 8px; font-size: 16px; }
+    .btn-main { background: var(--primary); color: white; border: none; width: 100%; padding: 18px; border-radius: 10px; font-weight: bold; font-size: 16px; }
     
-    .note-text { font-size: 13px; color: #555; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 12px; border-left: 3px solid var(--primary); }
+    .catch-card { background: white; border-radius: 12px; margin-bottom: 15px; overflow: hidden; border: 1px solid #eee; position: relative; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; color: white; font-weight: bold; margin-right: 5px; }
+    .del-catch { position: absolute; top: 10px; right: 10px; background: var(--danger); color: white; border: none; border-radius: 5px; padding: 5px; font-size: 10px; z-index: 5; }
 </style>
 </head>
 <body>
@@ -58,224 +51,224 @@
 
 <div class="nav">
     <button class="nav-btn active" onclick="showTab('log', this)">Log</button>
-    <button class="nav-btn" onclick="showTab('map-tab', this)">Map</button>
+    <button class="nav-btn" onclick="showTab('map-tab', this)">History Map</button>
     <button class="nav-btn" onclick="showTab('catches', this)">Catches</button>
-    <button class="nav-btn" onclick="showTab('stats', this)">Stats</button>
 </div>
 
 <div id="log" class="section active">
     <div class="card">
-        <label>📍 1. Pin Your Location</label>
-        <div class="search-row">
-            <input type="text" id="map-search" placeholder="Search town/coast...">
-            <button class="btn-geo" onclick="searchLocation()">🔍</button>
-            <button class="btn-geo" onclick="useMyLocation()">📍</button>
-        </div>
+        <label>📍 1. Set Location</label>
         <div id="map"></div>
-        <input type="text" id="f-loc-name" placeholder="Location Name">
+        <input type="text" id="f-loc-name" style="width:100%; padding:10px; border-radius:8px; border:1px solid #eee; margin-bottom:15px;" placeholder="Location Name">
 
-        <label>🌊 2. Auto-Conditions for this Spot</label>
+        <label>🌊 2. Conditions at this Spot</label>
         <div class="env-grid">
-            <div class="env-item"><span class="env-label">Weather</span><span id="live-weather" class="env-val">--</span></div>
-            <div class="env-item"><span class="env-label">Tide</span><span id="live-tide" class="env-val">--</span></div>
-            <div class="env-item"><span class="env-label">Bite Rating</span><span id="live-bite" class="env-val">--</span></div>
-            <div class="env-item"><span class="env-label">Time</span><span id="live-time-now" class="env-val">--:--</span></div>
+            <div class="env-item"><span id="live-weather" class="env-val">--</span><span class="env-lab">Weather</span></div>
+            <div class="env-item"><span id="live-tide" class="env-val">--</span><span class="env-lab">Tide</span></div>
+            <div class="env-item"><span id="live-bite" class="env-val">--</span><span class="env-lab">Bite Rating</span></div>
+            <div class="env-item"><span id="live-time" class="env-val">--</span><span class="env-lab">Local Time</span></div>
         </div>
 
-        <label>🎣 3. Catch Data</label>
-        <input type="datetime-local" id="f-datetime">
+        <label>🐟 3. Species</label>
+        <div class="manage-row">
+            <input type="text" id="new-species" placeholder="Add custom fish...">
+            <button class="btn-add" onclick="addToLib('species')">+</button>
+        </div>
+        <div id="species-lib" class="pill-box"></div>
         
-        <input type="file" id="f-photo" accept="image/*">
-        <img id="img-prev-el" style="width:100%; display:none; border-radius:8px; margin-top:10px; margin-bottom:15px;">
+        <label>🎣 4. Fly / Lure</label>
+        <div class="manage-row">
+            <input type="text" id="new-fly" placeholder="Add custom fly...">
+            <button class="btn-add" onclick="addToLib('fly')">+</button>
+        </div>
+        <div id="fly-lib" class="pill-box"></div>
 
-        <select id="f-species" onchange="toggleCustomSpecies(this.value)">
-            <option>Snapper</option><option>Kingfish</option><option>Trout (Rainbow)</option>
-            <option>Trout (Brown)</option><option>Kahawai</option><option value="CUSTOM">-- Custom --</option>
-        </select>
-        <div id="custom-species-wrap" style="display:none;"><input type="text" id="f-custom-species" placeholder="Enter species"></div>
-
-        <input type="text" id="f-fly" placeholder="Fly or Lure Name">
-        <div id="fly-library" class="pill-box"></div>
-
+        <label>📸 5. Details</label>
         <input type="number" id="f-weight" step="0.1" placeholder="Weight (kg)">
-
         <textarea id="f-notes" placeholder="Notes..."></textarea>
-        <div id="quick-notes" class="pill-box"></div>
-
-        <button style="background:var(--primary); color:white; border:none; width:100%; padding:18px; border-radius:10px; font-weight:bold; font-size:16px;" onclick="saveCatch()">SAVE CATCH</button>
+        <input type="file" id="f-photo" accept="image/*" style="font-size: 12px; margin-bottom:15px;">
+        
+        <button class="btn-main" onclick="saveCatch()">SAVE CATCH RECORD</button>
     </div>
 </div>
 
 <div id="map-tab" class="section">
-    <div class="card"><label>🗺️ History Map</label><div id="big-map"></div></div>
+    <div class="card">
+        <label>🗺️ History: Your Catch Pins</label>
+        <div id="big-map"></div>
+    </div>
 </div>
 
 <div id="catches" class="section"><div id="catch-list"></div></div>
-
-<div id="stats" class="section">
-    <div class="card">
-        <label>🚀 Success Dashboard</label>
-        <div id="top-fly-stat" style="display:flex; justify-content:space-between; padding:8px 0;"><span>Best Fly:</span><span style="font-weight:bold; color:var(--primary)">--</span></div>
-        <div id="top-tide-stat" style="display:flex; justify-content:space-between; padding:8px 0;"><span>Best Tide:</span><span style="font-weight:bold; color:var(--primary)">--</span></div>
-        <div id="top-hour-stat" style="display:flex; justify-content:space-between; padding:8px 0;"><span>Best Time:</span><span style="font-weight:bold; color:var(--primary)">--</span></div>
-    </div>
-    <div class="card"><label>🏆 Personal Bests</label><div id="leaderboard"></div></div>
-    <div class="card"><button onclick="exportData()" style="width:100%; padding:12px; background:#555; color:white; border:none; border-radius:8px;">Export JSON Backup</button></div>
-</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     let map, bigMap, marker, lat, lng, photoBase64 = "";
     let catches = JSON.parse(localStorage.getItem('catches') || '[]');
-    let flyBox = ["Clouser", "Hare & Copper", "Woolly Bugger", "Parachute Adams", "Stimulator"];
-
-    function vibrate(ms = 25) { if (navigator.vibrate) navigator.vibrate(ms); }
+    let speciesLib = JSON.parse(localStorage.getItem('speciesLib') || '["Snapper", "Trout", "Kingfish"]');
+    let flyLib = JSON.parse(localStorage.getItem('flyLib') || '["Clouser", "Woolly Bugger"]');
+    let selSpecies = "", selFly = "";
 
     function showTab(id, btn) {
-        vibrate(20);
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         btn.classList.add('active');
+        
         if(id === 'log') setTimeout(() => map.invalidateSize(), 200);
-        if(id === 'map-tab') setTimeout(() => { bigMap.invalidateSize(); renderHistoryPins(); }, 300);
+        if(id === 'map-tab') {
+            setTimeout(() => {
+                bigMap.invalidateSize();
+                renderHistoryPins();
+            }, 200);
+        }
         if(id === 'catches') renderCatches();
-        if(id === 'stats') renderStats();
     }
 
-    async function updateAllConditions(nLat, nLng) {
+    // LIBRARY MANAGERS
+    function renderLibs() {
+        const sContainer = document.getElementById('species-lib');
+        sContainer.innerHTML = speciesLib.map(s => `
+            <div class="pill ${selSpecies === s ? 'active' : ''}" onclick="selectItem('species', '${s}')">
+                ${s} <span class="del" onclick="removeFromLib(event, 'species', '${s}')">×</span>
+            </div>
+        `).join('');
+
+        const fContainer = document.getElementById('fly-lib');
+        fContainer.innerHTML = flyLib.map(f => `
+            <div class="pill ${selFly === f ? 'active' : ''}" onclick="selectItem('fly', '${f}')">
+                ${f} <span class="del" onclick="removeFromLib(event, 'fly', '${f}')">×</span>
+            </div>
+        `).join('');
+    }
+
+    function addToLib(type) {
+        const input = document.getElementById('new-' + type);
+        const val = input.value.trim();
+        if(!val) return;
+        if(type === 'species') speciesLib.push(val); else flyLib.push(val);
+        localStorage.setItem(type + 'Lib', JSON.stringify(type === 'species' ? speciesLib : flyLib));
+        input.value = "";
+        renderLibs();
+    }
+
+    function removeFromLib(e, type, val) {
+        e.stopPropagation();
+        if(!confirm("Remove " + val + "?")) return;
+        if(type === 'species') speciesLib = speciesLib.filter(x => x !== val);
+        else flyLib = flyLib.filter(x => x !== val);
+        localStorage.setItem(type + 'Lib', JSON.stringify(type === 'species' ? speciesLib : flyLib));
+        renderLibs();
+    }
+
+    function selectItem(type, val) {
+        if(type === 'species') selSpecies = val; else selFly = val;
+        renderLibs();
+    }
+
+    // CONDITIONS ENGINE
+    async function updateConditions(nLat, nLng) {
         lat = nLat; lng = nLng;
-        vibrate(10);
-        
-        // 1. Weather based on coords
         try {
             const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`).then(r => r.json());
             document.getElementById('live-weather').innerText = Math.round(w.current_weather.temperature) + "°C";
-        } catch(e) { document.getElementById('live-weather').innerText = "??°C"; }
+        } catch(e) { document.getElementById('live-weather').innerText = "--°C"; }
 
-        // 2. Tide Proxy (Based on current time)
-        const d = new Date();
-        const hr = d.getHours();
+        const hr = new Date().getHours();
         const tide = (hr % 12 < 6) ? "Incoming" : "Outgoing";
         document.getElementById('live-tide').innerText = tide;
-        document.getElementById('live-time-now').innerText = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        document.getElementById('live-bite').innerText = (tide === "Incoming" || hr < 9 || hr > 17) ? "High" : "Average";
+        document.getElementById('live-time').innerText = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 
-        // 3. Bite Rating Logic
-        // High if it's incoming tide or "Golden Hours" (Dawn/Dusk)
-        const isGolden = (hr >= 5 && hr <= 8) || (hr >= 17 && hr <= 20);
-        const rating = (tide === "Incoming" || isGolden) ? "High" : "Moderate";
-        document.getElementById('live-bite').innerText = rating;
-
-        // 4. Reverse Lookup for Name
         try {
             const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(res => res.json());
-            if(r.display_name) document.getElementById('f-loc-name').value = r.display_name.split(',')[0];
+            document.getElementById('f-loc-name').value = r.display_name.split(',')[0];
         } catch(e) {}
     }
 
-    async function useMyLocation() {
-        navigator.geolocation.getCurrentPosition(p => {
-            const nl = p.coords.latitude, ng = p.coords.longitude;
-            map.setView([nl, ng], 15);
-            marker.setLatLng([nl, ng]);
-            updateAllConditions(nl, ng);
+    // MAP HISTORY
+    function renderHistoryPins() {
+        bigMap.eachLayer((layer) => { if (layer instanceof L.Marker) bigMap.removeLayer(layer); });
+        if (catches.length === 0) return;
+        catches.forEach(c => {
+            if(c.lat && c.lng) {
+                L.marker([c.lat, c.lng]).addTo(bigMap)
+                 .bindPopup(`<b>${c.species}</b><br>${c.weight}kg<br>${c.date}`);
+            }
         });
-    }
-
-    async function searchLocation() {
-        const query = document.getElementById('map-search').value;
-        if(!query) return;
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`).then(r => r.json());
-        if(res.length > 0) {
-            const nl = res[0].lat, ng = res[0].lon;
-            map.setView([nl, ng], 14);
-            marker.setLatLng([nl, ng]);
-            updateAllConditions(nl, ng);
-        }
+        const last = catches[catches.length - 1];
+        bigMap.setView([last.lat, last.lng], 10);
     }
 
     function saveCatch() {
-        vibrate([40, 60, 40]);
-        let spec = document.getElementById('f-species').value;
-        if(spec === 'CUSTOM') spec = document.getElementById('f-custom-species').value || 'Unknown';
-        
-        const dt = new Date(document.getElementById('f-datetime').value || Date.now());
-
-        catches.push({
+        if(!selSpecies) return alert("Please select a Species");
+        const entry = {
             id: Date.now(),
-            species: spec,
-            weight: parseFloat(document.getElementById('f-weight').value) || 0,
-            fly: document.getElementById('f-fly').value,
+            species: selSpecies,
+            fly: selFly,
+            weight: document.getElementById('f-weight').value || 0,
             notes: document.getElementById('f-notes').value,
-            locName: document.getElementById('f-loc-name').value || "Unnamed Spot",
             lat: lat, lng: lng,
-            photo: photoBase64,
-            timestamp: dt.getTime(),
-            date: dt.toLocaleDateString('en-NZ', { day:'numeric', month:'short' }),
-            time: dt.toLocaleTimeString('en-NZ', { hour:'2-digit', minute:'2-digit' }),
+            locName: document.getElementById('f-loc-name').value || "Spot",
             weather: document.getElementById('live-weather').innerText,
             tide: document.getElementById('live-tide').innerText,
-            biteRating: document.getElementById('live-bite').innerText
-        });
-        
+            bite: document.getElementById('live-bite').innerText,
+            date: new Date().toLocaleDateString(),
+            photo: photoBase64
+        };
+        catches.push(entry);
         localStorage.setItem('catches', JSON.stringify(catches));
+        alert("Catch Saved!");
         location.reload();
+    }
+
+    function deleteCatch(id) {
+        if(!confirm("Delete this catch?")) return;
+        catches = catches.filter(c => c.id !== id);
+        localStorage.setItem('catches', JSON.stringify(catches));
+        renderCatches();
     }
 
     function renderCatches() {
         document.getElementById('catch-list').innerHTML = catches.map(c => `
             <div class="catch-card">
-                <button class="delete-btn" onclick="deleteCatch(${c.id})">DELETE</button>
+                <button class="del-catch" onclick="deleteCatch(${c.id})">DEL</button>
                 ${c.photo ? `<img src="${c.photo}" style="width:100%">` : ''}
                 <div style="padding:15px;">
                     <strong>${c.species} (${c.weight}kg)</strong>
-                    <div class="badge-row">
-                        <span class="badge bg-weather">🌡️ ${c.weather}</span>
-                        <span class="badge bg-tide">🌊 ${c.tide}</span>
-                        <span class="badge bg-bite">🎯 Bite: ${c.biteRating}</span>
+                    <div style="margin: 8px 0;">
+                        <span class="badge" style="background:#f39c12">${c.weather}</span>
+                        <span class="badge" style="background:#3498db">${c.tide}</span>
+                        <span class="badge" style="background:#e67e22">Bite: ${c.bite}</span>
                     </div>
-                    ${c.notes ? `<div class="note-text">${c.notes}</div>` : ''}
-                    <div style="font-size:11px; color:#999; margin-top:10px;">📍 ${c.locName} | ${c.date}</div>
+                    <div style="font-size:11px; color:#666;">📍 ${c.locName} | 📅 ${c.date} | 🎣 ${c.fly || 'N/A'}</div>
                 </div>
             </div>
-        `).reverse().join('') || '<div class="card" style="text-align:center">No records.</div>';
-    }
-
-    function renderStats() {
-        if(!catches.length) return;
-        const flies = {}, tides = {}, hours = Array(24).fill(0);
-        catches.forEach(c => {
-            if(c.fly) flies[c.fly] = (flies[c.fly] || 0) + 1;
-            if(c.tide) tides[c.tide] = (tides[c.tide] || 0) + 1;
-            hours[new Date(c.timestamp).getHours()]++;
-        });
-        document.querySelector('#top-fly-stat span:last-child').innerText = Object.keys(flies).reduce((a,b)=>flies[a]>flies[b]?a:b, "--");
-        document.querySelector('#top-tide-stat span:last-child').innerText = Object.keys(tides).reduce((a,b)=>tides[a]>tides[b]?a:b, "--");
+        `).reverse().join('') || '<p style="text-align:center">No catches recorded.</p>';
     }
 
     window.onload = () => {
-        const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-        document.getElementById('f-datetime').value = now.toISOString().slice(0,16);
-
-        map = L.map('map').setView([-37.68, 176.16], 12);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        renderLibs();
+        map = L.map('map').setView([-37.68, 176.16], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png').addTo(map);
         marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(map);
-        marker.on('dragend', () => updateAllConditions(marker.getLatLng().lat, marker.getLatLng().lng));
+        marker.on('dragend', () => updateConditions(marker.getLatLng().lat, marker.getLatLng().lng));
 
         bigMap = L.map('big-map').setView([-37.68, 176.16], 8);
         L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(bigMap);
 
-        useMyLocation();
+        navigator.geolocation.getCurrentPosition(p => {
+            map.setView([p.coords.latitude, p.coords.longitude], 14);
+            marker.setLatLng([p.coords.latitude, p.coords.longitude]);
+            updateConditions(p.coords.latitude, p.coords.longitude);
+        });
 
-        document.getElementById('fly-library').innerHTML = flyBox.map(f => `<span class="pill" onclick="document.getElementById('f-fly').value='${f}'">${f}</span>`).join('');
         document.getElementById('f-photo').addEventListener('change', function(e) {
             const reader = new FileReader();
-            reader.onload = (ev) => { photoBase64 = ev.target.result; document.getElementById('img-prev-el').src = photoBase64; document.getElementById('img-prev-el').style.display = 'block'; };
+            reader.onload = (ev) => photoBase64 = ev.target.result;
             reader.readAsDataURL(e.target.files[0]);
         });
     };
-    function deleteCatch(id) { if(confirm("Delete entry?")) { catches = catches.filter(c => c.id !== id); localStorage.setItem('catches', JSON.stringify(catches)); renderCatches(); } }
-    function exportData() { const blob = new Blob([JSON.stringify(catches)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'fishing_backup.json'; a.click(); }
 </script>
 </body>
 </html>
