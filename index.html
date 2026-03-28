@@ -4,11 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Fishing Log Pro</title>
+
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FishLog">
+<link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2805/2805361.png">
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --danger: #ff4d4d; }
+    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --danger: #ff4d4d; --secondary: #444; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); }
     
@@ -25,7 +29,8 @@
     input, select, textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; background: #fafafa; font-family: inherit; }
     textarea { height: 80px; resize: none; }
     .btn-action { background: var(--primary); color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .btn-danger { background: var(--danger); margin-top: 20px; font-size: 12px; padding: 10px; opacity: 0.8; }
+    .btn-danger { background: var(--danger); margin-top: 20px; font-size: 11px; padding: 10px; opacity: 0.8; }
+    .btn-secondary { background: var(--secondary); margin-top: 10px; font-size: 11px; padding: 10px; }
     
     #map { height: 250px; border-radius: 8px; width: 100%; border: 1px solid #ddd; margin-bottom: 15px; }
     .preview-box img { width: 100%; border-radius: 6px; margin-bottom: 10px; display: none; border: 1px solid #eee; }
@@ -37,8 +42,6 @@
     .notes-display { font-style: italic; color: #666; font-size: 13px; margin-top: 5px; border-top: 1px dashed #eee; padding-top: 5px; }
     
     .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-    .filter-grid label { font-size: 9px; }
-    .filter-grid select { margin-bottom: 0; padding: 8px; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -122,12 +125,11 @@
         </div>
     </div>
 
-    <div style="margin-bottom:15px; font-weight:bold;">
-        Count: <span id="catch-count" class="counter-badge">0</span> 
-    </div>
+    <div style="margin-bottom:15px; font-weight:bold;">Count: <span id="catch-count" class="counter-badge">0</span></div>
     
     <div id="catch-list"></div>
 
+    <button class="btn-action btn-secondary" onclick="exportToCSV()">📊 EXPORT LOG TO CSV</button>
     <button class="btn-action btn-danger" onclick="clearAllCatches()">⚠️ CLEAR ALL CATCHES</button>
 </div>
 
@@ -201,13 +203,10 @@
     function updateYearDropdown() {
         const yearDropdown = document.getElementById('year-filter');
         const years = [...new Set(catches.map(c => c.date.substring(0, 4)))].sort().reverse();
-        
-        // Keep "ALL", clear the rest, then add current years
         yearDropdown.innerHTML = '<option value="ALL">All Years</option>';
         years.forEach(yr => {
             const opt = document.createElement('option');
-            opt.value = yr;
-            opt.textContent = yr;
+            opt.value = yr; opt.textContent = yr;
             yearDropdown.appendChild(opt);
         });
     }
@@ -234,7 +233,6 @@
         catches.push(entry);
         localStorage.setItem('catches', JSON.stringify(catches));
         
-        // Form Reset
         document.getElementById('f-species').value = "";
         document.getElementById('f-custom-species').value = "";
         document.getElementById('custom-species-wrap').style.display = 'none';
@@ -261,19 +259,30 @@
         }
     }
 
+    function exportToCSV() {
+        if (catches.length === 0) return alert("Nothing to export!");
+        let csv = "Date,Species,Length,Weight,Method,Tide,Weather,Notes\n";
+        catches.forEach(c => {
+            csv += `"${c.date}","${c.species}","${c.len}","${c.weight}","${c.method}","${c.tide}","${c.weather}","${c.notes.replace(/"/g, '""')}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', `fishing_log_${new Date().toLocaleDateString()}.csv`);
+        a.click();
+    }
+
     function renderCatches() {
         const specFilter = document.getElementById('catch-filter').value;
         const yearFilter = document.getElementById('year-filter').value;
         const list = document.getElementById('catch-list');
-        
         const filtered = catches.filter(c => {
             const matchesSpec = (specFilter === 'ALL' || c.species === specFilter);
             const matchesYear = (yearFilter === 'ALL' || c.date.startsWith(yearFilter));
             return matchesSpec && matchesYear;
         });
-        
         document.getElementById('catch-count').textContent = filtered.length;
-        
         list.innerHTML = filtered.map(c => `
             <div class="catch-card">
                 <button class="delete-btn" onclick="if(confirm('Delete?')){catches=catches.filter(x=>x.id!=${c.id});localStorage.setItem('catches',JSON.stringify(catches));updateYearDropdown();renderCatches();}">🗑️</button>
@@ -291,14 +300,10 @@
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('f-datetime').value = now.toISOString().slice(0,16);
-
         map = L.map('map').setView([-37.68, 176.16], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(map);
-        
-        updateYearDropdown();
-        renderCatches();
-        syncAll();
+        updateYearDropdown(); renderCatches(); syncAll();
     };
 </script>
 </body>
