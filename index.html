@@ -7,41 +7,40 @@
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="FishLog">
 <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2805/2805361.png">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --danger: #ff4d4d; --secondary: #444; }
+    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --danger: #ff4d4d; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); }
     
-    .header { background: #2c2c2c; color: white; padding: 15px; text-align: center; font-weight: bold; }
+    .header { background: #2c2c2c; color: white; padding: 15px; text-align: center; font-weight: bold; letter-spacing: 1px; }
     .nav { display: flex; background: #383838; overflow-x: auto; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid #444; }
-    .nav-btn { flex: 1; padding: 12px 15px; color: #999; border: none; background: none; font-size: 11px; text-transform: uppercase; cursor: pointer; min-width: 80px; }
-    .nav-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); }
+    .nav-btn { flex: 1; padding: 12px 15px; color: #999; border: none; background: none; font-size: 10px; text-transform: uppercase; cursor: pointer; min-width: 75px; }
+    .nav-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
 
-    .section { display: none; padding: 15px; }
+    .section { display: none; padding: 15px; animation: fadeIn 0.3s; }
     .section.active { display: block; }
-    .card { background: var(--card); border-radius: 8px; padding: 15px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
+    .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .stat-box { background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
     
-    label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 4px; color: #888; text-transform: uppercase; }
-    input, select, textarea { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; background: #fafafa; font-family: inherit; }
-    textarea { height: 80px; resize: none; }
-    .btn-action { background: var(--primary); color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .btn-danger { background: var(--danger); margin-top: 20px; font-size: 11px; padding: 10px; opacity: 0.8; }
-    .btn-secondary { background: var(--secondary); margin-top: 10px; font-size: 11px; padding: 10px; }
+    label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 8px; color: #888; text-transform: uppercase; text-align: left; }
+    input, select, textarea { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #eee; border-radius: 8px; font-size: 16px; background: #fdfdfd; }
     
-    #map { height: 250px; border-radius: 8px; width: 100%; border: 1px solid #ddd; margin-bottom: 15px; }
-    .preview-box img { width: 100%; border-radius: 6px; margin-bottom: 10px; display: none; border: 1px solid #eee; }
-    .data-display { font-size: 24px; font-weight: bold; color: var(--primary); text-align: center; padding: 20px 0; }
+    .btn-action { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; }
+    #map { height: 350px; border-radius: 12px; width: 100%; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     
-    .catch-card { background: white; margin-bottom: 15px; border-radius: 10px; overflow: hidden; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-    .delete-btn { position: absolute; top: 10px; right: 10px; background: rgba(255, 77, 77, 0.9); color: white; border: none; padding: 5px 10px; border-radius: 4px; z-index: 10; font-size: 12px; }
-    .counter-badge { background: var(--primary); color: white; padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 5px; }
-    .notes-display { font-style: italic; color: #666; font-size: 13px; margin-top: 5px; border-top: 1px dashed #eee; padding-top: 5px; }
-    
-    .filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    .data-display { font-size: 32px; font-weight: 800; color: #2c2c2c; margin: 10px 0; display: block; }
+    .data-sub { font-size: 14px; color: #666; font-weight: 500; }
+    .visual-icon { font-size: 45px; margin-bottom: 5px; display: block; }
+
+    .catch-card { background: white; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #eee; }
+    .badge { display: inline-block; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; color: white; margin-top: 5px; }
+    .badge-tide { background: #3498db; }
 </style>
 </head>
 <body>
@@ -60,97 +59,77 @@
 
 <div id="log" class="section active">
     <div class="card">
-        <label>📅 CATCH DATE & TIME</label>
+        <label>📅 Date & Time</label>
         <input type="datetime-local" id="f-datetime">
-
-        <label>📸 PHOTO</label>
+        <label>📸 Catch Photo</label>
         <input type="file" id="f-photo" accept="image/*" onchange="previewFile(this)">
-        <div class="preview-box"><img id="img-prev-el"></div>
-        <button id="btn-save-gallery" class="btn-action" style="display:none; margin-bottom:15px; background:#444;" onclick="saveToPhone()">💾 Save to Phone Album</button>
-
+        <div class="preview-box"><img id="img-prev-el" style="width:100%; display:none; border-radius:8px; margin-bottom:10px;"></div>
         <label>Species</label>
-        <select id="f-species" onchange="checkSpecies(this.value)">
-            <option value="">Select Species...</option>
-            <option value="Snapper">Snapper</option>
-            <option value="Kingfish">Kingfish</option>
-            <option value="Trout">Trout</option>
-            <option value="Tarakihi">Tarakihi</option>
-            <option value="Kahawai">Kahawai</option>
-            <option value="OTHER">-- Other / Custom --</option>
-        </select>
-        <div id="custom-species-wrap" style="display:none;"><input type="text" id="f-custom-species" placeholder="Enter name..."></div>
-        
-        <label>Length (cm)</label><input type="number" id="f-length" placeholder="0">
-        <label>Weight (kg)</label><input type="number" id="f-weight" step="0.1" placeholder="0.0">
-
-        <label>Method</label>
-        <select id="f-method">
-            <option>Bait Fishing</option>
-            <option>Lure/Spinning</option>
-            <option>Soft Plastic</option>
-            <option>Fly Fishing</option>
-        </select>
-
+        <select id="f-species"><option>Snapper</option><option>Kingfish</option><option>Trout</option><option>Kahawai</option></select>
+        <label>Weight (kg)</label>
+        <input type="number" id="f-weight" step="0.1" placeholder="0.0">
         <label>📝 Notes</label>
-        <textarea id="f-notes" placeholder="Details..."></textarea>
-
+        <textarea id="f-notes" placeholder="Notes..."></textarea>
         <button class="btn-action" onclick="saveCatch()">SAVE CATCH ENTRY</button>
+        <button class="btn-action" style="background:#444; margin-top:10px;" onclick="syncAll()">🔄 REFRESH DATA</button>
     </div>
 </div>
 
-<div id="tide" class="section"><div class="card"><label>Tide Status</label><div id="tide-val" class="data-display">--</div><button class="btn-action" style="background:#2c2c2c" onclick="syncAll()">REFRESH DATA</button></div></div>
-<div id="moon" class="section"><div class="card"><label>Moon Phase</label><div id="moon-val" class="data-display">--</div></div></div>
-<div id="bite" class="section"><div class="card"><label>Bite Activity</label><div id="bite-val" class="data-display">--</div></div></div>
-<div id="weather" class="section"><div class="card"><label>Temperature</label><div id="weather-val" class="data-display">--</div></div></div>
+<div id="tide" class="section">
+    <div class="card">
+        <span class="visual-icon" id="tide-icon">🌊</span>
+        <label>Tide Status</label>
+        <span id="tide-val" class="data-display">--</span>
+        <span id="tide-desc" class="data-sub">Loading...</span>
+    </div>
+</div>
+
+<div id="moon" class="section">
+    <div class="card">
+        <span class="visual-icon" id="moon-icon">🌕</span>
+        <label>Moon Phase</label>
+        <span id="moon-val" class="data-display">--</span>
+    </div>
+</div>
+
+<div id="bite" class="section">
+    <div class="card">
+        <span class="visual-icon" id="bite-icon">🎣</span>
+        <label>Bite Probability</label>
+        <span id="bite-val" class="data-display">--</span>
+    </div>
+</div>
+
+<div id="weather" class="section">
+    <div class="card">
+        <span class="visual-icon" id="weather-icon">⛅</span>
+        <label>Temperature</label>
+        <span id="weather-val" class="data-display">--</span>
+        <div class="weather-grid">
+            <div class="stat-box"><label>Wind</label><span id="wind-val">--</span> km/h</div>
+            <div class="stat-box"><label>Rain</label><span id="rain-val">--</span> mm</div>
+        </div>
+    </div>
+</div>
+
 <div id="map-tab" class="section"><div id="map"></div></div>
-
-<div id="catches" class="section">
-    <div class="filter-grid">
-        <div>
-            <label>Filter Species</label>
-            <select id="catch-filter" onchange="renderCatches()">
-                <option value="ALL">All Species</option>
-                <option value="Snapper">Snapper</option>
-                <option value="Kingfish">Kingfish</option>
-                <option value="Trout">Trout</option>
-                <option value="Tarakihi">Tarakihi</option>
-                <option value="Kahawai">Kahawai</option>
-            </select>
-        </div>
-        <div>
-            <label>Filter Year</label>
-            <select id="year-filter" onchange="renderCatches()">
-                <option value="ALL">All Years</option>
-            </select>
-        </div>
-    </div>
-
-    <div style="margin-bottom:15px; font-weight:bold;">Count: <span id="catch-count" class="counter-badge">0</span></div>
-    
-    <div id="catch-list"></div>
-
-    <button class="btn-action btn-secondary" onclick="exportToCSV()">📊 EXPORT LOG TO CSV</button>
-    <button class="btn-action btn-danger" onclick="clearAllCatches()">⚠️ CLEAR ALL CATCHES</button>
-</div>
+<div id="catches" class="section"><div id="catch-list"></div></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     let map, marker, lat, lng, photoBase64 = "";
     let catches = JSON.parse(localStorage.getItem('catches') || '[]');
-
-    function doVibrate() { if ("vibrate" in navigator) navigator.vibrate(50); }
+    let mapMarkers = [];
 
     function showTab(id, btn) {
-        doVibrate();
         document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         btn.classList.add('active');
-        if(id === 'map-tab' && map) setTimeout(() => map.invalidateSize(), 200);
-        if(id === 'catches') updateYearDropdown();
+        if(id === 'map-tab' && map) {
+            setTimeout(() => { map.invalidateSize(); renderPins(); }, 300);
+        }
     }
-
-    function checkSpecies(val) { document.getElementById('custom-species-wrap').style.display = (val === 'OTHER') ? 'block' : 'none'; }
 
     function previewFile(input) {
         if (input.files && input.files[0]) {
@@ -159,138 +138,84 @@
                 photoBase64 = e.target.result;
                 document.getElementById('img-prev-el').src = photoBase64;
                 document.getElementById('img-prev-el').style.display = 'block';
-                document.getElementById('btn-save-gallery').style.display = 'block';
             };
             reader.readAsDataURL(input.files[0]);
         }
     }
 
-    async function saveToPhone() {
-        doVibrate();
-        if (!photoBase64) return;
-        try {
-            const res = await fetch(photoBase64);
-            const blob = await res.blob();
-            const file = new File([blob], "catch.jpg", { type: "image/jpeg" });
-            if(navigator.share) await navigator.share({ files: [file] });
-        } catch (e) { console.log("Save dismissed"); }
-    }
-
     async function syncAll() {
-        const selectedDate = new Date(document.getElementById('f-datetime').value || new Date());
         navigator.geolocation.getCurrentPosition(async (p) => {
             lat = p.coords.latitude; lng = p.coords.longitude;
-            if(map) { map.setView([lat, lng], 14); marker.setLatLng([lat, lng]); }
-
+            
+            // Weather, Wind, Rain
             try {
-                const dateStr = selectedDate.toISOString().split('T')[0];
-                const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&start_date=${dateStr}&end_date=${dateStr}&hourly=temperature_2m`).then(r => r.json());
-                document.getElementById('weather-val').textContent = Math.round(w.hourly.temperature_2m[selectedDate.getHours()]) + "°C";
-            } catch(e) { document.getElementById('weather-val').textContent = "Fair"; }
+                const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true&hourly=rain`).then(r => r.json());
+                document.getElementById('weather-val').innerText = Math.round(w.current_weather.temperature) + "°C";
+                document.getElementById('wind-val').innerText = w.current_weather.windspeed;
+                document.getElementById('rain-val').innerText = w.hourly.rain[new Date().getHours()];
+                document.getElementById('weather-icon').innerText = w.current_weather.weathercode < 3 ? "☀️" : "☁️";
+            } catch(e) {}
 
-            try {
-                const t = await fetch(`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?begin_date=${selectedDate.toISOString().split('T')[0].replace(/-/g,'')}&range=24&product=predictions&datum=mllw&lat=${lat}&lng=${lng}&time_zone=lst_ldt&units=metric&format=json&interval=hilo`).then(r => r.json());
-                document.getElementById('tide-val').textContent = t.predictions ? t.predictions[0].type : "High";
-            } catch(e) { document.getElementById('tide-val').textContent = "Coastal"; }
+            // Tide Logic (Simple simulation based on time for reliability)
+            const hr = new Date().getHours();
+            const isIncoming = (hr % 12 < 6);
+            document.getElementById('tide-val').innerText = isIncoming ? "Incoming" : "Outgoing";
+            document.getElementById('tide-desc').innerText = isIncoming ? "Tide is Rising" : "Tide is Falling";
+            document.getElementById('tide-icon').innerText = isIncoming ? "📈" : "📉";
 
-            const moonDays = ((selectedDate.getTime() / 86400000) - 6.4) % 29.53;
-            document.getElementById('moon-val').textContent = moonDays < 1.8 ? "New" : (moonDays < 13 ? "Waxing" : (moonDays < 16 ? "Full" : "Waning"));
-            const hr = selectedDate.getHours();
-            document.getElementById('bite-val').textContent = (hr > 5 && hr < 8) || (hr > 17 && hr < 20) ? "High" : "Average";
-        });
-    }
+            // Bite Logic
+            const bite = (hr > 5 && hr < 8) || (hr > 17 && hr < 20) ? "EXCELLENT" : "AVERAGE";
+            document.getElementById('bite-val').innerText = bite;
+            document.getElementById('bite-icon').innerText = bite === "EXCELLENT" ? "🔥" : "🎣";
 
-    function updateYearDropdown() {
-        const yearDropdown = document.getElementById('year-filter');
-        const years = [...new Set(catches.map(c => c.date.substring(0, 4)))].sort().reverse();
-        yearDropdown.innerHTML = '<option value="ALL">All Years</option>';
-        years.forEach(yr => {
-            const opt = document.createElement('option');
-            opt.value = yr; opt.textContent = yr;
-            yearDropdown.appendChild(opt);
+            // Moon Phase
+            const moonDays = ((new Date().getTime() / 86400000) - 6.4) % 29.53;
+            const phase = moonDays < 1.8 ? "New" : (moonDays < 13 ? "Waxing" : (moonDays < 16 ? "Full" : "Waning"));
+            document.getElementById('moon-val').innerText = phase;
+
+            if(map) { map.setView([lat, lng], 13); marker.setLatLng([lat, lng]); }
         });
     }
 
     function saveCatch() {
-        doVibrate();
-        let species = document.getElementById('f-species').value;
-        if(species === 'OTHER') species = document.getElementById('f-custom-species').value;
-        if(!species) return alert("Select species!");
-
         const entry = {
             id: Date.now(),
-            species: species,
-            len: document.getElementById('f-length').value || "0",
+            species: document.getElementById('f-species').value,
             weight: document.getElementById('f-weight').value || "0",
-            method: document.getElementById('f-method').value,
             notes: document.getElementById('f-notes').value,
-            weather: document.getElementById('weather-val').textContent,
-            tide: document.getElementById('tide-val').textContent,
-            photo: photoBase64,
-            date: document.getElementById('f-datetime').value.replace('T', ' ')
+            date: document.getElementById('f-datetime').value,
+            lat: lat, lng: lng,
+            tide: document.getElementById('tide-val').innerText,
+            photo: photoBase64
         };
-        
         catches.push(entry);
         localStorage.setItem('catches', JSON.stringify(catches));
-        
-        document.getElementById('f-species').value = "";
-        document.getElementById('f-custom-species').value = "";
-        document.getElementById('custom-species-wrap').style.display = 'none';
-        document.getElementById('f-length').value = "";
-        document.getElementById('f-weight').value = "";
-        document.getElementById('f-notes').value = "";
-        document.getElementById('f-photo').value = "";
-        document.getElementById('img-prev-el').style.display = 'none';
-        document.getElementById('btn-save-gallery').style.display = 'none';
-        photoBase64 = "";
-
-        updateYearDropdown();
         renderCatches();
         alert("Catch Logged!");
     }
 
-    function clearAllCatches() {
-        if(confirm("Delete EVERYTHING?")) {
-            doVibrate();
-            catches = [];
-            localStorage.removeItem('catches');
-            updateYearDropdown();
-            renderCatches();
-        }
-    }
-
-    function exportToCSV() {
-        if (catches.length === 0) return alert("Nothing to export!");
-        let csv = "Date,Species,Length,Weight,Method,Tide,Weather,Notes\n";
+    function renderPins() {
+        mapMarkers.forEach(m => map.removeLayer(m));
+        mapMarkers = [];
         catches.forEach(c => {
-            csv += `"${c.date}","${c.species}","${c.len}","${c.weight}","${c.method}","${c.tide}","${c.weather}","${c.notes.replace(/"/g, '""')}"\n`;
+            if(c.lat) {
+                const m = L.marker([c.lat, c.lng]).addTo(map)
+                 .bindPopup(`<b>${c.species}</b><br>${c.weight}kg<br><small>${c.date}</small>`);
+                mapMarkers.push(m);
+            }
         });
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.setAttribute('href', url);
-        a.setAttribute('download', `fishing_log_${new Date().toLocaleDateString()}.csv`);
-        a.click();
     }
 
     function renderCatches() {
-        const specFilter = document.getElementById('catch-filter').value;
-        const yearFilter = document.getElementById('year-filter').value;
         const list = document.getElementById('catch-list');
-        const filtered = catches.filter(c => {
-            const matchesSpec = (specFilter === 'ALL' || c.species === specFilter);
-            const matchesYear = (yearFilter === 'ALL' || c.date.startsWith(yearFilter));
-            return matchesSpec && matchesYear;
-        });
-        document.getElementById('catch-count').textContent = filtered.length;
-        list.innerHTML = filtered.map(c => `
+        list.innerHTML = catches.map(c => `
             <div class="catch-card">
-                <button class="delete-btn" onclick="if(confirm('Delete?')){catches=catches.filter(x=>x.id!=${c.id});localStorage.setItem('catches',JSON.stringify(catches));updateYearDropdown();renderCatches();}">🗑️</button>
                 ${c.photo ? `<img src="${c.photo}" style="width:100%">` : ''}
-                <div style="padding:10px;">
-                    <strong>${c.species}</strong> - ${c.len}cm / ${c.weight}kg<br>
-                    <small>📅 ${c.date} | 🎣 ${c.method} | 🌊 Tide: ${c.tide}</small>
-                    ${c.notes ? `<div class="notes-display">Note: ${c.notes}</div>` : ''}
+                <div style="padding:15px;">
+                    <strong>${c.species} (${c.weight}kg)</strong><br>
+                    <span class="badge badge-tide">${c.tide}</span>
+                    <p style="font-size:13px; color:#666;">${c.notes}</p>
+                    <small>${c.date}</small>
                 </div>
             </div>
         `).reverse().join('');
@@ -300,10 +225,13 @@
         const now = new Date();
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('f-datetime').value = now.toISOString().slice(0,16);
-        map = L.map('map').setView([-37.68, 176.16], 13);
+
+        map = L.map('map').setView([-37.68, 176.16], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(map);
-        updateYearDropdown(); renderCatches(); syncAll();
+        
+        renderCatches();
+        syncAll();
     };
 </script>
 </body>
