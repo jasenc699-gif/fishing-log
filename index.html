@@ -11,13 +11,13 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --danger: #ff4d4d; }
+    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --danger: #ff4d4d; --accent: #3498db; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); overflow-x: hidden; }
     
     .header { background: #2c2c2c; color: white; padding: 15px; text-align: center; font-weight: bold; letter-spacing: 1px; }
     .nav { display: flex; background: #383838; overflow-x: auto; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid #444; }
-    .nav-btn { flex: 1; padding: 12px 15px; color: #999; border: none; background: none; font-size: 10px; text-transform: uppercase; cursor: pointer; min-width: 75px; }
+    .nav-btn { flex: 1; padding: 12px 15px; color: #999; border: none; background: none; font-size: 10px; text-transform: uppercase; cursor: pointer; min-width: 70px; }
     .nav-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
 
     .section { display: none; padding: 15px; animation: fadeIn 0.2s; }
@@ -25,22 +25,22 @@
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
     .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
-    .weather-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-    .stat-box { background: #f9f9f9; padding: 10px; border-radius: 8px; border: 1px solid #eee; }
     
     label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 8px; color: #888; text-transform: uppercase; text-align: left; }
     input, select, textarea { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #eee; border-radius: 8px; font-size: 16px; background: #fdfdfd; }
     
-    .btn-action { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; }
-    #map { height: 350px; border-radius: 12px; width: 100%; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+    .btn-action { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; margin-bottom: 10px; }
+    .btn-secondary { background: #555; font-size: 12px; padding: 10px; }
+
+    #map { height: 200px; border-radius: 12px; width: 100%; border: 1px solid #ddd; margin-bottom: 15px; }
     
-    .data-display { font-size: 32px; font-weight: 800; color: #2c2c2c; margin: 10px 0; display: block; }
-    .data-sub { font-size: 14px; color: #666; font-weight: 500; }
-    .visual-icon { font-size: 45px; margin-bottom: 5px; display: block; }
+    .stats-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+    .stats-label { font-size: 14px; font-weight: 600; }
+    .stats-value { color: var(--primary); font-weight: 800; font-size: 18px; }
 
     .catch-card { background: white; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #eee; }
     .badge { display: inline-block; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; color: white; margin-top: 5px; }
-    .badge-tide { background: #3498db; }
+    .badge-tide { background: var(--accent); }
     
     #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 25px; border-radius: 50px; font-size: 14px; opacity: 0; transition: 0.3s; z-index: 9999; pointer-events: none; }
 </style>
@@ -53,22 +53,22 @@
 <div class="nav">
     <button class="nav-btn active" onclick="showTab('log', this)">Log</button>
     <button class="nav-btn" onclick="showTab('tide', this)">Tide</button>
-    <button class="nav-btn" onclick="showTab('moon', this)">Moon</button>
-    <button class="nav-btn" onclick="showTab('bite', this)">Bite</button>
     <button class="nav-btn" onclick="showTab('weather', this)">Weather</button>
     <button class="nav-btn" onclick="showTab('map-tab', this)">Map</button>
     <button class="nav-btn" onclick="showTab('catches', this)">Catches</button>
+    <button class="nav-btn" onclick="showTab('stats', this)">Stats</button>
 </div>
 
 <div id="log" class="section active">
     <div class="card">
-        <label>📍 Drag Pin to Location</label>
-        <div id="map" style="height: 200px; margin-bottom: 15px;"></div>
+        <label>📍 Spot Location (Drag Pin)</label>
+        <div id="map"></div>
+        <input type="text" id="f-loc-name" placeholder="Location Name (e.g. Tauranga Bridge)">
 
         <label>📅 Date & Time</label>
         <input type="datetime-local" id="f-datetime">
         
-        <label>📸 Catch Photo</label>
+        <label>📸 Photo (Take New or Upload)</label>
         <input type="file" id="f-photo" accept="image/*" onchange="previewFile(this)">
         <div class="preview-box"><img id="img-prev-el" style="width:100%; display:none; border-radius:8px; margin-bottom:10px;"></div>
         
@@ -85,7 +85,7 @@
 
         <div id="fly-wrap" style="display:none;">
             <label>Fly / Lure Name</label>
-            <input type="text" id="f-fly" placeholder="e.g. Clouser, Woolly Bugger">
+            <input type="text" id="f-fly" placeholder="e.g. Clouser">
         </div>
 
         <label>Weight (kg)</label>
@@ -98,12 +98,24 @@
     </div>
 </div>
 
-<div id="tide" class="section"><div class="card"><span class="visual-icon" id="tide-icon">🌊</span><label>Tide Status</label><span id="tide-val" class="data-display">--</span><span id="tide-desc" class="data-sub">Move map to update</span></div></div>
-<div id="moon" class="section"><div class="card"><span class="visual-icon" id="moon-icon">🌕</span><label>Moon Phase</label><span id="moon-val" class="data-display">--</span></div></div>
-<div id="bite" class="section"><div class="card"><span class="visual-icon" id="bite-icon">🎣</span><label>Bite Probability</label><span id="bite-val" class="data-display">--</span></div></div>
-<div id="weather" class="section"><div class="card"><span class="visual-icon" id="weather-icon">⛅</span><label>Weather</label><span id="weather-val" class="data-display">--</span><div class="weather-grid"><div class="stat-box"><label>Wind</label><span id="wind-val">--</span> km/h</div><div class="stat-box"><label>Rain</label><span id="rain-val">--</span> mm</div></div></div></div>
+<div id="tide" class="section"><div class="card"><span class="visual-icon">🌊</span><label>Tide Status</label><span id="tide-val" class="data-display">--</span><span id="tide-desc" class="data-sub">Updating...</span></div></div>
+<div id="weather" class="section"><div class="card"><span class="visual-icon">⛅</span><label>Weather</label><span id="weather-val" class="data-display">--</span><div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;"><div style="background:#f9f9f9; padding:10px; border-radius:8px;"><label>Wind</label><span id="wind-val">--</span> km/h</div><div style="background:#f9f9f9; padding:10px; border-radius:8px;"><label>Rain</label><span id="rain-val">--</span> mm</div></div></div></div>
 <div id="map-tab" class="section"><div id="big-map" style="height: 400px; border-radius: 12px;"></div></div>
 <div id="catches" class="section"><div id="catch-list"></div></div>
+
+<div id="stats" class="section">
+    <div class="card">
+        <label>🏆 Performance Insights</label>
+        <div id="stats-container">
+            <div class="stats-row"><span class="stats-label">Best Tide:</span> <span id="stat-best-tide" class="stats-value">--</span></div>
+            <div class="stats-row"><span class="stats-label">Peak Time:</span> <span id="stat-best-time" class="stats-value">--</span></div>
+        </div>
+    </div>
+    <div class="card">
+        <label>📅 Monthly Activity</label>
+        <div id="stats-monthly-list"></div>
+    </div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -117,9 +129,8 @@
         document.getElementById(id).classList.add('active');
         btn.classList.add('active');
         if(id === 'log' && map) setTimeout(() => map.invalidateSize(), 200);
-        if(id === 'map-tab' && bigMap) {
-            setTimeout(() => { bigMap.invalidateSize(); renderHistoryPins(); }, 300);
-        }
+        if(id === 'map-tab' && bigMap) setTimeout(() => { bigMap.invalidateSize(); renderHistoryPins(); }, 300);
+        if(id === 'stats') calculateStats();
     }
 
     function toggleFlyField(val) {
@@ -131,8 +142,8 @@
             const reader = new FileReader();
             reader.onload = (e) => {
                 photoBase64 = e.target.result;
-                document.getElementById('img-prev-el').src = photoBase64;
-                document.getElementById('img-prev-el').style.display = 'block';
+                const img = document.getElementById('img-prev-el');
+                img.src = photoBase64; img.style.display = 'block';
             };
             reader.readAsDataURL(input.files[0]);
         }
@@ -149,17 +160,38 @@
             const hr = new Date().getHours();
             const isIncoming = (hr % 12 < 6);
             document.getElementById('tide-val').innerText = isIncoming ? "Incoming" : "Outgoing";
-            document.getElementById('tide-desc').innerText = isIncoming ? "Rising at this location" : "Falling at this location";
-            
-            const bite = (hr > 5 && hr < 8) || (hr > 17 && hr < 20) ? "EXCELLENT" : "AVERAGE";
-            document.getElementById('bite-val').innerText = bite;
+            document.getElementById('tide-desc').innerText = isIncoming ? "Tide is Rising" : "Tide is Falling";
         } catch(e) {}
     }
 
-    function showToast(msg) {
-        const t = document.getElementById('toast');
-        t.innerText = msg; t.style.opacity = '1';
-        setTimeout(() => t.style.opacity = '0', 2500);
+    function calculateStats() {
+        if (catches.length === 0) return;
+
+        // 1. Best Tide
+        const tides = catches.reduce((acc, c) => { acc[c.tide] = (acc[c.tide] || 0) + 1; return acc; }, {});
+        const bestTide = Object.keys(tides).reduce((a, b) => tides[a] > tides[b] ? a : b);
+        document.getElementById('stat-best-tide').innerText = bestTide;
+
+        // 2. Best Time
+        const times = catches.reduce((acc, c) => {
+            const hr = new Date(c.date).getHours();
+            const slot = hr < 12 ? "Morning" : (hr < 17 ? "Afternoon" : "Evening");
+            acc[slot] = (acc[slot] || 0) + 1; return acc;
+        }, {});
+        const bestTime = Object.keys(times).reduce((a, b) => times[a] > times[b] ? a : b);
+        document.getElementById('stat-best-time').innerText = bestTime;
+
+        // 3. Monthly List
+        const months = catches.reduce((acc, c) => {
+            const m = new Date(c.date).toLocaleString('default', { month: 'long' });
+            acc[m] = (acc[m] || 0) + 1; return acc;
+        }, {});
+        
+        let monthHtml = "";
+        for (const [m, count] of Object.entries(months)) {
+            monthHtml += `<div class="stats-row"><span class="stats-label">${m}</span> <span class="stats-value">${count}</span></div>`;
+        }
+        document.getElementById('stats-monthly-list').innerHTML = monthHtml;
     }
 
     function saveCatch() {
@@ -171,14 +203,24 @@
             weight: document.getElementById('f-weight').value || "0",
             notes: document.getElementById('f-notes').value,
             date: document.getElementById('f-datetime').value,
+            locName: document.getElementById('f-loc-name').value,
             lat: lat, lng: lng,
             tide: document.getElementById('tide-val').innerText,
             photo: photoBase64
         };
         catches.push(entry);
         localStorage.setItem('catches', JSON.stringify(catches));
+        
+        // Clear
+        document.getElementById('f-weight').value = "";
+        document.getElementById('f-notes').value = "";
+        document.getElementById('f-fly').value = "";
+        document.getElementById('f-photo').value = "";
+        document.getElementById('img-prev-el').style.display = 'none';
+        
         renderCatches();
-        showToast("Catch Saved! 🎣");
+        const t = document.getElementById('toast');
+        t.style.opacity = '1'; setTimeout(() => t.style.opacity = '0', 2500);
     }
 
     function renderHistoryPins() {
@@ -187,7 +229,7 @@
         catches.forEach(c => {
             if(c.lat) {
                 const m = L.marker([c.lat, c.lng]).addTo(bigMap)
-                 .bindPopup(`<b>${c.species}</b><br>${c.weight}kg<br>${c.method} ${c.fly ? '('+c.fly+')' : ''}<br><small>${c.date}</small>`);
+                 .bindPopup(`<b>${c.species}</b><br>${c.weight}kg<br><small>${c.date}</small>`);
                 catchMarkers.push(m);
             }
         });
@@ -200,6 +242,7 @@
                 ${c.photo ? `<img src="${c.photo}" style="width:100%">` : ''}
                 <div style="padding:15px;">
                     <strong>${c.species} (${c.weight}kg)</strong><br>
+                    <small>📍 ${c.locName || 'Saved Spot'}</small><br>
                     <small>🎣 ${c.method} ${c.fly ? '- ' + c.fly : ''}</small><br>
                     <span class="badge badge-tide">${c.tide}</span>
                     <p style="font-size:13px; color:#666;">${c.notes}</p>
@@ -214,22 +257,17 @@
         now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('f-datetime').value = now.toISOString().slice(0,16);
 
-        // Main Log Map (Draggable Pin)
         map = L.map('map').setView([-37.68, 176.16], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(map);
         
-        marker.on('dragend', function(e) {
-            const pos = marker.getLatLng();
-            syncDataFromCoords(pos.lat, pos.lng);
-        });
+        marker.on('dragend', () => syncDataFromCoords(marker.getLatLng().lat, marker.getLatLng().lng));
 
-        // History Tab Map
         bigMap = L.map('big-map').setView([-37.68, 176.16], 10);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(bigMap);
 
         navigator.geolocation.getCurrentPosition(p => {
-            const myLat = p.coords.latitude; const myLng = p.coords.longitude;
+            const myLat = p.coords.latitude, myLng = p.coords.longitude;
             map.setView([myLat, myLng], 12);
             marker.setLatLng([myLat, myLng]);
             bigMap.setView([myLat, myLng], 10);
