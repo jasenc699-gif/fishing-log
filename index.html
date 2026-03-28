@@ -7,7 +7,7 @@
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --accent: #3498db; }
+    :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --accent: #3498db; --danger: #e74c3c; }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
     body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); overflow-x: hidden; }
     
@@ -16,7 +16,7 @@
     .nav-btn { flex: 1; padding: 12px 15px; color: #999; border: none; background: none; font-size: 10px; text-transform: uppercase; cursor: pointer; min-width: 70px; }
     .nav-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
 
-    .section { display: none; padding: 15px; animation: fadeIn 0.2s; }
+    .section { display: none; padding: 15px; animation: fadeIn 0.1s; }
     .section.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
@@ -24,38 +24,34 @@
     label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 8px; color: #888; text-transform: uppercase; text-align: left; }
     input, select, textarea { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #eee; border-radius: 8px; font-size: 16px; background: #fdfdfd; -webkit-appearance: none; }
     
-    .search-box { display: flex; gap: 5px; margin-bottom: 10px; }
-    .search-box input { margin-bottom: 0; flex: 1; }
-    .btn-small { background: #555; color: white; border: none; padding: 0 15px; border-radius: 8px; cursor: pointer; }
+    .search-row { display: flex; gap: 8px; margin-bottom: 15px; }
+    .search-row input { margin-bottom: 0; flex: 2; }
+    .btn-geo { background: #555; color: white; border: none; padding: 0 12px; border-radius: 8px; cursor: pointer; font-size: 18px; }
 
-    .btn-action { background: var(--primary); color: white; border: none; width: 100%; padding: 16px; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; margin-bottom: 10px; }
-    .btn-action:active { transform: scale(0.97); }
-
-    #map { height: 250px; border-radius: 12px; width: 100%; border: 1px solid #ddd; margin-bottom: 15px; z-index: 1; }
+    #map { height: 260px; border-radius: 12px; width: 100%; border: 1px solid #ddd; margin-bottom: 15px; z-index: 1; }
     
-    .pill-box { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; text-align: left; min-height: 20px; }
-    .pill { background: #eee; padding: 6px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; color: #555; }
+    .pill-box { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; text-align: left; }
+    .pill { background: #eee; padding: 8px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; color: #444; }
     .pill:active { background: var(--primary); color: white; border-color: var(--primary); }
 
-    .catch-card { background: white; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #eee; text-align: left; }
-    .badge { display: inline-block; padding: 3px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; color: white; margin-right: 5px; }
-    .badge-tide { background: var(--accent); }
-    .badge-weather { background: #f39c12; }
-    
-    #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 25px; border-radius: 50px; font-size: 14px; opacity: 0; transition: 0.3s; z-index: 9999; pointer-events: none; }
+    .catch-card { background: white; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #eee; text-align: left; position: relative; }
+    .delete-btn { position: absolute; top: 10px; right: 10px; background: var(--danger); color: white; border: none; border-radius: 8px; padding: 5px 10px; font-size: 10px; font-weight: bold; cursor: pointer; z-index: 10; opacity: 0.9; }
 
-    .backup-btn { background: #555; margin-top: 10px; padding: 10px; font-size: 12px; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+    .badge { padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; color: white; }
+    .bg-tide { background: var(--accent); }
+    .bg-weather { background: #f39c12; }
+    .bg-time { background: #7f8c8d; }
+    
+    .note-text { font-size: 13px; color: #555; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 12px; line-height: 1.4; border-left: 3px solid var(--primary); }
 </style>
 </head>
 <body>
 
-<div id="toast">Catch Logged! 🎣</div>
 <div class="header">FISHING LOG PRO</div>
 
 <div class="nav">
     <button class="nav-btn active" onclick="showTab('log', this)">Log</button>
-    <button class="nav-btn" onclick="showTab('tide', this)">Tide</button>
-    <button class="nav-btn" onclick="showTab('weather', this)">Weather</button>
     <button class="nav-btn" onclick="showTab('map-tab', this)">Map</button>
     <button class="nav-btn" onclick="showTab('catches', this)">Catches</button>
     <button class="nav-btn" onclick="showTab('stats', this)">Stats</button>
@@ -64,94 +60,65 @@
 <div id="log" class="section active">
     <div class="card">
         <label>📍 Spot Location</label>
-        <div class="search-box">
-            <input type="text" id="map-search" placeholder="Search town/river...">
-            <button class="btn-small" onclick="searchLocation()">Go</button>
+        <div class="search-row">
+            <input type="text" id="map-search" placeholder="Search spot...">
+            <button class="btn-geo" onclick="searchLocation()">🔍</button>
+            <button class="btn-geo" onclick="useMyLocation()">📍</button>
         </div>
         <div id="map"></div>
-        <input type="text" id="f-loc-name" placeholder="Nearest Town">
+        <input type="text" id="f-loc-name" placeholder="Name of Spot">
 
         <label>📅 Date & Time</label>
         <input type="datetime-local" id="f-datetime">
         
         <label>📸 Photo</label>
-        <input type="file" id="f-photo" accept="image/*" onchange="previewFile(this)">
-        <img id="img-prev-el" style="width:100%; display:none; border-radius:8px; margin-bottom:10px;">
+        <input type="file" id="f-photo" accept="image/*" capture="environment">
+        <img id="img-prev-el" style="width:100%; display:none; border-radius:8px; margin-bottom:15px;">
 
         <label>Species</label>
         <select id="f-species" onchange="toggleCustomSpecies(this.value)">
             <option>Snapper</option><option>Kingfish</option><option>Trout (Rainbow)</option>
-            <option>Trout (Brown)</option><option>Kahawai</option><option>Tarakihi</option>
-            <option>Gurnard</option><option>Blue Cod</option><option>Trevally</option>
-            <option value="CUSTOM">-- Other / Custom --</option>
+            <option>Trout (Brown)</option><option>Kahawai</option><option value="CUSTOM">-- Custom --</option>
         </select>
         <div id="custom-species-wrap" style="display:none;">
-            <input type="text" id="f-custom-species" placeholder="Enter species name">
-            <label>Quick Select Custom Species</label>
+            <input type="text" id="f-custom-species" placeholder="Enter species">
             <div id="species-library" class="pill-box"></div>
         </div>
-        
-        <label>Method</label>
-        <select id="f-method" onchange="toggleFlyField(this.value)">
-            <option value="Fly Fishing" selected>Fly Fishing</option>
-            <option value="Bait Fishing">Bait Fishing</option>
-            <option value="Lure/Spinning">Lure/Spinning</option>
-            <option value="Soft Plastic">Soft Plastic</option>
-        </select>
 
-        <div id="fly-wrap">
-            <label>Fly / Lure Name</label>
-            <input type="text" id="f-fly" placeholder="e.g. Hare & Copper">
-            <label>Quick Select Fly Box</label>
-            <div id="fly-library" class="pill-box"></div>
-        </div>
-
-        <label>Platform</label>
-        <select id="f-platform"><option>Wading</option><option>Boat</option><option>Kayak</option><option>Shore</option></select>
+        <label>Fly / Lure</label>
+        <input type="text" id="f-fly" placeholder="Fly Name">
+        <div id="fly-library" class="pill-box"></div>
 
         <label>Weight (kg)</label>
         <input type="number" id="f-weight" step="0.1" placeholder="0.0">
-        
-        <label>📝 Notes</label>
+
+        <label>📝 Catch Notes</label>
         <textarea id="f-notes" placeholder="Notes..."></textarea>
+        <div id="quick-notes" class="pill-box"></div>
         
-        <button class="btn-action" onclick="saveCatch()">SAVE CATCH ENTRY</button>
+        <span id="live-tide" style="display:none">--</span>
+        <span id="live-weather" style="display:none">--</span>
+
+        <button style="background:var(--primary); color:white; border:none; width:100%; padding:18px; border-radius:10px; font-weight:bold; font-size:16px;" onclick="saveCatch()">SAVE CATCH</button>
     </div>
 </div>
 
-<div id="stats" class="section">
-    <div class="card">
-        <label>🏆 Insights</label>
-        <div id="stats-container">
-            <div class="stats-row">Best Tide: <span id="stat-best-tide" class="stats-value">--</span></div>
-            <div class="stats-row">Peak Time: <span id="stat-best-time" class="stats-value">--</span></div>
-        </div>
-    </div>
-    <div class="card">
-        <label>💾 Data Management</label>
-        <button class="btn-action backup-btn" onclick="exportData()">EXPORT BACKUP (.JSON)</button>
-        <label style="margin-top:15px;">RESTORE FROM FILE</label>
-        <input type="file" id="import-file" accept=".json" onchange="importData(this)">
-    </div>
-</div>
-
-<div id="tide" class="section"><div class="card"><span class="visual-icon">🌊</span><label>Tide Status</label><span id="tide-val" class="data-display">--</span></div></div>
-<div id="weather" class="section"><div class="card"><span class="visual-icon">⛅</span><label>Weather</label><span id="weather-val" class="data-display">--</span></div></div>
-<div id="map-tab" class="section"><div id="big-map" style="height: 400px; border-radius: 12px;"></div></div>
+<div id="map-tab" class="section"><div class="card"><div id="big-map" style="height:400px; border-radius:12px;"></div></div></div>
 <div id="catches" class="section"><div id="catch-list"></div></div>
+<div id="stats" class="section">
+    <div class="card"><label>🏆 Leaderboard</label><div id="leaderboard"></div></div>
+    <div class="card"><label>💾 Data</label><button onclick="exportData()" style="width:100%; padding:12px; background:#555; color:white; border:none; border-radius:8px;">Export JSON</button></div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     let map, bigMap, marker, lat, lng, photoBase64 = "";
     let catches = JSON.parse(localStorage.getItem('catches') || '[]');
-    let flyBox = JSON.parse(localStorage.getItem('flyBox') || '["Clouser", "Woolly Bugger", "Hare & Copper", "Stimulator"]');
+    let flyBox = JSON.parse(localStorage.getItem('flyBox') || '["Clouser", "Hare & Copper", "Woolly Bugger", "Parachute Adams"]');
     let speciesBox = JSON.parse(localStorage.getItem('speciesBox') || '[]');
-    let catchMarkers = [];
+    let quickNotePhrases = ["Released", "Strong Fight", "Clear Water", "Murky Water", "Top Water", "Deep Water", "Personal Best", "Sight Fished"];
 
-    const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
-    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Esri' });
-
-    function vibrate(ms = 15) { if ("vibrate" in navigator) navigator.vibrate(ms); }
+    function vibrate(ms = 25) { if (navigator.vibrate) navigator.vibrate(ms); }
 
     function showTab(id, btn) {
         vibrate(20);
@@ -159,154 +126,131 @@
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         btn.classList.add('active');
-        if(id === 'log' && map) setTimeout(() => map.invalidateSize(), 200);
-        if(id === 'map-tab' && bigMap) setTimeout(() => { bigMap.invalidateSize(); renderHistoryPins(); }, 300);
-        if(id === 'stats') calculateStats();
+        if(id === 'log' && map) setTimeout(() => map.invalidateSize(), 100);
+        if(id === 'catches') renderCatches();
     }
 
-    function exportData() {
+    function addQuickNote(phrase) {
+        vibrate(15);
+        const area = document.getElementById('f-notes');
+        const current = area.value.trim();
+        area.value = current ? current + ", " + phrase : phrase;
+    }
+
+    async function useMyLocation() {
         vibrate(30);
-        const data = { catches, flyBox, speciesBox };
-        const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `FishingLogBackup_${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
+        navigator.geolocation.getCurrentPosition(p => {
+            const myLat = p.coords.latitude, myLng = p.coords.longitude;
+            map.setView([myLat, myLng], 15);
+            marker.setLatLng([myLat, myLng]);
+            syncConditions(myLat, myLng);
+        });
     }
-
-    function importData(input) {
-        vibrate(30);
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = JSON.parse(e.target.result);
-            if(data.catches) localStorage.setItem('catches', JSON.stringify(data.catches));
-            if(data.flyBox) localStorage.setItem('flyBox', JSON.stringify(data.flyBox));
-            if(data.speciesBox) localStorage.setItem('speciesBox', JSON.stringify(data.speciesBox));
-            alert("Backup Restored Successfully!");
-            location.reload();
-        };
-        reader.readAsText(input.files[0]);
-    }
-
-    function updateLibraries() {
-        document.getElementById('fly-library').innerHTML = flyBox.map(f => `<span class="pill" onclick="selectFly('${f}')">${f}</span>`).join('');
-        document.getElementById('species-library').innerHTML = speciesBox.map(s => `<span class="pill" onclick="selectSpecies('${s}')">${s}</span>`).join('');
-    }
-
-    function selectFly(name) { vibrate(10); document.getElementById('f-fly').value = name; }
-    function selectSpecies(name) { vibrate(10); document.getElementById('f-custom-species').value = name; }
-
-    function toggleCustomSpecies(val) { vibrate(10); document.getElementById('custom-species-wrap').style.display = (val === 'CUSTOM') ? 'block' : 'none'; }
-    function toggleFlyField(val) { vibrate(10); document.getElementById('fly-wrap').style.display = (val === 'Fly Fishing' || val === 'Lure/Spinning') ? 'block' : 'none'; }
 
     async function searchLocation() {
-        vibrate(15);
         const query = document.getElementById('map-search').value;
         if(!query) return;
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`).then(r => r.json());
         if(res.length > 0) {
             const pos = [res[0].lat, res[0].lon];
-            map.setView(pos, 15); marker.setLatLng(pos);
-            syncDataFromCoords(res[0].lat, res[0].lon);
+            map.setView(pos, 14);
+            marker.setLatLng(pos);
+            syncConditions(res[0].lat, res[0].lon);
         }
     }
 
-    async function syncDataFromCoords(newLat, newLng) {
+    async function syncConditions(newLat, newLng) {
         lat = newLat; lng = newLng;
         try {
-            const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(r => r.json());
-            const town = geo.address.town || geo.address.city || geo.address.suburb || geo.address.village || "Unknown Spot";
-            document.getElementById('f-loc-name').value = town;
-            
             const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`).then(r => r.json());
-            document.getElementById('weather-val').innerText = Math.round(w.current_weather.temperature) + "°C";
+            document.getElementById('live-weather').innerText = Math.round(w.current_weather.temperature) + "°C";
             const hr = new Date().getHours();
-            document.getElementById('tide-val').innerText = (hr % 12 < 6) ? "Incoming" : "Outgoing";
+            document.getElementById('live-tide').innerText = (hr % 12 < 6) ? "Incoming" : "Outgoing";
         } catch(e) {}
     }
 
     function saveCatch() {
-        vibrate([30, 50, 30]);
-        let finalSpecies = document.getElementById('f-species').value;
-        if(finalSpecies === 'CUSTOM') {
-            const custom = document.getElementById('f-custom-species').value;
-            finalSpecies = custom || 'Unknown';
-            if(custom && !speciesBox.includes(custom)) speciesBox.push(custom);
-        }
-        const currentFly = document.getElementById('f-fly').value;
-        if(currentFly && !flyBox.includes(currentFly)) flyBox.push(currentFly);
-
+        vibrate([40, 60, 40]);
+        let spec = document.getElementById('f-species').value;
+        if(spec === 'CUSTOM') spec = document.getElementById('f-custom-species').value || 'Unknown';
+        
+        const dt = new Date(document.getElementById('f-datetime').value);
         const entry = {
-            id: Date.now(), species: finalSpecies, method: document.getElementById('f-method').value,
-            fly: currentFly, platform: document.getElementById('f-platform').value,
-            weight: document.getElementById('f-weight').value || "0", notes: document.getElementById('f-notes').value,
-            date: document.getElementById('f-datetime').value, locName: document.getElementById('f-loc-name').value,
-            lat: lat, lng: lng, tide: document.getElementById('tide-val').innerText,
-            weather: document.getElementById('weather-val').innerText, photo: photoBase64
+            id: Date.now(), 
+            species: spec, 
+            weight: parseFloat(document.getElementById('f-weight').value) || 0,
+            fly: document.getElementById('f-fly').value, 
+            notes: document.getElementById('f-notes').value,
+            locName: document.getElementById('f-loc-name').value || "Spot",
+            lat: lat, lng: lng, 
+            photo: photoBase64,
+            date: dt.toLocaleDateString('en-NZ', { day:'numeric', month:'short' }),
+            time: dt.toLocaleTimeString('en-NZ', { hour:'2-digit', minute:'2-digit' }),
+            weather: document.getElementById('live-weather').innerText,
+            tide: document.getElementById('live-tide').innerText
         };
+        
         catches.push(entry);
         localStorage.setItem('catches', JSON.stringify(catches));
-        localStorage.setItem('flyBox', JSON.stringify(flyBox));
-        localStorage.setItem('speciesBox', JSON.stringify(speciesBox));
-        location.reload(); 
-    }
-
-    function calculateStats() {
-        if (catches.length === 0) return;
-        const tides = catches.reduce((acc, c) => { acc[c.tide] = (acc[c.tide] || 0) + 1; return acc; }, {});
-        document.getElementById('stat-best-tide').innerText = Object.keys(tides).reduce((a, b) => tides[a] > tides[b] ? a : b);
-    }
-
-    function renderHistoryPins() {
-        catchMarkers.forEach(m => bigMap.removeLayer(m)); catchMarkers = [];
-        catches.forEach(c => {
-            if(c.lat) catchMarkers.push(L.marker([c.lat, c.lng]).addTo(bigMap).bindPopup(`<b>${c.species}</b>`));
-        });
+        location.reload();
     }
 
     function renderCatches() {
         document.getElementById('catch-list').innerHTML = catches.map(c => `
             <div class="catch-card">
+                <button class="delete-btn" onclick="deleteCatch(${c.id})">DELETE</button>
                 ${c.photo ? `<img src="${c.photo}" style="width:100%">` : ''}
                 <div style="padding:15px;">
-                    <strong>${c.species} (${c.weight}kg)</strong><br>
-                    <small>📍 ${c.locName} | 🛶 ${c.platform}</small><br>
-                    <div style="margin-top:8px;"><span class="badge badge-tide">🌊 ${c.tide}</span><span class="badge badge-weather">🌡️ ${c.weather}</span></div>
-                    <p style="font-size:13px; color:#666; margin-top:10px;">${c.notes}</p>
+                    <div style="display:flex; justify-content:space-between;">
+                        <strong>${c.species}</strong>
+                        <strong style="color:var(--primary)">${c.weight}kg</strong>
+                    </div>
+                    <div class="badge-row">
+                        <span class="badge bg-time">📅 ${c.date} ${c.time}</span>
+                        <span class="badge bg-weather">🌡️ ${c.weather}</span>
+                        <span class="badge bg-tide">🌊 ${c.tide}</span>
+                    </div>
+                    ${c.notes ? `<div class="note-text">${c.notes}</div>` : ''}
+                    <div style="font-size:11px; color:#999; margin-top:10px;">📍 ${c.locName} ${c.fly ? '| 🎣 ' + c.fly : ''}</div>
                 </div>
             </div>
-        `).reverse().join('');
+        `).reverse().join('') || '<div class="card">No catches yet!</div>';
+    }
+
+    function deleteCatch(id) {
+        vibrate(50);
+        if(confirm("Permanently delete catch?")) {
+            catches = catches.filter(c => c.id !== id);
+            localStorage.setItem('catches', JSON.stringify(catches));
+            renderCatches();
+        }
     }
 
     window.onload = () => {
         const now = new Date(); now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
         document.getElementById('f-datetime').value = now.toISOString().slice(0,16);
-        updateLibraries();
-        map = L.map('map', { layers: [streetLayer] }).setView([-37.68, 176.16], 12);
-        L.control.layers({ "Street": streetLayer, "Satellite": satelliteLayer }).addTo(map);
+
+        map = L.map('map').setView([-37.68, 176.16], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(map);
-        marker.on('dragend', () => syncDataFromCoords(marker.getLatLng().lat, marker.getLatLng().lng));
-        bigMap = L.map('big-map', { layers: [streetLayer] }).setView([-37.68, 176.16], 10);
-        L.control.layers({ "Street": streetLayer, "Satellite": satelliteLayer }).addTo(bigMap);
+        marker.on('dragend', () => syncConditions(marker.getLatLng().lat, marker.getLatLng().lng));
+
         navigator.geolocation.getCurrentPosition(p => {
-            const myLat = p.coords.latitude, myLng = p.coords.longitude;
-            map.setView([myLat, myLng], 15); marker.setLatLng([myLat, myLng]);
-            syncDataFromCoords(myLat, myLng);
+            const lat = p.coords.latitude, lng = p.coords.longitude;
+            map.setView([lat, lng], 14); marker.setLatLng([lat, lng]);
+            syncConditions(lat, lng);
         });
+
+        document.getElementById('fly-library').innerHTML = flyBox.map(f => `<span class="pill" onclick="document.getElementById('f-fly').value='${f}'; vibrate(10);">${f}</span>`).join('');
+        document.getElementById('quick-notes').innerHTML = quickNotePhrases.map(p => `<span class="pill" onclick="addQuickNote('${p}')">${p}</span>`).join('');
         renderCatches();
     };
 
-    function previewFile(input) {
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                photoBase64 = e.target.result;
-                document.getElementById('img-prev-el').src = photoBase64;
-                document.getElementById('img-prev-el').style.display = 'block';
-            };
-            reader.readAsDataURL(input.files[0]);
-        }
+    function toggleCustomSpecies(val) { document.getElementById('custom-species-wrap').style.display = (val === 'CUSTOM') ? 'block' : 'none'; }
+    function exportData() {
+        const blob = new Blob([JSON.stringify(catches)], {type: 'application/json'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = 'fishing_backup.json'; a.click();
     }
 </script>
 </body>
