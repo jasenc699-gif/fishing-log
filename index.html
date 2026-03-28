@@ -8,42 +8,48 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
     :root { --primary: #4fc3a1; --bg: #f4f4f2; --card: #ffffff; --text: #333; --accent: #3498db; --danger: #e74c3c; }
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding-bottom: 20px; color: var(--text); overflow-x: hidden; }
     
     .header { background: #2c2c2c; color: white; padding: 15px; text-align: center; font-weight: bold; letter-spacing: 1px; }
-    .nav { display: flex; background: #383838; overflow-x: auto; position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid #444; }
-    .nav-btn { flex: 1; padding: 12px 15px; color: #999; border: none; background: none; font-size: 10px; text-transform: uppercase; cursor: pointer; min-width: 70px; }
+    .nav { display: flex; background: #383838; position: sticky; top: 0; z-index: 2000; border-bottom: 1px solid #444; }
+    .nav-btn { flex: 1; padding: 12px 5px; color: #999; border: none; background: none; font-size: 10px; text-transform: uppercase; cursor: pointer; }
     .nav-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
 
     .section { display: none; padding: 15px; animation: fadeIn 0.1s; }
     .section.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-    .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; }
-    label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 8px; color: #888; text-transform: uppercase; text-align: left; }
+    .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    label { display: block; font-size: 10px; font-weight: bold; margin-bottom: 12px; color: #888; text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+    
+    .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    .env-item { background: #f9f9f9; padding: 10px; border-radius: 8px; text-align: center; border: 1px solid #eee; }
+    .env-label { font-size: 9px; color: #999; text-transform: uppercase; display: block; }
+    .env-val { font-size: 14px; font-weight: bold; color: var(--text); }
+
     input, select, textarea { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #eee; border-radius: 8px; font-size: 16px; background: #fdfdfd; -webkit-appearance: none; }
     
-    .search-row { display: flex; gap: 8px; margin-bottom: 15px; }
+    .search-row { display: flex; gap: 8px; margin-bottom: 10px; }
     .search-row input { margin-bottom: 0; flex: 2; }
-    .btn-geo { background: #555; color: white; border: none; padding: 0 12px; border-radius: 8px; cursor: pointer; font-size: 18px; }
+    .btn-geo { background: #555; color: white; border: none; padding: 0 15px; border-radius: 8px; cursor: pointer; font-size: 18px; display: flex; align-items: center; }
 
-    #map { height: 260px; border-radius: 12px; width: 100%; border: 1px solid #ddd; margin-bottom: 15px; z-index: 1; }
+    #map, #big-map { height: 280px; border-radius: 12px; width: 100%; border: 1px solid #ddd; margin-bottom: 15px; z-index: 1; background: #eee; }
     
-    .pill-box { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; text-align: left; }
+    .pill-box { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; }
     .pill { background: #eee; padding: 8px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; color: #444; }
-    .pill:active { background: var(--primary); color: white; border-color: var(--primary); }
+    .pill:active { background: var(--primary); color: white; }
 
-    .catch-card { background: white; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #eee; text-align: left; position: relative; }
-    .delete-btn { position: absolute; top: 10px; right: 10px; background: var(--danger); color: white; border: none; border-radius: 8px; padding: 5px 10px; font-size: 10px; font-weight: bold; cursor: pointer; z-index: 10; opacity: 0.9; }
+    .catch-card { background: white; margin-bottom: 15px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid #eee; position: relative; }
+    .delete-btn { position: absolute; top: 10px; right: 10px; background: var(--danger); color: white; border: none; border-radius: 8px; padding: 5px 10px; font-size: 10px; font-weight: bold; z-index: 10; }
 
     .badge-row { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
     .badge { padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; color: white; }
     .bg-tide { background: var(--accent); }
     .bg-weather { background: #f39c12; }
-    .bg-time { background: #7f8c8d; }
+    .bg-bite { background: #e67e22; }
     
-    .note-text { font-size: 13px; color: #555; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 12px; line-height: 1.4; border-left: 3px solid var(--primary); }
+    .note-text { font-size: 13px; color: #555; background: #f9f9f9; padding: 10px; border-radius: 8px; margin-top: 12px; border-left: 3px solid var(--primary); }
 </style>
 </head>
 <body>
@@ -59,64 +65,69 @@
 
 <div id="log" class="section active">
     <div class="card">
-        <label>📍 Spot Location</label>
+        <label>📍 1. Pin Your Location</label>
         <div class="search-row">
-            <input type="text" id="map-search" placeholder="Search spot...">
+            <input type="text" id="map-search" placeholder="Search town/coast...">
             <button class="btn-geo" onclick="searchLocation()">🔍</button>
             <button class="btn-geo" onclick="useMyLocation()">📍</button>
         </div>
         <div id="map"></div>
-        <input type="text" id="f-loc-name" placeholder="Name of Spot">
+        <input type="text" id="f-loc-name" placeholder="Location Name">
 
-        <label>📅 Date & Time</label>
+        <label>🌊 2. Auto-Conditions for this Spot</label>
+        <div class="env-grid">
+            <div class="env-item"><span class="env-label">Weather</span><span id="live-weather" class="env-val">--</span></div>
+            <div class="env-item"><span class="env-label">Tide</span><span id="live-tide" class="env-val">--</span></div>
+            <div class="env-item"><span class="env-label">Bite Rating</span><span id="live-bite" class="env-val">--</span></div>
+            <div class="env-item"><span class="env-label">Time</span><span id="live-time-now" class="env-val">--:--</span></div>
+        </div>
+
+        <label>🎣 3. Catch Data</label>
         <input type="datetime-local" id="f-datetime">
         
-        <label>📸 Photo</label>
-        <input type="file" id="f-photo" accept="image/*" capture="environment">
-        <img id="img-prev-el" style="width:100%; display:none; border-radius:8px; margin-bottom:15px;">
+        <input type="file" id="f-photo" accept="image/*">
+        <img id="img-prev-el" style="width:100%; display:none; border-radius:8px; margin-top:10px; margin-bottom:15px;">
 
-        <label>Species</label>
         <select id="f-species" onchange="toggleCustomSpecies(this.value)">
             <option>Snapper</option><option>Kingfish</option><option>Trout (Rainbow)</option>
             <option>Trout (Brown)</option><option>Kahawai</option><option value="CUSTOM">-- Custom --</option>
         </select>
-        <div id="custom-species-wrap" style="display:none;">
-            <input type="text" id="f-custom-species" placeholder="Enter species">
-            <div id="species-library" class="pill-box"></div>
-        </div>
+        <div id="custom-species-wrap" style="display:none;"><input type="text" id="f-custom-species" placeholder="Enter species"></div>
 
-        <label>Fly / Lure</label>
-        <input type="text" id="f-fly" placeholder="Fly Name">
+        <input type="text" id="f-fly" placeholder="Fly or Lure Name">
         <div id="fly-library" class="pill-box"></div>
 
-        <label>Weight (kg)</label>
-        <input type="number" id="f-weight" step="0.1" placeholder="0.0">
+        <input type="number" id="f-weight" step="0.1" placeholder="Weight (kg)">
 
-        <label>📝 Catch Notes</label>
         <textarea id="f-notes" placeholder="Notes..."></textarea>
         <div id="quick-notes" class="pill-box"></div>
-        
-        <span id="live-tide" style="display:none">--</span>
-        <span id="live-weather" style="display:none">--</span>
 
         <button style="background:var(--primary); color:white; border:none; width:100%; padding:18px; border-radius:10px; font-weight:bold; font-size:16px;" onclick="saveCatch()">SAVE CATCH</button>
     </div>
 </div>
 
-<div id="map-tab" class="section"><div class="card"><div id="big-map" style="height:400px; border-radius:12px;"></div></div></div>
+<div id="map-tab" class="section">
+    <div class="card"><label>🗺️ History Map</label><div id="big-map"></div></div>
+</div>
+
 <div id="catches" class="section"><div id="catch-list"></div></div>
+
 <div id="stats" class="section">
-    <div class="card"><label>🏆 Leaderboard</label><div id="leaderboard"></div></div>
-    <div class="card"><label>💾 Data</label><button onclick="exportData()" style="width:100%; padding:12px; background:#555; color:white; border:none; border-radius:8px;">Export JSON</button></div>
+    <div class="card">
+        <label>🚀 Success Dashboard</label>
+        <div id="top-fly-stat" style="display:flex; justify-content:space-between; padding:8px 0;"><span>Best Fly:</span><span style="font-weight:bold; color:var(--primary)">--</span></div>
+        <div id="top-tide-stat" style="display:flex; justify-content:space-between; padding:8px 0;"><span>Best Tide:</span><span style="font-weight:bold; color:var(--primary)">--</span></div>
+        <div id="top-hour-stat" style="display:flex; justify-content:space-between; padding:8px 0;"><span>Best Time:</span><span style="font-weight:bold; color:var(--primary)">--</span></div>
+    </div>
+    <div class="card"><label>🏆 Personal Bests</label><div id="leaderboard"></div></div>
+    <div class="card"><button onclick="exportData()" style="width:100%; padding:12px; background:#555; color:white; border:none; border-radius:8px;">Export JSON Backup</button></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     let map, bigMap, marker, lat, lng, photoBase64 = "";
     let catches = JSON.parse(localStorage.getItem('catches') || '[]');
-    let flyBox = JSON.parse(localStorage.getItem('flyBox') || '["Clouser", "Hare & Copper", "Woolly Bugger", "Parachute Adams"]');
-    let speciesBox = JSON.parse(localStorage.getItem('speciesBox') || '[]');
-    let quickNotePhrases = ["Released", "Strong Fight", "Clear Water", "Murky Water", "Top Water", "Deep Water", "Personal Best", "Sight Fished"];
+    let flyBox = ["Clouser", "Hare & Copper", "Woolly Bugger", "Parachute Adams", "Stimulator"];
 
     function vibrate(ms = 25) { if (navigator.vibrate) navigator.vibrate(ms); }
 
@@ -126,24 +137,48 @@
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         document.getElementById(id).classList.add('active');
         btn.classList.add('active');
-        if(id === 'log' && map) setTimeout(() => map.invalidateSize(), 100);
+        if(id === 'log') setTimeout(() => map.invalidateSize(), 200);
+        if(id === 'map-tab') setTimeout(() => { bigMap.invalidateSize(); renderHistoryPins(); }, 300);
         if(id === 'catches') renderCatches();
+        if(id === 'stats') renderStats();
     }
 
-    function addQuickNote(phrase) {
-        vibrate(15);
-        const area = document.getElementById('f-notes');
-        const current = area.value.trim();
-        area.value = current ? current + ", " + phrase : phrase;
+    async function updateAllConditions(nLat, nLng) {
+        lat = nLat; lng = nLng;
+        vibrate(10);
+        
+        // 1. Weather based on coords
+        try {
+            const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`).then(r => r.json());
+            document.getElementById('live-weather').innerText = Math.round(w.current_weather.temperature) + "°C";
+        } catch(e) { document.getElementById('live-weather').innerText = "??°C"; }
+
+        // 2. Tide Proxy (Based on current time)
+        const d = new Date();
+        const hr = d.getHours();
+        const tide = (hr % 12 < 6) ? "Incoming" : "Outgoing";
+        document.getElementById('live-tide').innerText = tide;
+        document.getElementById('live-time-now').innerText = d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        // 3. Bite Rating Logic
+        // High if it's incoming tide or "Golden Hours" (Dawn/Dusk)
+        const isGolden = (hr >= 5 && hr <= 8) || (hr >= 17 && hr <= 20);
+        const rating = (tide === "Incoming" || isGolden) ? "High" : "Moderate";
+        document.getElementById('live-bite').innerText = rating;
+
+        // 4. Reverse Lookup for Name
+        try {
+            const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`).then(res => res.json());
+            if(r.display_name) document.getElementById('f-loc-name').value = r.display_name.split(',')[0];
+        } catch(e) {}
     }
 
     async function useMyLocation() {
-        vibrate(30);
         navigator.geolocation.getCurrentPosition(p => {
-            const myLat = p.coords.latitude, myLng = p.coords.longitude;
-            map.setView([myLat, myLng], 15);
-            marker.setLatLng([myLat, myLng]);
-            syncConditions(myLat, myLng);
+            const nl = p.coords.latitude, ng = p.coords.longitude;
+            map.setView([nl, ng], 15);
+            marker.setLatLng([nl, ng]);
+            updateAllConditions(nl, ng);
         });
     }
 
@@ -152,21 +187,11 @@
         if(!query) return;
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`).then(r => r.json());
         if(res.length > 0) {
-            const pos = [res[0].lat, res[0].lon];
-            map.setView(pos, 14);
-            marker.setLatLng(pos);
-            syncConditions(res[0].lat, res[0].lon);
+            const nl = res[0].lat, ng = res[0].lon;
+            map.setView([nl, ng], 14);
+            marker.setLatLng([nl, ng]);
+            updateAllConditions(nl, ng);
         }
-    }
-
-    async function syncConditions(newLat, newLng) {
-        lat = newLat; lng = newLng;
-        try {
-            const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`).then(r => r.json());
-            document.getElementById('live-weather').innerText = Math.round(w.current_weather.temperature) + "°C";
-            const hr = new Date().getHours();
-            document.getElementById('live-tide').innerText = (hr % 12 < 6) ? "Incoming" : "Outgoing";
-        } catch(e) {}
     }
 
     function saveCatch() {
@@ -174,23 +199,25 @@
         let spec = document.getElementById('f-species').value;
         if(spec === 'CUSTOM') spec = document.getElementById('f-custom-species').value || 'Unknown';
         
-        const dt = new Date(document.getElementById('f-datetime').value);
-        const entry = {
-            id: Date.now(), 
-            species: spec, 
+        const dt = new Date(document.getElementById('f-datetime').value || Date.now());
+
+        catches.push({
+            id: Date.now(),
+            species: spec,
             weight: parseFloat(document.getElementById('f-weight').value) || 0,
-            fly: document.getElementById('f-fly').value, 
+            fly: document.getElementById('f-fly').value,
             notes: document.getElementById('f-notes').value,
-            locName: document.getElementById('f-loc-name').value || "Spot",
-            lat: lat, lng: lng, 
+            locName: document.getElementById('f-loc-name').value || "Unnamed Spot",
+            lat: lat, lng: lng,
             photo: photoBase64,
+            timestamp: dt.getTime(),
             date: dt.toLocaleDateString('en-NZ', { day:'numeric', month:'short' }),
             time: dt.toLocaleTimeString('en-NZ', { hour:'2-digit', minute:'2-digit' }),
             weather: document.getElementById('live-weather').innerText,
-            tide: document.getElementById('live-tide').innerText
-        };
+            tide: document.getElementById('live-tide').innerText,
+            biteRating: document.getElementById('live-bite').innerText
+        });
         
-        catches.push(entry);
         localStorage.setItem('catches', JSON.stringify(catches));
         location.reload();
     }
@@ -201,29 +228,29 @@
                 <button class="delete-btn" onclick="deleteCatch(${c.id})">DELETE</button>
                 ${c.photo ? `<img src="${c.photo}" style="width:100%">` : ''}
                 <div style="padding:15px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <strong>${c.species}</strong>
-                        <strong style="color:var(--primary)">${c.weight}kg</strong>
-                    </div>
+                    <strong>${c.species} (${c.weight}kg)</strong>
                     <div class="badge-row">
-                        <span class="badge bg-time">📅 ${c.date} ${c.time}</span>
                         <span class="badge bg-weather">🌡️ ${c.weather}</span>
                         <span class="badge bg-tide">🌊 ${c.tide}</span>
+                        <span class="badge bg-bite">🎯 Bite: ${c.biteRating}</span>
                     </div>
                     ${c.notes ? `<div class="note-text">${c.notes}</div>` : ''}
-                    <div style="font-size:11px; color:#999; margin-top:10px;">📍 ${c.locName} ${c.fly ? '| 🎣 ' + c.fly : ''}</div>
+                    <div style="font-size:11px; color:#999; margin-top:10px;">📍 ${c.locName} | ${c.date}</div>
                 </div>
             </div>
-        `).reverse().join('') || '<div class="card">No catches yet!</div>';
+        `).reverse().join('') || '<div class="card" style="text-align:center">No records.</div>';
     }
 
-    function deleteCatch(id) {
-        vibrate(50);
-        if(confirm("Permanently delete catch?")) {
-            catches = catches.filter(c => c.id !== id);
-            localStorage.setItem('catches', JSON.stringify(catches));
-            renderCatches();
-        }
+    function renderStats() {
+        if(!catches.length) return;
+        const flies = {}, tides = {}, hours = Array(24).fill(0);
+        catches.forEach(c => {
+            if(c.fly) flies[c.fly] = (flies[c.fly] || 0) + 1;
+            if(c.tide) tides[c.tide] = (tides[c.tide] || 0) + 1;
+            hours[new Date(c.timestamp).getHours()]++;
+        });
+        document.querySelector('#top-fly-stat span:last-child').innerText = Object.keys(flies).reduce((a,b)=>flies[a]>flies[b]?a:b, "--");
+        document.querySelector('#top-tide-stat span:last-child').innerText = Object.keys(tides).reduce((a,b)=>tides[a]>tides[b]?a:b, "--");
     }
 
     window.onload = () => {
@@ -233,25 +260,22 @@
         map = L.map('map').setView([-37.68, 176.16], 12);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
         marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(map);
-        marker.on('dragend', () => syncConditions(marker.getLatLng().lat, marker.getLatLng().lng));
+        marker.on('dragend', () => updateAllConditions(marker.getLatLng().lat, marker.getLatLng().lng));
 
-        navigator.geolocation.getCurrentPosition(p => {
-            const lat = p.coords.latitude, lng = p.coords.longitude;
-            map.setView([lat, lng], 14); marker.setLatLng([lat, lng]);
-            syncConditions(lat, lng);
+        bigMap = L.map('big-map').setView([-37.68, 176.16], 8);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}').addTo(bigMap);
+
+        useMyLocation();
+
+        document.getElementById('fly-library').innerHTML = flyBox.map(f => `<span class="pill" onclick="document.getElementById('f-fly').value='${f}'">${f}</span>`).join('');
+        document.getElementById('f-photo').addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = (ev) => { photoBase64 = ev.target.result; document.getElementById('img-prev-el').src = photoBase64; document.getElementById('img-prev-el').style.display = 'block'; };
+            reader.readAsDataURL(e.target.files[0]);
         });
-
-        document.getElementById('fly-library').innerHTML = flyBox.map(f => `<span class="pill" onclick="document.getElementById('f-fly').value='${f}'; vibrate(10);">${f}</span>`).join('');
-        document.getElementById('quick-notes').innerHTML = quickNotePhrases.map(p => `<span class="pill" onclick="addQuickNote('${p}')">${p}</span>`).join('');
-        renderCatches();
     };
-
-    function toggleCustomSpecies(val) { document.getElementById('custom-species-wrap').style.display = (val === 'CUSTOM') ? 'block' : 'none'; }
-    function exportData() {
-        const blob = new Blob([JSON.stringify(catches)], {type: 'application/json'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = 'fishing_backup.json'; a.click();
-    }
+    function deleteCatch(id) { if(confirm("Delete entry?")) { catches = catches.filter(c => c.id !== id); localStorage.setItem('catches', JSON.stringify(catches)); renderCatches(); } }
+    function exportData() { const blob = new Blob([JSON.stringify(catches)], {type: 'application/json'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'fishing_backup.json'; a.click(); }
 </script>
 </body>
 </html>
