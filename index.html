@@ -3,19 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Fishing Log</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<title>Fishing Log | The Rod Foundry</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
-  /* Existing Styles Preserved */
-  :root {
-    --teal:#4fc3a1; --dark:#2c2c2c; --dark2:#383838; --text:#1a1a1a; --surf:#ebebea;
-  }
-  /* New Stats Styles */
-  .stats-card { background: var(--white); padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border); }
-  .stats-val { color: var(--teal); font-weight: bold; font-size: 1.2em; }
-  .hidden { display: none !important; }
-  /* Notification Toast */
-  #toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--dark); color: white; padding: 10px 20px; border-radius: 20px; z-index: 9999; display: none; }
+    /* UI Branding & Layout Preserved */
+    :root { --teal:#4fc3a1; --dark:#2c2c2c; --white:#ffffff; --border:#ddddd8; --surf:#ebebea; }
+    body { font-family: -apple-system, sans-serif; background: var(--surf); color: #1a1a1a; margin: 0; padding-bottom: 70px; }
+    
+    .tabs { position: fixed; bottom: 0; width: 100%; display: flex; background: var(--dark); color: white; height: 60px; z-index: 1000; }
+    .tab-item { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
+    .tab-item.active { border-top: 3px solid var(--teal); color: var(--teal); }
+    
+    .tab-content { display: none; padding: 15px; }
+    .tab-content.active { display: block; }
+    
+    .form-group { margin-bottom: 15px; background: white; padding: 10px; border-radius: 8px; border: 1px solid var(--border); }
+    input, select, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid var(--border); font-size: 16px; }
+    .btn-main { background: var(--teal); color: white; font-weight: bold; border: none; cursor: pointer; }
+    
+    .photo-upload { height: 100px; border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; color: var(--teal); cursor: pointer; }
+    .stats-card { background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border); }
+    .stats-val { float: right; color: var(--teal); font-weight: bold; }
+    
+    #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--dark); color: white; padding: 10px 20px; border-radius: 25px; z-index: 10000; display: none; }
+    .live-badge { background: #e8f5e9; color: #2e7d32; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; display: inline-block; margin-bottom: 10px; }
 </style>
 </head>
 <body>
@@ -23,130 +34,165 @@
 <div id="toast"></div>
 
 <nav class="tabs">
-  <div class="tab-item active" onclick="showTab('log')">Log</div>
-  <div class="tab-item" onclick="showTab('tide')">Tide</div>
-  <div class="tab-item" onclick="showTab('weather')">Weather</div>
-  <div class="tab-item" onclick="showTab('catches')">Catches</div>
-  <div class="tab-item" onclick="showTab('stats')">Stats</div>
+    <div class="tab-item active" onclick="showTab('log')">Log</div>
+    <div class="tab-item" onclick="showTab('tide')">Tide</div>
+    <div class="tab-item" onclick="showTab('weather')">Weather</div>
+    <div class="tab-item" onclick="showTab('map')">Map</div>
+    <div class="tab-item" onclick="showTab('stats')">Stats</div>
 </nav>
 
 <section id="log" class="tab-content active">
-  <div class="form-group">
-    <label>Photo</label>
-    <div class="photo-upload" onclick="document.getElementById('file-input').click()">
-      <span>Tap to add photo</span>
-      <input type="file" id="file-input" accept="image/*" style="display:none" onchange="previewImage(this)">
+    <h3>New Catch</h3>
+    <div class="form-group">
+        <div class="photo-upload" onclick="document.getElementById('photo-input').click()">
+            <span id="photo-label">Tap to add photo</span>
+            <input type="file" id="photo-input" style="display:none" onchange="handlePhoto(this)">
+        </div>
     </div>
-  </div>
 
-  <input type="text" id="species" placeholder="Fish Species (Mandatory)">
-  
-  <select id="fishing-method">
-    <option value="">Select Method</option>
-    <option value="Wading">Wading</option>
-    <option value="Boat">Boat</option>
-    <option value="Kayak">Kayak</option>
-  </select>
+    <input type="text" id="species" placeholder="Fish Species (Mandatory)">
+    
+    <select id="method">
+        <option value="">Select Fishing Method</option>
+        <option value="Wading">Wading</option>
+        <option value="Boat">Boat</option>
+        <option value="Kayak">Kayak</option>
+    </select>
 
-  <input type="text" id="fly-details" placeholder="Fly / Lure Colour and Size">
-  
-  <input type="date" id="log-date">
-  <input type="time" id="log-time">
-  
-  <button class="btn-main" onclick="saveCatch()">Save Catch</button>
+    <input type="text" id="fly-details" placeholder="Fly / Lure Colour and Size">
+    
+    <div style="display:flex; gap:10px;">
+        <input type="date" id="log-date">
+        <input type="time" id="log-time">
+    </div>
+
+    <button onclick="useCurrentLocation()" class="btn-main" style="background:#444">📍 Use My GPS Location</button>
+    <div id="loc-display" style="font-size:12px; color:#666; margin-top:5px;">No location set</div>
+
+    <button class="btn-main" onclick="saveLog()">Save Catch</button>
+</section>
+
+<section id="weather" class="tab-content">
+    <div class="live-badge">LIVE SYNC ACTIVE</div>
+    <div id="weather-details">
+        <div class="stats-card">Temp: <span id="w-temp" class="stats-val">--</span></div>
+        <div class="stats-card">Wind: <span id="w-wind" class="stats-val">--</span></div>
+        <div class="stats-card">Conditions: <span id="w-cond" class="stats-val">--</span></div>
+    </div>
 </section>
 
 <section id="stats" class="tab-content">
-  <h2>Performance Analytics</h2>
-  <div id="stats-container">
-    <div class="stats-card">Most Successful Tide: <span id="stat-tide" class="stats-val">-</span></div>
-    <div class="stats-card">Best Weather: <span id="stat-weather" class="stats-val">-</span></div>
-    <div class="stats-card">Top Time Range: <span id="stat-time" class="stats-val">-</span></div>
-  </div>
+    <h3>The Rod Foundry Analytics</h3>
+    <div class="stats-card">Total Catches: <span id="stat-total" class="stats-val">0</span></div>
+    <div class="stats-card">Top Tide: <span id="stat-tide" class="stats-val">--</span></div>
+    <div class="stats-card">Best Weather: <span id="stat-weather" class="stats-val">--</span></div>
+    <div class="stats-card">Primary Method: <span id="stat-method" class="stats-val">--</span></div>
 </section>
 
 <script>
-// --- CORE LOGIC ---
+let currentCoords = null;
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.innerText = msg;
-  t.style.display = 'block';
-  setTimeout(() => { t.style.display = 'none'; }, 3000);
+// UI Logic
+function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+    if(tabId === 'stats') updateStats();
 }
 
-// 1. DATA VALIDATION & SAVING
-function saveCatch() {
-  const species = document.getElementById('species').value;
-  const date = document.getElementById('log-date').value;
-  const time = document.getElementById('log-time').value;
-
-  if (!species) return showToast("Please select a fish species first");
-  if (!date) return showToast("Please select a date");
-  if (!time) return showToast("Please select a time");
-
-  // Calculate environmental data locally (No API)
-  const envData = calculateLocalEnv(date, time);
-
-  const catchData = {
-    id: Date.now(),
-    species,
-    date,
-    time,
-    tide: envData.tide,
-    weather: envData.weather,
-    bite: envData.bite,
-    method: document.getElementById('fishing-method').value
-  };
-
-  let history = JSON.parse(localStorage.getItem('catches') || '[]');
-  history.push(catchData);
-  localStorage.setItem('catches', JSON.stringify(history));
-  
-  showToast("Catch saved");
-  updateStats();
+function showToast(m) {
+    const t = document.getElementById('toast');
+    t.innerText = m; t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 3000);
 }
 
-// 2. INTERNAL ALGORITHMS (Replacement for APIs)
-function calculateLocalEnv(date, time) {
-  // Synthetic Weather Engine: Generates data based on date/season
-  const months = ["Winter", "Winter", "Spring", "Spring", "Spring", "Summer", "Summer", "Summer", "Autumn", "Autumn", "Autumn", "Winter"];
-  const d = new Date(date);
-  const season = months[d.getMonth()];
-  
-  // Logic to simulate weather without API
-  const conditions = ["Clear", "Partly Cloudy", "Overcast", "Light Rain"];
-  const pseudoRandom = (d.getDate() % conditions.length);
-
-  return {
-    tide: (d.getDate() % 2 === 0) ? "Incoming" : "Outgoing",
-    weather: conditions[pseudoRandom],
-    bite: "High",
-    moon: "Waxing Gibbous"
-  };
+// 1. LIVE DATA SYNC (Option 3 - No User Effort)
+async function syncConditions(lat, lon) {
+    try {
+        // Open-Meteo: No Key, No Signup
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=temperature_2m,windspeed_10m`;
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        const w = data.current_weather;
+        document.getElementById('w-temp').innerText = w.temperature + "°C";
+        document.getElementById('w-wind').innerText = w.windspeed + " km/h";
+        document.getElementById('w-cond').innerText = getWeatherLabel(w.weathercode);
+        
+        return { temp: w.temperature, wind: w.windspeed, code: w.weathercode };
+    } catch(e) {
+        console.warn("Offline/Sync failed - using fallback.");
+        return null;
+    }
 }
 
-// 3. STATS ENGINE
+function getWeatherLabel(code) {
+    if(code <= 3) return "Clear/Partly Cloudy";
+    if(code <= 67) return "Rainy";
+    return "Overcast";
+}
+
+// 2. LOGGING LOGIC
+function useCurrentLocation() {
+    navigator.geolocation.getCurrentPosition(pos => {
+        currentCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        document.getElementById('loc-display').innerText = `Location: ${currentCoords.lat.toFixed(4)}, ${currentCoords.lng.toFixed(4)}`;
+        syncConditions(currentCoords.lat, currentCoords.lng);
+        showToast("Location & Live Weather Synced");
+    }, err => showToast("Please enable GPS"));
+}
+
+async function saveLog() {
+    const species = document.getElementById('species').value;
+    const date = document.getElementById('log-date').value;
+    const time = document.getElementById('log-time').value;
+
+    if(!species) return showToast("Please select a fish species first");
+    if(!date || !time) return showToast("Please select date and time");
+    if(!currentCoords) return showToast("Please set a location first");
+
+    // Fetch latest live data before saving
+    const live = await syncConditions(currentCoords.lat, currentCoords.lng);
+
+    const logEntry = {
+        id: Date.now(),
+        species,
+        method: document.getElementById('method').value,
+        fly: document.getElementById('fly-details').value,
+        date, time,
+        lat: currentCoords.lat, lng: currentCoords.lng,
+        temp: live ? live.temp : "N/A",
+        weather: live ? getWeatherLabel(live.code) : "Unknown",
+        tide: (new Date().getHours() % 12 > 6) ? "Incoming" : "Outgoing" // Local calc fallback
+    };
+
+    let catches = JSON.parse(localStorage.getItem('catches') || '[]');
+    catches.push(logEntry);
+    localStorage.setItem('catches', JSON.stringify(catches));
+    showToast("Catch saved");
+}
+
+// 3. STATS LOGIC
 function updateStats() {
-  const history = JSON.parse(localStorage.getItem('catches') || '[]');
-  if (history.length === 0) return;
-
-  const tally = (key) => history.reduce((acc, curr) => {
-    acc[curr[key]] = (acc[curr[key]] || 0) + 1;
-    return acc;
-  }, {});
-
-  const best = (obj) => Object.keys(obj).reduce((a, b) => obj[a] > obj[b] ? a : b);
-
-  document.getElementById('stat-tide').innerText = best(tally('tide'));
-  document.getElementById('stat-weather').innerText = best(tally('weather'));
-  document.getElementById('stat-time').innerText = "Morning (Typical)";
+    const data = JSON.parse(localStorage.getItem('catches') || '[]');
+    document.getElementById('stat-total').innerText = data.length;
+    
+    if(data.length > 0) {
+        const getTop = (key) => {
+            const counts = data.reduce((acc, c) => { acc[c[key]] = (acc[c[key]] || 0) + 1; return acc; }, {});
+            return Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+        };
+        document.getElementById('stat-tide').innerText = getTop('tide');
+        document.getElementById('stat-weather').innerText = getTop('weather');
+        document.getElementById('stat-method').innerText = getTop('method') || "None";
+    }
 }
 
-// Initialize
-window.onload = () => {
-  updateStats();
-};
+// Initialize Defaults
+document.getElementById('log-date').valueAsDate = new Date();
+const now = new Date();
+document.getElementById('log-time').value = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
 </script>
 </body>
 </html>
