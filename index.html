@@ -312,6 +312,18 @@ input[type=file]{display:none;}
         <div style="font-size:13px;font-weight:600;color:var(--text);">Tidal Data</div>
         <span id="tideBadge" class="api-badge live-badge">⚡ Calculated</span>
       </div>
+
+      <div class="sec" style="padding:11px 13px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Location</div>
+            <div id="tideLocLabel" style="font-size:12px;color:var(--muted);">📍 Bay of Plenty, NZ (default)</div>
+            <div id="tideGpsStatus" style="font-size:11px;color:var(--teal);min-height:14px;margin-top:2px;"></div>
+          </div>
+          <button id="tideGpsBtn" class="gpsbtn" style="margin:0;width:auto;white-space:nowrap;padding:9px 13px;" onclick="requestAppGPS(()=>{calcTide();})">📡 Use GPS</button>
+        </div>
+      </div>
+
       <div class="dcard">
         <div class="dlbl">🌊 Current Tide</div>
         <div style="display:flex;align-items:center;gap:12px;">
@@ -325,6 +337,7 @@ input[type=file]{display:none;}
           </div>
         </div>
         <canvas id="wcanv" width="360" height="46" style="width:100%;height:46px;margin-top:11px;display:block;"></canvas>
+        <div id="tideWaveRow"></div>
       </div>
 
       <div class="sec">
@@ -371,6 +384,18 @@ input[type=file]{display:none;}
         <div style="font-size:13px;font-weight:600;color:var(--text);">Solunar Data</div>
         <span class="api-badge live-badge">📐 Calculated (accurate)</span>
       </div>
+
+      <div class="sec" style="padding:11px 13px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Location</div>
+            <div id="biteLocLabel" style="font-size:12px;color:var(--muted);">📍 Bay of Plenty, NZ (default)</div>
+            <div id="biteGpsStatus" style="font-size:11px;color:var(--teal);min-height:14px;margin-top:2px;"></div>
+          </div>
+          <button id="biteGpsBtn" class="gpsbtn" style="margin:0;width:auto;white-space:nowrap;padding:9px 13px;" onclick="requestAppGPS(()=>{calcBite();})">📡 Use GPS</button>
+        </div>
+      </div>
+
       <div class="dcard">
         <div class="dlbl">🐟 Solunar Bite Times — <span id="bdate" style="color:var(--teal);"></span></div>
         <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:11px;">Major ~2 hrs · Minor ~1 hr · Red line = now</div>
@@ -487,6 +512,40 @@ let mainMap = null, mainPins = [], mainStreetLayer = null, mainSatLayer = null, 
 let cmaps = {};
 let geoTimer = null, revTimer = null;
 let wxLat = -37.6878, wxLng = 176.1651; // default Tauranga
+
+// ── Shared app-level GPS (used by Tide & Bite tabs) ──
+const APP_DEFAULT_LAT = -37.6878, APP_DEFAULT_LNG = 176.1651;
+let appLat = APP_DEFAULT_LAT, appLng = APP_DEFAULT_LNG;
+let appLocName = 'Bay of Plenty, NZ (default)';
+let appGPSReady = false;
+
+function requestAppGPS(onSuccess) {
+  if(!navigator.geolocation) { alert('GPS not available on this device.'); return; }
+  if(appGPSReady) { onSuccess(); return; }
+  ['tideGpsStatus','biteGpsStatus'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.innerHTML = '<span class="spin"></span> Getting GPS…';
+  });
+  navigator.geolocation.getCurrentPosition(async pos => {
+    appLat = pos.coords.latitude; appLng = pos.coords.longitude; appGPSReady = true;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${appLat}&lon=${appLng}&zoom=10`,{headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}});
+      const d = await r.json();
+      if(d?.address){const a=d.address;appLocName=[a.city||a.town||a.village||a.suburb||a.county,a.state||a.country].filter(Boolean).join(', ');}
+    } catch(e) { appLocName = `${appLat.toFixed(2)}°, ${appLng.toFixed(2)}°`; }
+    ['tideGpsStatus','biteGpsStatus'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = '📍 ' + appLocName;
+    });
+    ['tideGpsBtn','biteGpsBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el){el.textContent='✅ Location set';el.style.background='rgba(79,195,161,0.15)';el.style.color='var(--teal)';el.style.borderColor='rgba(79,195,161,0.4)';}
+    });
+    onSuccess();
+  }, () => {
+    ['tideGpsStatus','biteGpsStatus'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = '⚠️ GPS denied — using default location';
+    });
+  }, {enableHighAccuracy:true, timeout:12000});
+}
 
 try { catches = JSON.parse(localStorage.getItem('fishinglog') || '[]'); } catch(e) { catches = []; }
 
@@ -738,9 +797,15 @@ function initCatchMap(id,lat,lng,lbl) {
 // ─────────────────────────────────────────────
 // TIDE — Harmonic model
 // ─────────────────────────────────────────────
-function tideAt(d) {
+// phaseOffsetMin: longitude correction — each degree from reference shifts tide ~2.07 min
+function tidePhaseOffset(lng) {
+  return (lng - APP_DEFAULT_LNG) * (745 / 360);
+}
+
+function tideAt(d, phaseMin) {
   const ref=new Date('2024-01-01T06:00:00'), cy=745;
-  const pos=(((d-ref)/60000)%cy+cy)%cy;
+  const offset = phaseMin || 0;
+  const pos=(((d-ref)/60000 - offset)%cy+cy)%cy;
   const ph=(pos/cy)*2*Math.PI, h=Math.cos(ph), nh=Math.cos(((pos+30)/cy)*2*Math.PI), r=nh>h;
   let l,em;
   if(h>0.7){l='High Tide';em='🌊';}
@@ -752,15 +817,18 @@ function tideAt(d) {
 
 function calcTide() {
   const dt = new Date();
-  const td = tideAt(dt);
+  const phase = tidePhaseOffset(appLng);
+  const td = tideAt(dt, phase);
   document.getElementById('temoji').textContent = td.em;
   document.getElementById('tlbl').textContent = td.l;
   document.getElementById('tsub').textContent = 'Level: ~' + td.h + '%';
   document.getElementById('tarrow').textContent = td.r ? '↑' : '↓';
   document.getElementById('tdir').textContent = td.r ? 'Incoming (Flood)' : 'Outgoing (Ebb)';
+  document.getElementById('tideLocLabel').textContent = '📍 ' + appLocName;
   drawWave(td.h);
-  drawCurve(dt);
-  renderTideSchedule();
+  drawCurve(dt, phase);
+  renderTideSchedule(phase);
+  fetchMarineData();
 }
 
 // Convert harmonic h value (-1 to 1) to metres using NZ Bay of Plenty typical range
@@ -768,17 +836,19 @@ function hToMetres(h) {
   return (0.1 + (h + 1) / 2 * 1.3).toFixed(1);
 }
 
-function getTideEvents(fromDate, count) {
+function getTideEvents(fromDate, count, phaseMin) {
+  const phase = phaseMin || 0;
   const ref = new Date('2024-01-01T06:00:00').getTime();
-  const cyMs = 745 * 60000; // 745 min cycle in ms
+  const cyMs = 745 * 60000;
   const fromMs = fromDate.getTime();
-  const posMs = ((fromMs - ref) % cyMs + cyMs) % cyMs;
-  const lastHighMs = fromMs - posMs; // time of most recent high tide
+  const adjFromMs = fromMs - phase * 60000;
+  const posMs = ((adjFromMs - ref) % cyMs + cyMs) % cyMs;
+  const lastHighMs = adjFromMs - posMs;
 
   const raw = [];
   for(let i = 0; raw.length < count + 4; i++) {
-    raw.push({ type: 'High', time: lastHighMs + i * cyMs, h: 1 });
-    raw.push({ type: 'Low',  time: lastHighMs + cyMs / 2 + i * cyMs, h: -1 });
+    raw.push({ type: 'High', time: lastHighMs + i * cyMs + phase * 60000, h: 1 });
+    raw.push({ type: 'Low',  time: lastHighMs + cyMs / 2 + i * cyMs + phase * 60000, h: -1 });
   }
   return raw
     .filter(e => e.time > fromMs)
@@ -786,8 +856,8 @@ function getTideEvents(fromDate, count) {
     .slice(0, count);
 }
 
-function renderTideSchedule() {
-  const events = getTideEvents(new Date(), 4);
+function renderTideSchedule(phaseMin) {
+  const events = getTideEvents(new Date(), 4, phaseMin || 0);
   const fmt = t => {
     const d = new Date(t);
     const h = d.getHours(), m = d.getMinutes();
@@ -818,14 +888,15 @@ function drawWave(p) {
   x.beginPath();x.moveTo(0,y);for(let i=0;i<W;i++)x.lineTo(i,y+Math.sin(i*0.09)*3.5);x.strokeStyle='#4fc3a1';x.lineWidth=1.5;x.stroke();
 }
 
-function drawCurve(cd) {
+function drawCurve(cd, phaseMin) {
+  const phase = phaseMin || 0;
   const c=document.getElementById('tcurve'); if(!c) return;
   const x=c.getContext('2d'),W=c.width,H=c.height; x.clearRect(0,0,W,H);
   const b=cd||new Date(),s0=b.getTime()-12*3600000,e0=b.getTime()+12*3600000;
   x.strokeStyle='rgba(0,0,0,0.06)';x.lineWidth=0.5;
   for(let i=0;i<=4;i++){const y=(i/4)*(H-20)+10;x.beginPath();x.moveTo(0,y);x.lineTo(W,y);x.stroke();}
   x.beginPath();x.strokeStyle='#4fc3a1';x.lineWidth=2;let f=true;
-  for(let i=0;i<W;i++){const t=tideAt(new Date(s0+(i/W)*(e0-s0))),y=H-10-(t.h/100)*(H-20);if(f){x.moveTo(i,y);f=false;}else x.lineTo(i,y);}
+  for(let i=0;i<W;i++){const t=tideAt(new Date(s0+(i/W)*(e0-s0)),phase),y=H-10-(t.h/100)*(H-20);if(f){x.moveTo(i,y);f=false;}else x.lineTo(i,y);}
   x.stroke();
   const nx=(b.getTime()-s0)/(e0-s0)*W;
   x.strokeStyle='#e74c3c';x.lineWidth=1.5;x.setLineDash([3,3]);x.beginPath();x.moveTo(nx,0);x.lineTo(nx,H);x.stroke();x.setLineDash([]);
@@ -873,13 +944,45 @@ function calcMoon() {
 }
 
 // ─────────────────────────────────────────────
+// MARINE DATA — Open-Meteo (wave height for tide tab)
+// ─────────────────────────────────────────────
+async function fetchMarineData() {
+  const el = document.getElementById('tideWaveRow'); if(!el) return;
+  try {
+    const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${appLat}&longitude=${appLng}&current=wave_height,wave_direction,wave_period&forecast_days=1`);
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    const wh = d.current?.wave_height;
+    const wp = d.current?.wave_period;
+    const wd = d.current?.wave_direction;
+    const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+    const dirLabel = wd != null ? dirs[Math.round(wd/22.5)%16] : '—';
+    el.innerHTML = `
+      <div style="display:flex;gap:9px;margin-top:9px;">
+        <div class="wcard" style="flex:1;"><span class="wi">🌊</span><span class="wv">${wh!=null?wh.toFixed(1)+' m':'—'}</span><span class="wl">Wave height</span></div>
+        <div class="wcard" style="flex:1;"><span class="wi">⏱</span><span class="wv">${wp!=null?Math.round(wp)+'s':'—'}</span><span class="wl">Wave period</span></div>
+        <div class="wcard" style="flex:1;"><span class="wi">🧭</span><span class="wv">${dirLabel}</span><span class="wl">Wave dir</span></div>
+      </div>`;
+    document.getElementById('tideBadge').className='api-badge live-badge';
+    document.getElementById('tideBadge').textContent='⚡ Live + GPS';
+  } catch(e) {
+    el.innerHTML = '';
+    document.getElementById('tideBadge').textContent='⚡ Calculated';
+  }
+}
+
+// ─────────────────────────────────────────────
 // SOLUNAR — John Alden Knight's theory (1926)
 // ─────────────────────────────────────────────
-function solunarAt(dt) {
+function solunarAt(dt, lng) {
   const ref=new Date('2000-01-06T18:14:00Z'), cy=29.53058867*24*3600*1000;
-  const ag=((dt-ref)%cy+cy)%cy/cy, mo=ag*24, m=moonAt(dt);
+  const ag=((dt-ref)%cy+cy)%cy/cy, m=moonAt(dt);
+  // Longitude correction: lunar transit shifts ~4.14 min per degree from prime meridian
+  // Adjust base transit time by user's longitude offset
+  const lngOffsetHrs = ((lng||APP_DEFAULT_LNG) / 360) * 24.84;
+  const mo = (ag * 24 + lngOffsetHrs) % 24;
   const q=m.ag<0.05||m.ag>0.95||Math.abs(m.ag-0.5)<0.05?'Excellent':Math.abs(m.ag-0.25)<0.1||Math.abs(m.ag-0.75)<0.1?'Fair':'Good';
-  return{m1:mo%24,m2:(mo+12.4)%24,n1:(mo+6.2)%24,n2:(mo+18.6)%24,q,il:m.il};
+  return{m1:((mo%24)+24)%24,m2:((mo+12.4)%24+24)%24,n1:((mo+6.2)%24+24)%24,n2:((mo+18.6)%24+24)%24,q,il:m.il};
 }
 
 function fh(h) {
@@ -890,7 +993,8 @@ function fh(h) {
 function calcBite() {
   const d=document.getElementById('bcdate').value||today;
   document.getElementById('bdate').textContent=d===today?'today':d;
-  const dt=new Date(d+'T12:00:00'), s=solunarAt(dt);
+  document.getElementById('biteLocLabel').textContent = '📍 ' + appLocName;
+  const dt=new Date(d+'T12:00:00'), s=solunarAt(dt, appLng);
   const c=document.getElementById('bcanv');
   if(c) {
     const x=c.getContext('2d'),W=c.width,H=c.height; x.clearRect(0,0,W,H);
@@ -1061,7 +1165,7 @@ function saveCatch() {
     const dt=new Date(d+'T'+t);
     const td=tideAt(dt); ti=td.l+(td.r?' · Incoming':' · Outgoing');
     const mo=moonAt(dt); mi=mo.e+' '+mo.n+' ('+mo.il+'%)';
-    const so=solunarAt(dt),h=dt.getHours()+dt.getMinutes()/60;
+    const so=solunarAt(dt,appLng),h=dt.getHours()+dt.getMinutes()/60;
     bi=(Math.abs(h-so.m1)<1||Math.abs(h-so.m2)<1)?'🟢 Major period':(Math.abs(h-so.n1)<0.5||Math.abs(h-so.n2)<0.5)?'🟡 Minor period':'Between periods';
   }
   const id='c'+Date.now();
