@@ -179,14 +179,14 @@ input[type=file]{display:none;}
   </div>
 
   <div class="tabs">
-    <div class="tab active" onclick="go('log')"><span class="ti">📝</span><span class="tl">Log</span></div>
-    <div class="tab" onclick="go('tide')"><span class="ti">🌊</span><span class="tl">Tide</span></div>
-    <div class="tab" onclick="go('moon')"><span class="ti">🌙</span><span class="tl">Moon</span></div>
-    <div class="tab" onclick="go('bite')"><span class="ti">🐟</span><span class="tl">Bite</span></div>
-    <div class="tab" onclick="go('wx')"><span class="ti">⛅</span><span class="tl">Weather</span></div>
-    <div class="tab" onclick="go('map')"><span class="ti">📍</span><span class="tl">Map</span></div>
-    <div class="tab" onclick="go('list')"><span class="ti">🏆</span><span class="tl">Catches</span></div>
-    <div class="tab" onclick="go('stats')"><span class="ti">📊</span><span class="tl">Stats</span></div>
+    <div class="tab active" data-tab="log" onclick="go('log')"><span class="ti">📝</span><span class="tl">Log</span></div>
+    <div class="tab" data-tab="tide" onclick="go('tide')"><span class="ti">🌊</span><span class="tl">Tide</span></div>
+    <div class="tab" data-tab="moon" onclick="go('moon')"><span class="ti">🌙</span><span class="tl">Moon</span></div>
+    <div class="tab" data-tab="bite" onclick="go('bite')"><span class="ti">🐟</span><span class="tl">Bite</span></div>
+    <div class="tab" data-tab="wx" onclick="go('wx')"><span class="ti">⛅</span><span class="tl">Weather</span></div>
+    <div class="tab" data-tab="map" onclick="go('map')"><span class="ti">📍</span><span class="tl">Map</span></div>
+    <div class="tab" data-tab="list" onclick="go('list')"><span class="ti">🏆</span><span class="tl">Catches</span></div>
+    <div class="tab" data-tab="stats" onclick="go('stats')"><span class="ti">📊</span><span class="tl">Stats</span></div>
   </div>
 
   <div class="pages">
@@ -509,7 +509,7 @@ function go(p) {
   currentTab = p;
   document.querySelectorAll('.pg').forEach(e => e.classList.remove('show'));
   document.getElementById('pg-'+p).classList.add('show');
-  document.querySelectorAll('.tab').forEach((e,i) => e.classList.toggle('active', ['log','tide','moon','bite','wx','map','list','stats'][i]===p));
+  document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.dataset.tab === p));
   if(p==='log') setTimeout(initLogMap, 100);
   if(p==='tide') { calcTide(); drawCurve(); }
   if(p==='moon') calcMoon();
@@ -565,7 +565,7 @@ function handlePhoto(e) {
 // ─────────────────────────────────────────────
 // GEOCODING
 // ─────────────────────────────────────────────
-function gstat(msg, spin) {
+function setGeoStatus(msg, spin) {
   const e = document.getElementById('gstat');
   e.innerHTML = spin ? `<span class="spin"></span> ${msg}` : msg;
 }
@@ -573,8 +573,8 @@ function gstat(msg, spin) {
 function onLocInput() {
   clearTimeout(geoTimer);
   const q = document.getElementById('locname').value.trim();
-  if(q.length < 3) { gstat(''); return; }
-  gstat('Searching...', true);
+  if(q.length < 3) { setGeoStatus(''); return; }
+  setGeoStatus('Searching...', true);
   geoTimer = setTimeout(() => fwdGeo(q), 700);
 }
 
@@ -587,14 +587,14 @@ async function fwdGeo(q) {
       document.getElementById('clat').value = la.toFixed(4);
       document.getElementById('clng').value = ln.toFixed(4);
       if(logMap && logPin) { logPin.setLatLng([la,ln]); logMap.setView([la,ln],13); }
-      gstat('📍 ' + d[0].display_name.split(',').slice(0,2).join(','));
-    } else { gstat('No location found — try a broader name'); }
-  } catch(e) { gstat('Search unavailable offline'); }
+      setGeoStatus('📍 ' + d[0].display_name.split(',').slice(0,2).join(','));
+    } else { setGeoStatus('No location found — try a broader name'); }
+  } catch(e) { setGeoStatus('Search unavailable offline'); }
 }
 
 async function revGeo(la, ln) {
   try {
-    gstat('Finding nearest place...', true);
+    setGeoStatus('Finding nearest place...', true);
     const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${la}&lon=${ln}&zoom=12`, { headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'} });
     const d = await r.json();
     if(d && d.address) {
@@ -603,9 +603,9 @@ async function revGeo(la, ln) {
       const region = a.state||a.county||'';
       const name = [place,region].filter(Boolean).join(', ');
       if(name) document.getElementById('locname').value = name;
-      gstat('📍 ' + d.display_name.split(',').slice(0,2).join(','));
+      setGeoStatus('📍 ' + d.display_name.split(',').slice(0,2).join(','));
     }
-  } catch(e) { gstat(''); }
+  } catch(e) { setGeoStatus(''); }
 }
 
 function onCoordInput() {
@@ -616,14 +616,14 @@ function onCoordInput() {
 
 function doGPS() {
   if(!navigator.geolocation) { alert('GPS not available.'); return; }
-  gstat('Getting GPS...', true);
+  setGeoStatus('Getting GPS...', true);
   navigator.geolocation.getCurrentPosition(p => {
     const la=p.coords.latitude, ln=p.coords.longitude;
     document.getElementById('clat').value = la.toFixed(4);
     document.getElementById('clng').value = ln.toFixed(4);
     if(logMap && logPin) { logPin.setLatLng([la,ln]); logMap.setView([la,ln],14); }
     clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(la,ln), 300);
-  }, () => gstat('GPS unavailable — enter coordinates manually'));
+  }, () => setGeoStatus('GPS unavailable — enter coordinates manually'));
 }
 
 // ─────────────────────────────────────────────
@@ -963,17 +963,19 @@ async function autoWeather() {
   document.getElementById('wxBadge').textContent='⏳ Loading...';
   document.getElementById('wxl').textContent='Detecting location...';
 
-  // Try GPS first, fall back to stored or default coords
+  // Try GPS first, fall back to log form coords, then default
   const doFetch = (lat, lng, locName) => fetchOpenMeteo(lat, lng, locName);
+  const formLat = parseFloat(document.getElementById('clat').value) || wxLat;
+  const formLng = parseFloat(document.getElementById('clng').value) || wxLng;
 
   if(navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       pos => doFetch(pos.coords.latitude, pos.coords.longitude, null),
-      () => doFetch(wxLat, wxLng, 'Bay of Plenty, NZ'),
+      () => doFetch(formLat, formLng, document.getElementById('locname').value || 'Bay of Plenty, NZ'),
       { timeout: 6000 }
     );
   } else {
-    doFetch(wxLat, wxLng, 'Bay of Plenty, NZ');
+    doFetch(formLat, formLng, document.getElementById('locname').value || 'Bay of Plenty, NZ');
   }
 }
 
@@ -1093,7 +1095,12 @@ function saveCatch() {
 }
 
 function persist() {
-  try { localStorage.setItem('fishinglog',JSON.stringify(catches)); } catch(e) {}
+  try {
+    localStorage.setItem('fishinglog', JSON.stringify(catches));
+  } catch(e) {
+    // Storage quota exceeded — likely due to large photo data
+    alert('⚠️ Storage full. Try deleting older catches with large photos to free up space.');
+  }
 }
 
 function delCatch(id) {
@@ -1123,6 +1130,9 @@ const DEFAULT_SVG_HTML = `
   </svg>`;
 
 function renderList() {
+  // FIX: destroy stale Leaflet instances before rebuilding to prevent memory leaks
+  Object.keys(cmaps).forEach(id => { try { cmaps[id].remove(); } catch(e) {} });
+  cmaps = {};
   const sort=document.getElementById('sortby').value;let s=[...catches];
   if(sort==='oldest')s.reverse();
   else if(sort==='weight')s.sort((a,b)=>(parseFloat(b.weight)||0)-(parseFloat(a.weight)||0));
