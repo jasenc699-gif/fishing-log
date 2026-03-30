@@ -157,6 +157,37 @@ input[type=file]{display:none;}
 .main-map-controls{display:flex;gap:8px;margin-bottom:8px;}
 .map-ctrl-btn{flex:1;padding:8px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;}
 .map-ctrl-btn.active{background:var(--dark);color:#fff;border-color:var(--dark);}
+/* FLY CHIPS */
+.fly-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px;}
+.fly-chip{padding:4px 10px;border-radius:20px;border:0.5px solid var(--border);background:var(--surf);font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap;transition:background 0.12s,border-color 0.12s,color 0.12s;}
+.fly-chip:active{background:rgba(79,195,161,0.15);border-color:rgba(79,195,161,0.5);color:#0a5c43;}
+.fly-chip.freq{background:rgba(79,195,161,0.1);border-color:rgba(79,195,161,0.35);color:#0a5c43;}
+.fly-chip-label{font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:0.8px;margin-top:8px;margin-bottom:2px;}
+/* DELETE CONFIRM */
+.del-confirm{display:none;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-top:0.5px solid #f0d0d0;background:#fff5f5;}
+.del-confirm.show{display:flex;}
+.del-confirm-msg{font-size:13px;color:#7a2020;}
+.del-confirm-msg strong{font-weight:700;}
+.del-confirm-btns{display:flex;gap:6px;flex-shrink:0;}
+.del-yes{padding:6px 13px;background:#c0392b;border:none;border-radius:8px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;}
+.del-no{padding:6px 13px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;}
+/* EDIT MODAL */
+.edit-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:8000;opacity:0;pointer-events:none;transition:opacity 0.25s;}
+.edit-overlay.show{opacity:1;pointer-events:all;}
+.edit-sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%) translateY(100%);width:100%;max-width:430px;background:var(--surf2);border-radius:18px 18px 0 0;z-index:8001;transition:transform 0.32s cubic-bezier(0.32,0.72,0,1);max-height:92vh;display:flex;flex-direction:column;}
+.edit-sheet.show{transform:translateX(-50%) translateY(0);}
+.edit-sheet-handle{width:36px;height:4px;background:rgba(0,0,0,0.18);border-radius:2px;margin:10px auto 0;}
+.edit-sheet-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 10px;border-bottom:0.5px solid var(--border);flex-shrink:0;}
+.edit-sheet-title{font-size:16px;font-weight:700;color:var(--text);}
+.edit-close-btn{background:var(--surf);border:0.5px solid var(--border);border-radius:8px;padding:5px 11px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;}
+.edit-body{overflow-y:auto;padding:13px;flex:1;-webkit-overflow-scrolling:touch;}
+.edit-photo-row{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.edit-thumb{width:56px;height:56px;border-radius:8px;object-fit:cover;background:var(--surf);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+.edit-thumb img{width:100%;height:100%;object-fit:cover;}
+.edit-change-photo{flex:1;padding:9px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;text-align:center;}
+.edit-footer{padding:12px 13px max(env(safe-area-inset-bottom),12px);border-top:0.5px solid var(--border);display:flex;gap:8px;flex-shrink:0;background:var(--surf2);}
+.edit-save-btn{flex:1;padding:13px;background:var(--teal);border:none;border-radius:12px;font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;}
+.edit-cancel-btn{padding:13px 18px;background:var(--surf);border:0.5px solid var(--border);border-radius:12px;font-size:15px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;}
 </style>
 </head>
 <body>
@@ -167,6 +198,92 @@ input[type=file]{display:none;}
     <div class="toast-inner" id="toastInner">
       <span class="toast-icon" id="toastIcon"></span>
       <span class="toast-msg" id="toastMsg"></span>
+    </div>
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div class="edit-overlay" id="editOverlay" onclick="closeEdit()"></div>
+  <div class="edit-sheet" id="editSheet">
+    <div class="edit-sheet-handle"></div>
+    <div class="edit-sheet-header">
+      <div class="edit-sheet-title">✏️ Edit Catch</div>
+      <button class="edit-close-btn" onclick="closeEdit()">Cancel</button>
+    </div>
+    <div class="edit-body">
+      <div class="sec" style="margin-bottom:10px;">
+        <div class="stitle">📸 Photo</div>
+        <div class="edit-photo-row">
+          <div class="edit-thumb" id="editThumb"></div>
+          <button class="edit-change-photo" onclick="document.getElementById('editPhotoInput').click()">📷 Change photo</button>
+          <input type="file" id="editPhotoInput" accept="image/*" onchange="handleEditPhoto(event)">
+        </div>
+        <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:4px;display:none;"></div>
+      </div>
+      <div class="sec" style="margin-bottom:10px;">
+        <div class="stitle">🐟 Catch Details</div>
+        <label>Fish species</label>
+        <select id="eFtype">
+          <option value="">Select species...</option>
+          <option>Snapper</option><option>Kingfish</option><option>Kahawai</option>
+          <option>Gurnard</option><option>John Dory</option><option>Blue Cod</option>
+          <option>Trevally</option><option>Tarakihi</option><option>Moki</option>
+          <option>Hapuka</option><option>Crayfish</option><option>Other</option>
+        </select>
+        <label>Custom species (if Other)</label>
+        <input type="text" id="eFcust" placeholder="e.g. Flounder">
+        <div class="r2">
+          <div><label>Length (cm)</label><input type="number" id="eFlen" placeholder="42" inputmode="decimal"></div>
+          <div><label>Weight (kg)</label><input type="number" id="eFwt" step="0.1" placeholder="1.8" inputmode="decimal"></div>
+        </div>
+      </div>
+      <div class="sec" style="margin-bottom:10px;">
+        <div class="stitle">🎣 Method &amp; Platform</div>
+        <div class="r2">
+          <div>
+            <label>Method</label>
+            <select id="eMethod">
+              <option value="">Select...</option>
+              <option>Fly fishing</option><option>Spinning</option><option>Bait fishing</option>
+              <option>Trolling</option><option>Jigging</option><option>Surfcasting</option>
+              <option>Kontiki</option><option>Longline</option>
+            </select>
+          </div>
+          <div>
+            <label>Platform</label>
+            <select id="ePlatform">
+              <option value="">Select...</option>
+              <option>Wading</option><option>Boat</option><option>Kayak</option>
+            </select>
+          </div>
+        </div>
+        <label>Fly / Bait</label>
+        <input type="text" id="eFly" placeholder="e.g. Crazy Charlie">
+        <div id="eFlyChips" class="fly-chips"></div>
+        <label style="margin-top:10px;">Colour &amp; size</label>
+        <input type="text" id="eFlycol" placeholder="e.g. Chartreuse, #6">
+        <label>Notes</label>
+        <textarea id="eNotes" rows="3" style="resize:none;font-size:16px;" placeholder="Depth, technique, conditions..."></textarea>
+      </div>
+      <div class="sec" style="margin-bottom:10px;">
+        <div class="stitle">📅 Date &amp; Time</div>
+        <div class="r2">
+          <div><label>Date</label><input type="date" id="eCdate"></div>
+          <div><label>Time</label><input type="time" id="eCtime"></div>
+        </div>
+      </div>
+      <div class="sec" style="margin-bottom:10px;">
+        <div class="stitle">📍 Location</div>
+        <label>Location name</label>
+        <input type="text" id="eLocname" placeholder="e.g. Tauranga Harbour">
+        <div class="r2" style="margin-top:10px;">
+          <div><label>Latitude</label><input type="number" id="eClat" step="0.0001" inputmode="decimal"></div>
+          <div><label>Longitude</label><input type="number" id="eClng" step="0.0001" inputmode="decimal"></div>
+        </div>
+      </div>
+    </div>
+    <div class="edit-footer">
+      <button class="edit-cancel-btn" onclick="closeEdit()">Cancel</button>
+      <button class="edit-save-btn" onclick="saveEdit()">Save Changes</button>
     </div>
   </div>
 
@@ -282,10 +399,11 @@ input[type=file]{display:none;}
             </select>
           </div>
         </div>
-        <div class="r2">
-          <div><label>Fly / Lure / Bait</label><input type="text" id="fly" placeholder="e.g. Crazy Charlie"></div>
-          <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6"></div>
-        </div>
+        <label>Fly / Bait</label>
+        <input type="text" id="fly" placeholder="e.g. Crazy Charlie">
+        <div id="flyChips" class="fly-chips"></div>
+        <label style="margin-top:10px;">Colour &amp; size</label>
+        <input type="text" id="flycol" placeholder="e.g. Chartreuse, #6">
         <label>Notes</label>
         <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;"></textarea>
       </div>
@@ -512,7 +630,7 @@ input[type=file]{display:none;}
 </div><!-- /app -->
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.cjs"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
 <script>
 // ─────────────────────────────────────────────
 // PWA INSTALL
@@ -616,7 +734,7 @@ function go(p) {
   document.querySelectorAll('.pg').forEach(e => e.classList.remove('show'));
   document.getElementById('pg-'+p).classList.add('show');
   document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.dataset.tab === p));
-  if(p==='log') setTimeout(initLogMap, 100);
+  if(p==='log') { setTimeout(initLogMap, 100); renderFlyChips('fly','flyChips'); }
   if(p==='tide') { calcTide(); drawCurve(); }
   if(p==='moon') calcMoon();
   if(p==='bite') calcBite();
@@ -664,7 +782,7 @@ async function handlePhoto(e) {
   // ── 1. Extract EXIF (GPS + datetime) from original file ──
   let exifFilled = [];
   try {
-    const exif = await exifr.parse(f, { gps: true, pick: ['DateTimeOriginal','GPSLatitude','GPSLongitude','GPSLatitudeRef','GPSLongitudeRef'] });
+    const exif = await exifr.parse(f, { tiff: true, exif: true, gps: true });
     if(exif) {
       // GPS — exifr returns decimal degrees directly
       if(exif.latitude != null && exif.longitude != null) {
@@ -1352,20 +1470,33 @@ function saveCatch() {
   photo=null;
   const pu=document.getElementById('puEl'),img=pu.querySelector('img');if(img)img.remove();
   document.getElementById('puInner').style.display='flex';
-  if(logPin)logPin.setLatLng([-37.6878,176.1651]);if(logMap)logMap.setView([-37.6878,176.1651],12);
+  document.getElementById('fiCam').value='';document.getElementById('fiLib').value='';
+  const resetLat=appGPSReady?appLat:-37.6878, resetLng=appGPSReady?appLng:176.1651;
+  document.getElementById('clat').value=resetLat.toFixed(4);document.getElementById('clng').value=resetLng.toFixed(4);
+  if(logPin)logPin.setLatLng([resetLat,resetLng]);if(logMap)logMap.setView([resetLat,resetLng],12);
 }
 
 function persist() {
   try {
     localStorage.setItem('fishinglog', JSON.stringify(catches));
   } catch(e) {
-    // Storage quota exceeded — likely due to large photo data
-    alert('⚠️ Storage full. Try deleting older catches with large photos to free up space.');
+    console.warn('Storage quota exceeded — catches not saved.');
   }
 }
 
+function confirmDel(id) {
+  // Dismiss any other open confirm bars first
+  document.querySelectorAll('.del-confirm.show').forEach(el => el.classList.remove('show'));
+  const bar = document.getElementById('delconf-'+id);
+  if(bar) { bar.classList.add('show'); vibrate(30); }
+}
+
+function cancelDel(id) {
+  const bar = document.getElementById('delconf-'+id);
+  if(bar) bar.classList.remove('show');
+}
+
 function delCatch(id) {
-  if(!confirm('Are you sure you want to delete this log?')) return;
   catches=catches.filter(c=>c.id!==id);
   if(cmaps[id]){try{cmaps[id].remove();}catch(e){}delete cmaps[id];}
   persist(); updateHeader(); renderList();
@@ -1390,7 +1521,130 @@ const DEFAULT_SVG_HTML = `
     <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#ccc" stroke-width="12" stroke-linecap="round"/>
   </svg>`;
 
-function renderList() {
+// ─────────────────────────────────────────────
+// EDIT CATCH
+// ─────────────────────────────────────────────
+let editId = null, editPhoto = null;
+
+function openEdit(id) {
+  const c = catches.find(x => x.id === id);
+  if(!c) return;
+  editId = id;
+  editPhoto = c.photo || null;
+  vibrate(30);
+
+  // Populate all fields
+  const knownSpecies = ['Snapper','Kingfish','Kahawai','Gurnard','John Dory','Blue Cod','Trevally','Tarakihi','Moki','Hapuka','Crayfish'];
+  const isKnown = knownSpecies.includes(c.fish);
+  document.getElementById('eFtype').value = isKnown ? c.fish : 'Other';
+  document.getElementById('eFcust').value = isKnown ? '' : c.fish;
+  document.getElementById('eFlen').value = c.length || '';
+  document.getElementById('eFwt').value = c.weight || '';
+  document.getElementById('eMethod').value = c.method || '';
+  document.getElementById('ePlatform').value = c.platform || '';
+  document.getElementById('eFly').value = c.fly || '';
+  document.getElementById('eFlycol').value = c.flycol || '';
+  document.getElementById('eNotes').value = c.notes || '';
+  document.getElementById('eCdate').value = c.date || '';
+  document.getElementById('eCtime').value = c.time || '';
+  document.getElementById('eLocname').value = c.location || '';
+  document.getElementById('eClat').value = c.lat || '';
+  document.getElementById('eClng').value = c.lng || '';
+
+  // Photo thumbnail
+  const thumb = document.getElementById('editThumb');
+  if(c.photo) {
+    thumb.innerHTML = `<img src="${c.photo}" alt="catch">`;
+  } else {
+    thumb.innerHTML = DEFAULT_SVG_HTML;
+  }
+  document.getElementById('editPhotoInput').value = '';
+  document.getElementById('editPhotoInfo').style.display = 'none';
+
+  // Show sheet
+  document.getElementById('editOverlay').classList.add('show');
+  document.getElementById('editSheet').classList.add('show');
+  document.body.style.overflow = 'hidden';
+  renderFlyChips('eFly', 'eFlyChips');
+}
+
+function closeEdit() {
+  document.getElementById('editOverlay').classList.remove('show');
+  document.getElementById('editSheet').classList.remove('show');
+  document.body.style.overflow = '';
+  editId = null;
+  editPhoto = null;
+}
+
+async function handleEditPhoto(e) {
+  const f = e.target.files[0]; if(!f) return;
+  const infoEl = document.getElementById('editPhotoInfo');
+  infoEl.style.display = 'none';
+  const result = await compressImage(f, 1200, 0.78);
+  editPhoto = result.dataUrl;
+  const thumb = document.getElementById('editThumb');
+  thumb.innerHTML = `<img src="${editPhoto}" alt="catch">`;
+  const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
+  infoEl.style.display = 'block';
+  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB`;
+}
+
+function saveEdit() {
+  if(!editId) return;
+  const idx = catches.findIndex(x => x.id === editId);
+  if(idx === -1) return;
+
+  const fish = document.getElementById('eFtype').value === 'Other'
+    ? document.getElementById('eFcust').value.trim()
+    : document.getElementById('eFtype').value;
+  if(!fish) { showToast('Please select a fish species.', 'error'); vibrate(60); return; }
+
+  const d = document.getElementById('eCdate').value;
+  const t = document.getElementById('eCtime').value;
+  if(!d) { showToast('Please enter a date.', 'error'); vibrate(60); return; }
+
+  const lat = parseFloat(document.getElementById('eClat').value) || catches[idx].lat;
+  const lng = parseFloat(document.getElementById('eClng').value) || catches[idx].lng;
+
+  // Recalculate tide/moon/bite if date or time changed
+  let ti = catches[idx].tide, mi = catches[idx].moon, bi = catches[idx].bite;
+  if(d && t) {
+    const dt = new Date(d + 'T' + t);
+    const hNow = tideHeightAt(dt, activePort), hNext = tideHeightAt(new Date(dt.getTime()+300000), activePort);
+    const rising = hNext > hNow;
+    const bounds = portBounds(activePort), mid = bounds.lo+(bounds.hi-bounds.lo)*0.5, qtr = (bounds.hi-bounds.lo)*0.22;
+    const tl = hNow>mid+qtr?'High Tide':hNow<mid-qtr?'Low Tide':(rising?'Mid — Rising':'Mid — Falling');
+    ti = tl + (rising?' · Incoming':' · Outgoing');
+    const mo = moonAt(dt); mi = mo.e+' '+mo.n+' ('+mo.il+'%)';
+    const so = solunarAt(dt, lng), h = dt.getHours()+dt.getMinutes()/60;
+    bi = (Math.abs(h-so.m1)<1||Math.abs(h-so.m2)<1)?'🟢 Major period':(Math.abs(h-so.n1)<0.5||Math.abs(h-so.n2)<0.5)?'🟡 Minor period':'Between periods';
+  }
+
+  catches[idx] = {
+    ...catches[idx],
+    fish,
+    length: document.getElementById('eFlen').value,
+    weight: document.getElementById('eFwt').value,
+    method: document.getElementById('eMethod').value,
+    platform: document.getElementById('ePlatform').value,
+    fly: document.getElementById('eFly').value,
+    flycol: document.getElementById('eFlycol').value,
+    notes: document.getElementById('eNotes').value,
+    location: document.getElementById('eLocname').value || 'New Zealand',
+    lat, lng, date: d, time: t,
+    tide: ti, moon: mi, bite: bi,
+    photo: editPhoto
+  };
+
+  persist();
+  updateHeader();
+  vibrate([30,15,30]);
+  closeEdit();
+  renderList();
+  showToast('Catch updated! ✏️', 'success');
+}
+
+
   // FIX: destroy stale Leaflet instances before rebuilding to prevent memory leaks
   Object.keys(cmaps).forEach(id => { try { cmaps[id].remove(); } catch(e) {} });
   cmaps = {};
@@ -1428,7 +1682,10 @@ function renderList() {
         <div class="cbody">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;">
             <div class="cfish">${c.fish}</div>
-            <button class="delbtn" onclick="delCatch('${c.id}')">🗑</button>
+            <div style="display:flex;gap:2px;">
+              <button class="delbtn" onclick="openEdit('${c.id}')" title="Edit">✏️</button>
+              <button class="delbtn" onclick="confirmDel('${c.id}')" title="Delete">🗑</button>
+            </div>
           </div>
           <div class="cmeta">${[c.length?c.length+'cm':'',c.weight?c.weight+'kg':''].filter(Boolean).join(' · ')||'Size not recorded'}</div>
           <div class="cmeta" style="font-size:11px;">${c.date} ${c.time} · ${c.location}</div>
@@ -1440,6 +1697,13 @@ function renderList() {
             <span class="tag ta">${c.bite}</span>
             <span class="tag tb">${c.weather}</span>
           </div>
+        </div>
+      </div>
+      <div class="del-confirm" id="delconf-${c.id}">
+        <span class="del-confirm-msg"><strong>Are you sure you want to delete this catch?</strong></span>
+        <div class="del-confirm-btns">
+          <button class="del-no" onclick="cancelDel('${c.id}')">Cancel</button>
+          <button class="del-yes" onclick="delCatch('${c.id}')">Delete</button>
         </div>
       </div>
       <div class="cmap" id="cm-${c.id}"></div>
@@ -1501,10 +1765,15 @@ function renderStats() {
   catches.forEach(c => { if(c.method) methodCount[c.method]=(methodCount[c.method]||0)+1; });
   const topMethod = Object.entries(methodCount).sort((a,b)=>b[1]-a[1])[0];
 
-  // ── Best platform ──
-  const platformCount = {};
-  catches.forEach(c => { if(c.platform) platformCount[c.platform]=(platformCount[c.platform]||0)+1; });
-  const topPlatform = Object.entries(platformCount).sort((a,b)=>b[1]-a[1])[0];
+  // ── Best month ──
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthCount = {};
+  catches.forEach(c => {
+    if(!c.date) return;
+    const m = parseInt(c.date.split('-')[1], 10) - 1;
+    if(m >= 0 && m <= 11) monthCount[monthNames[m]] = (monthCount[monthNames[m]]||0)+1;
+  });
+  const topMonth = Object.entries(monthCount).sort((a,b)=>b[1]-a[1])[0];
 
   // ── Best moon ──
   const moonCount = {};
@@ -1578,13 +1847,13 @@ function renderStats() {
           <div class="insight-sub">${topMethod[1]} catch${topMethod[1]!==1?'es':''}</div>
         </div>
       </div>`:''}
-      ${topPlatform?`
+      ${topMonth?`
       <div class="insight-item">
-        <div class="insight-icon">${topPlatform[0]==='Wading'?'🚶':topPlatform[0]==='Kayak'?'🚣':'⛵'}</div>
+        <div class="insight-icon">📅</div>
         <div class="insight-text">
-          <div class="insight-title">Best Platform</div>
-          <div class="insight-val">${topPlatform[0]}</div>
-          <div class="insight-sub">${topPlatform[1]} catch${topPlatform[1]!==1?'es':''}</div>
+          <div class="insight-title">Best Month</div>
+          <div class="insight-val">${topMonth[0]}</div>
+          <div class="insight-sub">${topMonth[1]} catch${topMonth[1]!==1?'es':''} this month</div>
         </div>
       </div>`:''}
       ${topMoon?`
@@ -1628,11 +1897,49 @@ function renderStats() {
 }
 
 // ─────────────────────────────────────────────
-// INIT
+// FLY / BAIT QUICK-SELECT CHIPS
 // ─────────────────────────────────────────────
+const FLY_STATIC = ['Piper', 'Clouser', 'Popper', 'Crazy Charlie', 'Soft bait', 'Pilchard', 'Squid'];
+
+function getFreqFlies(threshold) {
+  const count = {};
+  catches.forEach(c => { if(c.fly && c.fly.trim()) count[c.fly.trim()] = (count[c.fly.trim()]||0)+1; });
+  return Object.entries(count).filter(([,n])=>n>=threshold).sort((a,b)=>b[1]-a[1]).map(([f])=>f);
+}
+
+function renderFlyChips(inputId, chipsId) {
+  const container = document.getElementById(chipsId);
+  if(!container) return;
+  const freq = getFreqFlies(3).filter(f => !FLY_STATIC.includes(f));
+  let html = '';
+  if(freq.length) {
+    html += `<div class="fly-chip-label">Your regulars</div>`;
+    freq.forEach(f => {
+      html += `<button type="button" class="fly-chip freq" onclick="pickFly('${inputId}','${f.replace(/'/g,"\\'")}','${chipsId}')">${f}</button>`;
+    });
+    html += `<div class="fly-chip-label">Quick picks</div>`;
+  }
+  FLY_STATIC.forEach(f => {
+    html += `<button type="button" class="fly-chip" onclick="pickFly('${inputId}','${f.replace(/'/g,"\\'")}','${chipsId}')">${f}</button>`;
+  });
+  container.innerHTML = html;
+}
+
+function pickFly(inputId, value, chipsId) {
+  document.getElementById(inputId).value = value;
+  // Briefly highlight the tapped chip
+  const chips = document.getElementById(chipsId).querySelectorAll('.fly-chip');
+  chips.forEach(c => { c.style.background=''; c.style.borderColor=''; c.style.color=''; });
+  const tapped = [...chips].find(c => c.textContent === value);
+  if(tapped) { tapped.style.background='rgba(79,195,161,0.2)'; tapped.style.borderColor='rgba(79,195,161,0.6)'; tapped.style.color='#0a5c43'; }
+  vibrate(20);
+}
+
+
 calcTide(); drawCurve(); calcMoon(); calcBite();
 setTimeout(initLogMap, 400);
 setTimeout(autoWeather, 800);
+renderFlyChips('fly','flyChips');
 </script>
 </body>
 </html>
