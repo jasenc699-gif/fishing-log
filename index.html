@@ -163,6 +163,14 @@ input[type=file]{display:none;}
 .fly-chip:active{background:rgba(79,195,161,0.15);border-color:rgba(79,195,161,0.5);color:#0a5c43;}
 .fly-chip.freq{background:rgba(79,195,161,0.1);border-color:rgba(79,195,161,0.35);color:#0a5c43;}
 .fly-chip-label{font-size:10px;font-weight:700;color:var(--hint);text-transform:uppercase;letter-spacing:0.8px;margin-top:8px;margin-bottom:2px;}
+/* DELETE CONFIRM */
+.del-confirm{display:none;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-top:0.5px solid #f0d0d0;background:#fff5f5;}
+.del-confirm.show{display:flex;}
+.del-confirm-msg{font-size:13px;color:#7a2020;}
+.del-confirm-msg strong{font-weight:700;}
+.del-confirm-btns{display:flex;gap:6px;flex-shrink:0;}
+.del-yes{padding:6px 13px;background:#c0392b;border:none;border-radius:8px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;}
+.del-no{padding:6px 13px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;}
 /* EDIT MODAL */
 .edit-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:8000;opacity:0;pointer-events:none;transition:opacity 0.25s;}
 .edit-overlay.show{opacity:1;pointer-events:all;}
@@ -1476,8 +1484,19 @@ function persist() {
   }
 }
 
+function confirmDel(id) {
+  // Dismiss any other open confirm bars first
+  document.querySelectorAll('.del-confirm.show').forEach(el => el.classList.remove('show'));
+  const bar = document.getElementById('delconf-'+id);
+  if(bar) { bar.classList.add('show'); vibrate(30); }
+}
+
+function cancelDel(id) {
+  const bar = document.getElementById('delconf-'+id);
+  if(bar) bar.classList.remove('show');
+}
+
 function delCatch(id) {
-  if(!confirm('Are you sure you want to delete this log?')) return;
   catches=catches.filter(c=>c.id!==id);
   if(cmaps[id]){try{cmaps[id].remove();}catch(e){}delete cmaps[id];}
   persist(); updateHeader(); renderList();
@@ -1665,7 +1684,7 @@ function saveEdit() {
             <div class="cfish">${c.fish}</div>
             <div style="display:flex;gap:2px;">
               <button class="delbtn" onclick="openEdit('${c.id}')" title="Edit">✏️</button>
-              <button class="delbtn" onclick="delCatch('${c.id}')" title="Delete">🗑</button>
+              <button class="delbtn" onclick="confirmDel('${c.id}')" title="Delete">🗑</button>
             </div>
           </div>
           <div class="cmeta">${[c.length?c.length+'cm':'',c.weight?c.weight+'kg':''].filter(Boolean).join(' · ')||'Size not recorded'}</div>
@@ -1678,6 +1697,13 @@ function saveEdit() {
             <span class="tag ta">${c.bite}</span>
             <span class="tag tb">${c.weather}</span>
           </div>
+        </div>
+      </div>
+      <div class="del-confirm" id="delconf-${c.id}">
+        <span class="del-confirm-msg"><strong>Are you sure you want to delete this catch?</strong></span>
+        <div class="del-confirm-btns">
+          <button class="del-no" onclick="cancelDel('${c.id}')">Cancel</button>
+          <button class="del-yes" onclick="delCatch('${c.id}')">Delete</button>
         </div>
       </div>
       <div class="cmap" id="cm-${c.id}"></div>
