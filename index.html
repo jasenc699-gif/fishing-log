@@ -203,7 +203,7 @@ input[type=file]{display:none;}
 
       <div class="sec">
         <div class="stitle">📸 Photo</div>
-        <div class="pu" onclick="document.getElementById('fi').click()" id="puEl">
+        <div class="pu" id="puEl">
           <div class="pu-inner" id="puInner">
             <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
               <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
@@ -215,11 +215,17 @@ input[type=file]{display:none;}
               <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#cccccc" stroke-width="20" stroke-linecap="round"/>
               <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#cccccc" stroke-width="12" stroke-linecap="round"/>
             </svg>
-            <span style="font-size:12px;color:#aaa;margin-top:4px;">Tap to add photo</span>
+            <span style="font-size:12px;color:#aaa;margin-top:4px;">Add a photo of your catch</span>
           </div>
         </div>
-        <input type="file" id="fi" accept="image/*" onchange="handlePhoto(event)">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+          <button class="gpsbtn" onclick="document.getElementById('fiCam').click()" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
+          <button class="gpsbtn" onclick="document.getElementById('fiLib').click()" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+        </div>
+        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+        <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
+        <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
       </div>
 
       <div class="sec">
@@ -506,6 +512,7 @@ input[type=file]{display:none;}
 </div><!-- /app -->
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.cjs"></script>
 <script>
 // ─────────────────────────────────────────────
 // PWA INSTALL
@@ -646,19 +653,62 @@ function compressImage(file, maxPx, quality) {
   });
 }
 
-function handlePhoto(e) {
+async function handlePhoto(e) {
   const f = e.target.files[0]; if(!f) return;
-  compressImage(f, 1200, 0.78).then(result => {
-    photo = result.dataUrl;
-    document.getElementById('puInner').style.display = 'none';
-    const img = document.createElement('img'); img.src = photo;
-    document.getElementById('puEl').appendChild(img);
-    const origKB = Math.round(result.origSize/1024);
-    const compKB = Math.round(result.compSize/1024);
-    const info = document.getElementById('compressInfo');
-    info.style.display = 'block';
-    info.textContent = `📸 Compressed: ${origKB}KB → ${compKB}KB (${result.w}×${result.h}px)`;
-  });
+
+  const exifEl  = document.getElementById('exifInfo');
+  const infoEl  = document.getElementById('compressInfo');
+  exifEl.style.display  = 'none';
+  infoEl.style.display  = 'none';
+
+  // ── 1. Extract EXIF (GPS + datetime) from original file ──
+  let exifFilled = [];
+  try {
+    const exif = await exifr.parse(f, { gps: true, pick: ['DateTimeOriginal','GPSLatitude','GPSLongitude','GPSLatitudeRef','GPSLongitudeRef'] });
+    if(exif) {
+      // GPS — exifr returns decimal degrees directly
+      if(exif.latitude != null && exif.longitude != null) {
+        const lat = exif.latitude, lng = exif.longitude;
+        document.getElementById('clat').value = lat.toFixed(4);
+        document.getElementById('clng').value = lng.toFixed(4);
+        if(logMap && logPin) { logPin.setLatLng([lat,lng]); logMap.setView([lat,lng],14); }
+        clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(lat, lng), 300);
+        exifFilled.push('📍 GPS location');
+      }
+      // DateTime
+      if(exif.DateTimeOriginal) {
+        const dt = new Date(exif.DateTimeOriginal);
+        if(!isNaN(dt)) {
+          const yy = dt.getFullYear(), mm = String(dt.getMonth()+1).padStart(2,'0'), dd = String(dt.getDate()).padStart(2,'0');
+          const hh = String(dt.getHours()).padStart(2,'0'), mi = String(dt.getMinutes()).padStart(2,'0');
+          document.getElementById('cdate').value = `${yy}-${mm}-${dd}`;
+          document.getElementById('ctime').value = `${hh}:${mi}`;
+          exifFilled.push('📅 Date & time');
+        }
+      }
+    }
+  } catch(err) { /* EXIF unavailable — that's fine */ }
+
+  // Show EXIF result
+  exifEl.style.display = 'block';
+  if(exifFilled.length) {
+    exifEl.style.color = 'var(--teal)';
+    exifEl.textContent = '✅ Auto-filled from photo: ' + exifFilled.join(' · ');
+  } else {
+    exifEl.style.color = 'var(--hint)';
+    exifEl.textContent = 'ℹ️ No location or date found in photo — please enter manually below';
+  }
+
+  // ── 2. Compress and display ──
+  const result = await compressImage(f, 1200, 0.78);
+  photo = result.dataUrl;
+  document.getElementById('puInner').style.display = 'none';
+  const existing = document.querySelector('#puEl img'); if(existing) existing.remove();
+  const img = document.createElement('img'); img.src = photo;
+  document.getElementById('puEl').appendChild(img);
+  const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
+  infoEl.style.display = 'block';
+  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB (${result.w}×${result.h}px)`;
 }
 
 // ─────────────────────────────────────────────
@@ -1298,6 +1348,7 @@ function saveCatch() {
   document.getElementById('clat').value='-37.6878';document.getElementById('clng').value='176.1651';
   document.getElementById('gstat').textContent='';
   document.getElementById('compressInfo').style.display='none';
+  document.getElementById('exifInfo').style.display='none';
   photo=null;
   const pu=document.getElementById('puEl'),img=pu.querySelector('img');if(img)img.remove();
   document.getElementById('puInner').style.display='flex';
@@ -1314,7 +1365,7 @@ function persist() {
 }
 
 function delCatch(id) {
-  if(!confirm('Delete this catch?')) return;
+  if(!confirm('Are you sure you want to delete this log?')) return;
   catches=catches.filter(c=>c.id!==id);
   if(cmaps[id]){try{cmaps[id].remove();}catch(e){}delete cmaps[id];}
   persist(); updateHeader(); renderList();
@@ -1350,7 +1401,21 @@ function renderList() {
   const wts=catches.filter(c=>c.weight).map(c=>parseFloat(c.weight)||0);
   document.getElementById('tstats').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+(wts.length?' · Best: '+Math.max(...wts).toFixed(1)+'kg':'');
   if(!catches.length){
-    document.getElementById('clist').innerHTML='<div class="empty"><div style="font-size:46px;opacity:0.35;">🎣</div><div style="font-size:14px;">No catches yet.<br>Head to the Log tab!</div></div>';
+    document.getElementById('clist').innerHTML=`<div class="empty">
+      <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="width:80px;height:80px;opacity:0.3;margin-bottom:4px;">
+        <rect x="0" y="0" width="512" height="512" rx="110" fill="#444444"/>
+        <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#cccccc" stroke-width="18" stroke-linecap="round"/>
+        <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#ffffff"/>
+        <path d="M210 260 L165 225 L165 295 Z" fill="#ffffff"/>
+        <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#ffffff"/>
+        <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#ffffff"/>
+        <circle cx="310" cy="250" r="5" fill="#444444"/>
+        <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#aaaaaa" stroke-width="20" stroke-linecap="round"/>
+        <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#aaaaaa" stroke-width="12" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:15px;font-weight:600;color:var(--muted);">No catches yet</div>
+      <div style="font-size:13px;color:var(--hint);margin-top:2px;">Let's Go Fishing! 🎣</div>
+    </div>`;
     return;
   }
   document.getElementById('clist').innerHTML=s.map(c=>`
