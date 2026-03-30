@@ -212,7 +212,7 @@ input[type=file]{display:none;}
             <span style="font-size:12px;color:#aaa;margin-top:4px;">Tap to add photo</span>
           </div>
         </div>
-        <input type="file" id="fi" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+        <input type="file" id="fi" accept="image/*" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
       </div>
 
@@ -1158,8 +1158,10 @@ async function fetchOpenMeteo(lat, lng, locName) {
 // ─────────────────────────────────────────────
 function saveCatch() {
   const fish=document.getElementById('ftype').value==='Other'?document.getElementById('fcust').value:document.getElementById('ftype').value;
-  if(!fish){alert('Please select a fish species first.');return;}
+  if(!fish){alert('⚠️ Please select a fish species.');return;}
   const d=document.getElementById('cdate').value, t=document.getElementById('ctime').value;
+  if(!d){alert('⚠️ Please enter the date of your catch.');return;}
+  if(!t){alert('⚠️ Please enter the time of your catch.');return;}
   let ti='—',mi='—',bi='—';
   if(d&&t){
     const dt=new Date(d+'T'+t);
