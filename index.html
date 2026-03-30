@@ -312,7 +312,16 @@ input[type=file]{display:none;}
         <div class="r2">
           <div><label>Fly / Bait</label><input type="text" id="fly" placeholder="e.g. Crazy Charlie"></div>
           <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6"></div>
-        </div>                    
+        </div>
+        <div class="qs-chips">
+          <button type="button" class="qs-chip" onclick="qsFly('Fly')">🪰 Fly</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Softbait')">🐛 Softbait</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Jig')">⚓ Jig</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Bait')">🎣 Bait</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Stickbait')">🏒 Stickbait</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Popper')">💫 Popper</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Pilchard')">🐟 Pilchard</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Squid')">🦑 Squid</button>
         </div>
         <label>Notes</label>
         <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;"></textarea>
