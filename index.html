@@ -12,6 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -184,6 +185,19 @@ input[type=file]{display:none;}
 .del-cancel:active{background:var(--surf);}
 .del-confirm{color:#e03c3c;}
 .del-confirm:active{background:#fff0f0;}
+/* BAROMETER */
+.baro-wrap{background:var(--white);border-radius:12px;border:0.5px solid var(--border);padding:14px;margin-bottom:10px;}
+.baro-gauge{position:relative;width:160px;height:84px;margin:10px auto 4px;}
+.baro-needle{position:absolute;bottom:0;left:50%;transform-origin:bottom center;transition:transform 0.8s cubic-bezier(0.34,1.3,0.64,1);}
+.baro-val{text-align:center;font-size:22px;font-weight:700;color:var(--text);margin-top:4px;}
+.baro-unit{text-align:center;font-size:11px;color:var(--muted);margin-top:1px;}
+.baro-status{text-align:center;font-size:13px;font-weight:600;margin-top:8px;padding:8px 12px;border-radius:8px;}
+.baro-good{background:rgba(79,195,161,0.12);color:#0a5c43;border:0.5px solid rgba(79,195,161,0.3);}
+.baro-fair{background:rgba(239,159,39,0.1);color:#6b3e08;border:0.5px solid rgba(239,159,39,0.3);}
+.baro-poor{background:rgba(231,76,60,0.1);color:#7a2020;border:0.5px solid rgba(231,76,60,0.3);}
+.baro-trend{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;font-size:12px;color:var(--muted);}
+.baro-history{display:flex;align-items:flex-end;gap:3px;height:36px;margin:10px 0 4px;}
+.baro-bar{flex:1;border-radius:3px 3px 0 0;min-height:3px;background:var(--teal);opacity:0.7;transition:height 0.4s;}
 </style>
 </head>
 <body>
@@ -313,16 +327,7 @@ input[type=file]{display:none;}
           <div><label>Fly / Bait</label><input type="text" id="fly" placeholder="e.g. Crazy Charlie"></div>
           <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6"></div>
         </div>
-        <div class="qs-chips">
-          <button type="button" class="qs-chip" onclick="qsFly('Fly')">🪰 Fly</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Softbait')">🐛 Softbait</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Jig')">⚓ Jig</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Bait')">🎣 Bait</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Stickbait')">🏒 Stickbait</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Popper')">💫 Popper</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Pilchard')">🐟 Pilchard</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Squid')">🦑 Squid</button>
-        </div>
+
         <label>Notes</label>
         <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;"></textarea>
       </div>
@@ -490,7 +495,41 @@ input[type=file]{display:none;}
         <div class="wcard"><span class="wi">🌊</span><span class="wv" id="wxswell">—</span><span class="wl">Swell</span></div>
         <div class="wcard"><span class="wi">🌧</span><span class="wv" id="wxrain">—</span><span class="wl">Rain chance</span></div>
       </div>
-      <div class="sec" style="margin-top:10px;"><div class="stitle">⚡ Fishing Conditions</div><div id="wxcond" style="font-size:14px;color:var(--text);line-height:1.7;">—</div></div>
+      <div class="baro-wrap" id="baroCard">
+        <div class="stitle" style="margin-bottom:0;">🌡 Barometer</div>
+        <div class="baro-gauge">
+          <svg class="baro-arc" width="160" height="84" viewBox="0 0 160 84">
+            <!-- Background arc segments: Poor | Fair | Good | Fair | Poor -->
+            <path d="M14,80 A70,70 0 0,1 38,22" stroke="#e74c3c" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <path d="M38,22 A70,70 0 0,1 70,10" stroke="#f39c12" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <path d="M70,10 A70,70 0 0,1 90,10" stroke="#4fc3a1" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <path d="M90,10 A70,70 0 0,1 122,22" stroke="#f39c12" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <path d="M122,22 A70,70 0 0,1 146,80" stroke="#e74c3c" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <!-- Labels -->
+            <text x="8" y="80" font-size="8" fill="#e74c3c" opacity="0.7" text-anchor="middle">970</text>
+            <text x="80" y="7" font-size="8" fill="#4fc3a1" opacity="0.9" text-anchor="middle">1013</text>
+            <text x="152" y="80" font-size="8" fill="#e74c3c" opacity="0.7" text-anchor="middle">1050</text>
+          </svg>
+          <div class="baro-needle" id="baroNeedle" style="transform:rotate(-90deg);">
+            <svg width="4" height="68" viewBox="0 0 4 68">
+              <rect x="1" y="0" width="2" height="60" rx="1" fill="var(--dark)"/>
+              <circle cx="2" cy="64" r="4" fill="var(--dark)"/>
+            </svg>
+          </div>
+        </div>
+        <div class="baro-val" id="baroVal">— hPa</div>
+        <div class="baro-unit" id="baroTrend">Waiting for data…</div>
+        <div class="baro-status baro-fair" id="baroStatus">—</div>
+        <div style="margin-top:10px;">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">3-Hour Pressure History</div>
+          <div class="baro-history" id="baroHistory"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:2px;">
+            <span style="font-size:9px;color:var(--hint);">-3h</span>
+            <span style="font-size:9px;color:var(--hint);">now</span>
+          </div>
+        </div>
+      </div>
+      <div class="sec" style="margin-top:0;"><div class="stitle">⚡ Fishing Conditions</div><div id="wxcond" style="font-size:14px;color:var(--text);line-height:1.7;">—</div></div>
       <button class="sbtn teal-btn" style="margin-top:4px;margin-bottom:10px;" onclick="autoWeather()">🔄 Refresh Weather</button>
     </div>
 
@@ -504,6 +543,7 @@ input[type=file]{display:none;}
         </div>
         <div id="mainmap" style="width:100%;height:300px;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);"></div>
         <div id="mleg" style="margin-top:8px;font-size:12px;color:var(--muted);">No catches logged yet.</div>
+      <div id="mapLegend" style="display:none;margin-top:8px;"></div>
       </div>
       <div class="sec"><div class="stitle">📍 Location List</div><div id="loclist" style="font-size:13px;color:var(--muted);">No locations saved yet.</div></div>
     </div>
@@ -571,7 +611,30 @@ input[type=file]{display:none;}
       </div>
       <div class="edit-modal-body">
         <div class="sec" style="margin-bottom:10px;">
-          <div class="stitle">🐟 Catch Details</div>
+          <div class="stitle">📸 Photo</div>
+          <div class="pu" id="epuEl" style="min-height:140px;">
+            <div class="pu-inner" id="epuInner">
+              <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
+                <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#bbbbbb"/>
+                <path d="M210 260 L165 225 L165 295 Z" fill="#bbbbbb"/>
+                <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#bbbbbb"/>
+                <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#bbbbbb"/>
+                <circle cx="310" cy="250" r="5" fill="#ebebea"/>
+                <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#cccccc" stroke-width="20" stroke-linecap="round"/>
+                <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#cccccc" stroke-width="12" stroke-linecap="round"/>
+              </svg>
+              <span style="font-size:11px;color:#aaa;margin-top:4px;">No photo — tap to add</span>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+            <button class="gpsbtn" onclick="document.getElementById('efiCam').click()" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
+            <button class="gpsbtn" onclick="document.getElementById('efiLib').click()" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+          </div>
+          <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditPhoto(event)">
+          <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
+          <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
+        </div>
           <label>Fish species</label>
           <select id="efish">
             <option value="">Select species...</option>
@@ -715,7 +778,15 @@ let appGPSReady = false;
 
 function requestAppGPS(onSuccess) {
   if(!navigator.geolocation) { alert('GPS not available on this device.'); return; }
-  if(appGPSReady) { onSuccess(); return; }
+  if(appGPSReady) {
+    ['tideLocLabel','biteLocLabel'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = '📍 ' + appLocName;
+    });
+    ['tideGpsStatus','biteGpsStatus'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = '🎯 Nearest port: ' + activePort.name;
+    });
+    onSuccess(); return;
+  }
   ['tideGpsStatus','biteGpsStatus'].forEach(id => {
     const el = document.getElementById(id); if(el) el.innerHTML = '<span class="spin"></span> Getting GPS…';
   });
@@ -987,8 +1058,33 @@ function satelliteLayer() {
     attribution:'Tiles &copy; Esri'
   });
 }
-function leafIcon(sz) {
-  return L.divIcon({ html:`<div style="font-size:${sz}px;line-height:1;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45));">📍</div>`, className:'', iconAnchor:[sz/2,sz] });
+const SPECIES_COLORS = {
+  'Snapper':    '#e74c3c',
+  'Kingfish':   '#f39c12',
+  'Kahawai':   '#2ecc71',
+  'Gurnard':   '#9b59b6',
+  'John Dory': '#1abc9c',
+  'Blue Cod':  '#3498db',
+  'Trevally':  '#e67e22',
+  'Tarakihi':  '#16a085',
+  'Moki':      '#8e44ad',
+  'Hapuka':    '#2c3e50',
+  'Crayfish':  '#c0392b',
+};
+function speciesColor(fish) {
+  return SPECIES_COLORS[fish] || '#4fc3a1';
+}
+function leafIcon(sz, color) {
+  color = color || '#4fc3a1';
+  const s = sz || 20;
+  return L.divIcon({
+    html: `<svg width="${s}" height="${s+6}" viewBox="0 0 20 26" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45))">
+      <path d="M10 0C5.58 0 2 3.58 2 8c0 5.25 8 18 8 18s8-12.75 8-18c0-4.42-3.58-8-8-8z" fill="${color}"/>
+      <circle cx="10" cy="8" r="3.5" fill="rgba(255,255,255,0.85)"/>
+    </svg>`,
+    className: '',
+    iconAnchor: [s/2, s+6]
+  });
 }
 
 // Log map
@@ -1060,12 +1156,27 @@ function refreshMainMap() {
   }
   catches.forEach(c => {
     if(!c.lat||!c.lng) return;
-    const m=L.marker([c.lat,c.lng],{icon:leafIcon(20)}).addTo(mainMap);
+    const m=L.marker([c.lat,c.lng],{icon:leafIcon(20,speciesColor(c.fish))}).addTo(mainMap);
     m.bindPopup(`<b>${c.fish}</b>${c.length?'<br>'+c.length+'cm':''}${c.weight?' · '+c.weight+'kg':''}${c.location?'<br>'+c.location:''}<br><small>${c.date} ${c.time}</small><br><small>Tide: ${c.tide} · ${c.weather}</small>`);
     mainPins.push(m);
   });
   if(mainPins.length) { const g=L.featureGroup(mainPins); mainMap.fitBounds(g.getBounds().pad(0.3)); }
   document.getElementById('mleg').textContent=catches.length+' catch location'+(catches.length!==1?'s':'')+' on map';
+  // Build species colour legend
+  const legendEl = document.getElementById('mapLegend');
+  if(legendEl) {
+    const speciesToShow = [...new Set(catches.map(c=>c.fish))].filter(Boolean);
+    if(speciesToShow.length) {
+      legendEl.style.display='flex';
+      legendEl.style.flexWrap='wrap';
+      legendEl.style.gap='6px';
+      legendEl.style.marginTop='8px';
+      legendEl.innerHTML = speciesToShow.map(sp=>`
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);">
+          <svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="${speciesColor(sp)}"/></svg>${sp}
+        </div>`).join('');
+    }
+  }
   document.getElementById('loclist').innerHTML=catches.map(c=>`
     <div style="padding:7px 0;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
       <div><div style="font-weight:600;font-size:13px;">${c.fish}</div><div style="font-size:11px;color:var(--hint);">${c.location||'No location'}</div></div>
@@ -1079,7 +1190,7 @@ function initCatchMap(id,lat,lng,lbl) {
     const el=document.getElementById('cm-'+id); if(!el||cmaps[id]) return;
     const m=L.map('cm-'+id,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,tap:false}).setView([lat,lng],13);
     streetLayer().addTo(m);
-    L.marker([lat,lng],{icon:leafIcon(20)}).bindPopup(lbl).addTo(m);
+    L.marker([lat,lng],{icon:leafIcon(20,speciesColor(lbl))}).bindPopup(lbl).addTo(m);
     cmaps[id]=m;
   },200);
 }
@@ -1436,7 +1547,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
   try {
     // Fetch land weather + marine data in parallel
     const [landRes, marineRes, geoRes] = await Promise.all([
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=precipitation_probability&forecast_days=1&wind_speed_unit=kmh&timezone=auto`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=precipitation_probability,surface_pressure&forecast_days=1&wind_speed_unit=kmh&timezone=auto`),
       fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction&forecast_days=1`).catch(()=>null),
       locName ? null : fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}}).catch(()=>null)
     ]);
@@ -1455,6 +1566,12 @@ async function fetchOpenMeteo(lat, lng, locName) {
     const code = cur.weather_code;
     const rainArr = land.hourly?.precipitation_probability;
     const rainNow = rainArr ? rainArr[new Date().getHours()]+'%' : '—';
+    // Extract 3-hour pressure history for barometer
+    const pressureHourly = land.hourly?.surface_pressure || [];
+    const nowHour = new Date().getHours();
+    const pressureHistory = [nowHour-3, nowHour-2, nowHour-1, nowHour]
+      .map(h => pressureHourly[Math.max(0,h)] || null)
+      .filter(Boolean);
 
     // Marine / swell
     let swellTxt = '—';
@@ -1490,6 +1607,9 @@ async function fetchOpenMeteo(lat, lng, locName) {
     document.getElementById('wxBadge').className='api-badge live-badge';
     document.getElementById('wxBadge').textContent='🌤 Live';
 
+    // Update barometer
+    updateBarometer(pressure, pressureHistory);
+
     // Store coords for reuse
     wxLat = lat; wxLng = lng;
 
@@ -1499,6 +1619,72 @@ async function fetchOpenMeteo(lat, lng, locName) {
     document.getElementById('wxBadge').textContent='⚠️ Unavailable';
     document.getElementById('wxd').textContent='Could not load weather';
     document.getElementById('wxl').textContent='Check internet connection';
+  }
+}
+
+// ─────────────────────────────────────────────
+// BAROMETER
+// ─────────────────────────────────────────────
+function updateBarometer(hpa, history) {
+  // Needle: map 970–1050 hPa → -90° to +90°
+  const MIN_HPA = 970, MAX_HPA = 1050, MID = (MIN_HPA+MAX_HPA)/2;
+  const clamp = v => Math.max(MIN_HPA, Math.min(MAX_HPA, v));
+  const pct = (clamp(hpa) - MIN_HPA) / (MAX_HPA - MIN_HPA); // 0–1
+  const deg = -90 + pct * 180;
+  const needle = document.getElementById('baroNeedle');
+  if(needle) needle.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+
+  const valEl = document.getElementById('baroVal');
+  if(valEl) valEl.textContent = hpa + ' hPa';
+
+  // Trend from history
+  const trendEl = document.getElementById('baroTrend');
+  let trendTxt = '';
+  if(history && history.length >= 2) {
+    const diff = hpa - history[0];
+    if(diff > 2)        trendTxt = '↑ Rising — improving conditions';
+    else if(diff < -2)  trendTxt = '↓ Falling — conditions deteriorating';
+    else                trendTxt = '→ Steady';
+  }
+  if(trendEl) trendEl.textContent = trendTxt;
+
+  // Fishing status
+  const statusEl = document.getElementById('baroStatus');
+  if(statusEl) {
+    let cls, msg;
+    if(hpa >= 1020) {
+      cls = 'baro-good';
+      msg = '✅ High pressure — stable air, calm seas. Excellent fishing conditions.';
+    } else if(hpa >= 1008) {
+      cls = 'baro-fair';
+      msg = '🟡 Moderate pressure — decent conditions. Check tide and solunar windows.';
+    } else {
+      cls = 'baro-poor';
+      msg = '🔴 Low pressure — unsettled weather likely. Fish may be less active near surface.';
+    }
+    // Override if pressure is falling fast
+    if(history && history.length >= 2 && (hpa - history[0]) < -4) {
+      cls = 'baro-poor';
+      msg = '🔴 Pressure dropping fast — storm likely approaching. Conditions will worsen.';
+    } else if(history && history.length >= 2 && (hpa - history[0]) > 4) {
+      cls = 'baro-good';
+      msg = '✅ Pressure rising — improving weather ahead. Good bite activity expected.';
+    }
+    statusEl.className = 'baro-status ' + cls;
+    statusEl.textContent = msg;
+  }
+
+  // History sparkbar
+  const histEl = document.getElementById('baroHistory');
+  if(histEl && history && history.length) {
+    const allVals = [...history];
+    const mn = Math.min(...allVals)-1, mx = Math.max(...allVals)+1;
+    const range = mx - mn || 1;
+    histEl.innerHTML = allVals.map((v,i) => {
+      const h = Math.round(((v-mn)/range)*100);
+      const isLast = i === allVals.length-1;
+      return `<div class="baro-bar" style="height:${Math.max(8,h)}%;opacity:${isLast?1:0.45+(i*0.15)};background:${isLast?'var(--teal)':'#aaa'};"></div>`;
+    }).join('');
   }
 }
 
@@ -1555,15 +1741,14 @@ async function saveCatch() {
   showToast('Your catch has been logged! 🎣', 'success');
   document.getElementById('cnum').textContent=catches.length;
   const b=document.getElementById('sban');b.style.display='none';
-  ['ftype','fcust','flen','fwt','method','platform','fly','flycol','notes','locname'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('clat').value='-37.6878';document.getElementById('clng').value='176.1651';
+  // Clear catch-specific fields but keep location so multi-catch sessions don't need GPS re-entry
+  ['ftype','fcust','flen','fwt','method','platform','fly','flycol','notes'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('gstat').textContent='';
   document.getElementById('compressInfo').style.display='none';
   document.getElementById('exifInfo').style.display='none';
   photo=null;
   const pu=document.getElementById('puEl'),img=pu.querySelector('img');if(img)img.remove();
   document.getElementById('puInner').style.display='flex';
-  if(logPin)logPin.setLatLng([-37.6878,176.1651]);if(logMap)logMap.setView([-37.6878,176.1651],12);
 }
 
 function persist() {
@@ -1700,13 +1885,28 @@ function qsFly(val) {
 // ─────────────────────────────────────────────
 // EDIT CATCH
 // ─────────────────────────────────────────────
-let editId = null;
+let editId = null, editPhoto = undefined; // undefined = no change, null = cleared, string = new photo
 const KNOWN_SPECIES = ['Snapper','Kingfish','Kahawai','Gurnard','John Dory','Blue Cod','Trevally','Tarakihi','Moki','Hapuka','Crayfish'];
 
 function editCatch(id) {
   const c = catches.find(x => x.id === id);
   if(!c) return;
   editId = id;
+  editPhoto = undefined; // reset — no change yet
+
+  // Populate photo
+  const epuEl = document.getElementById('epuEl');
+  const epuInner = document.getElementById('epuInner');
+  const existingImg = epuEl.querySelector('img');
+  if(existingImg) existingImg.remove();
+  if(c.photo) {
+    epuInner.style.display = 'none';
+    const img = document.createElement('img'); img.src = c.photo;
+    epuEl.appendChild(img);
+  } else {
+    epuInner.style.display = 'flex';
+  }
+  document.getElementById('editPhotoInfo').style.display = 'none';
   // Populate species
   const fishSel = document.getElementById('efish');
   if(KNOWN_SPECIES.includes(c.fish)) {
@@ -1732,6 +1932,22 @@ function editCatch(id) {
 function closeEdit() {
   document.getElementById('editModal').classList.remove('open');
   editId = null;
+  editPhoto = undefined;
+}
+
+async function handleEditPhoto(e) {
+  const f = e.target.files[0]; if(!f) return;
+  const infoEl = document.getElementById('editPhotoInfo');
+  const result = await compressImage(f, 1200, 0.78);
+  editPhoto = result.dataUrl;
+  const epuEl = document.getElementById('epuEl');
+  const existing = epuEl.querySelector('img'); if(existing) existing.remove();
+  document.getElementById('epuInner').style.display = 'none';
+  const img = document.createElement('img'); img.src = editPhoto;
+  epuEl.appendChild(img);
+  const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
+  infoEl.style.display = 'block';
+  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB`;
 }
 
 function saveEdit() {
@@ -1743,6 +1959,30 @@ function saveEdit() {
     ? document.getElementById('efishcust').value.trim()
     : fishSel;
   if(!fish) { showToast('Please select a fish species.', 'error'); vibrate(60); return; }
+
+  const newDate = document.getElementById('edate').value;
+  const newTime = document.getElementById('etime').value;
+
+  // Recalculate tide, moon, bite from new date/time
+  let ti = catches[idx].tide, mi = catches[idx].moon, bi = catches[idx].bite;
+  if(newDate && newTime) {
+    const dt = new Date(newDate + 'T' + newTime);
+    const hNow = tideHeightAt(dt, activePort), hNext = tideHeightAt(new Date(dt.getTime()+300000), activePort);
+    const rising = hNext > hNow;
+    const bounds = portBounds(activePort), mid = bounds.lo + (bounds.hi - bounds.lo)*0.5, qtr = (bounds.hi - bounds.lo)*0.22;
+    const tl = hNow > mid+qtr ? 'High Tide' : hNow < mid-qtr ? 'Low Tide' : (rising ? 'Mid — Rising' : 'Mid — Falling');
+    ti = tl + (rising ? ' · Incoming' : ' · Outgoing');
+    const mo = moonAt(dt); mi = mo.e + ' ' + mo.n + ' (' + mo.il + '%)';
+    const so = solunarAt(dt, appLng), h = dt.getHours() + dt.getMinutes()/60;
+    bi = (Math.abs(h-so.m1)<1 || Math.abs(h-so.m2)<1) ? '🟢 Major period'
+       : (Math.abs(h-so.n1)<0.5 || Math.abs(h-so.n2)<0.5) ? '🟡 Minor period'
+       : 'Between periods';
+  }
+
+  // Resolve photo: undefined = keep existing, string = new photo
+  const existingPhoto = catches[idx].photo;
+  const resolvedPhoto = editPhoto !== undefined ? editPhoto : existingPhoto;
+
   catches[idx] = {
     ...catches[idx],
     fish,
@@ -1753,11 +1993,17 @@ function saveEdit() {
     fly:      document.getElementById('efly').value,
     flycol:   document.getElementById('eflycol').value,
     notes:    document.getElementById('enotes').value,
-    date:     document.getElementById('edate').value,
-    time:     document.getElementById('etime').value,
+    date:     newDate,
+    time:     newTime,
     location: document.getElementById('eloc').value,
+    tide: ti, moon: mi, bite: bi,
+    photo: resolvedPhoto,
   };
   persist();
+  if(editPhoto !== undefined) {
+    if(editPhoto) idbPut(editId, editPhoto).catch(()=>{});
+    else idbDel(editId).catch(()=>{});
+  }
   updateHeader();
   closeEdit();
   renderList();
@@ -1854,7 +2100,7 @@ function renderStats() {
     const m = parseInt(parts[1], 10);
     if(m >= 1 && m <= 12) monthCount[MONTHS[m-1]] = (monthCount[MONTHS[m-1]]||0) + 1;
   });
-  const topMonth = Object.entries(monthCount).sort((a,b)=>b[1]-a[1])[0];
+  const topMonths = Object.entries(monthCount).sort((a,b)=>b[1]-a[1]).slice(0,3);
 
   // ── Best weight ──
   const withWeight = catches.filter(c=>c.weight).sort((a,b)=>parseFloat(b.weight)-parseFloat(a.weight));
@@ -1926,13 +2172,20 @@ function renderStats() {
           <div class="insight-sub">${topMoon[1]} catch${topMoon[1]!==1?'es':''}</div>
         </div>
       </div>`:''}
-      ${topMonth?`
-      <div class="insight-item">
+      ${topMonths.length?`
+      <div class="insight-item" style="align-items:flex-start;">
         <div class="insight-icon">📅</div>
         <div class="insight-text">
-          <div class="insight-title">Best Month</div>
-          <div class="insight-val">${topMonth[0]}</div>
-          <div class="insight-sub">${topMonth[1]} catch${topMonth[1]!==1?'es':''} recorded</div>
+          <div class="insight-title">Best Months (Top 3)</div>
+          ${topMonths.map(([m,cnt],i)=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-top:${i===0?4:6}px;">
+              <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.35);width:14px;">${i+1}</div>
+              <div style="flex:1;">
+                <div style="font-size:14px;font-weight:600;color:#fff;">${m}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.4);">${cnt} catch${cnt!==1?'es':''} recorded</div>
+              </div>
+              <div style="display:flex;gap:2px;">${'⭐'.repeat(3-i)}</div>
+            </div>`).join('')}
         </div>
       </div>`:''}
     </div>
