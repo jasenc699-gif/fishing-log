@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -695,7 +695,6 @@ input[type=file]{display:none;}
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.cjs"></script>
 <script>
 // ─────────────────────────────────────────────
 // INDEXEDDB — Photo Storage
@@ -935,11 +934,12 @@ async function handlePhoto(e) {
   // ── 1. Extract EXIF (GPS + datetime) from original file ──
   let exifFilled = [];
   try {
-    const exif = await exifr.parse(f, { gps: true, pick: ['DateTimeOriginal','GPSLatitude','GPSLongitude','GPSLatitudeRef','GPSLongitudeRef'] });
+    const exif = await exifr.parse(f, { gps: true, tiff: true, exif: true });
     if(exif) {
-      // GPS — exifr returns decimal degrees directly
-      if(exif.latitude != null && exif.longitude != null) {
-        const lat = exif.latitude, lng = exif.longitude;
+      // GPS — exifr returns decimal degrees directly as latitude/longitude
+      const lat = exif.latitude ?? exif.GPSLatitude;
+      const lng = exif.longitude ?? exif.GPSLongitude;
+      if(lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
         document.getElementById('clat').value = lat.toFixed(4);
         document.getElementById('clng').value = lng.toFixed(4);
         if(logMap && logPin) { logPin.setLatLng([lat,lng]); logMap.setView([lat,lng],14); }
@@ -947,18 +947,19 @@ async function handlePhoto(e) {
         exifFilled.push('📍 GPS location');
       }
       // DateTime
-      if(exif.DateTimeOriginal) {
-        const dt = new Date(exif.DateTimeOriginal);
-        if(!isNaN(dt)) {
-          const yy = dt.getFullYear(), mm = String(dt.getMonth()+1).padStart(2,'0'), dd = String(dt.getDate()).padStart(2,'0');
-          const hh = String(dt.getHours()).padStart(2,'0'), mi = String(dt.getMinutes()).padStart(2,'0');
+      const dt = exif.DateTimeOriginal ?? exif.CreateDate ?? exif.DateTime;
+      if(dt) {
+        const d = dt instanceof Date ? dt : new Date(dt);
+        if(!isNaN(d)) {
+          const yy = d.getFullYear(), mm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+          const hh = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
           document.getElementById('cdate').value = `${yy}-${mm}-${dd}`;
           document.getElementById('ctime').value = `${hh}:${mi}`;
           exifFilled.push('📅 Date & time');
         }
       }
     }
-  } catch(err) { /* EXIF unavailable — that's fine */ }
+  } catch(err) { console.warn('EXIF parse error:', err); }
 
   // Show EXIF result
   exifEl.style.display = 'block';
