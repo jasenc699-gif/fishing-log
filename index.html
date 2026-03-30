@@ -170,6 +170,20 @@ input[type=file]{display:none;}
 .edit-modal-title{font-size:16px;font-weight:700;color:#fff;}
 .edit-close{background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;}
 .edit-modal-body{padding:14px;}
+/* DELETE CONFIRM MODAL */
+.del-modal-wrap{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:24px;}
+.del-modal-wrap.open{display:flex;}
+.del-modal{background:var(--white);border-radius:16px;max-width:340px;width:100%;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,0.45);}
+.del-modal-body{padding:26px 22px 20px;text-align:center;}
+.del-modal-icon{font-size:42px;margin-bottom:12px;line-height:1;}
+.del-modal-msg{font-size:16px;font-weight:700;color:var(--text);line-height:1.45;}
+.del-modal-sub{font-size:13px;color:var(--muted);margin-top:7px;}
+.del-modal-btns{display:grid;grid-template-columns:1fr 1fr;border-top:0.5px solid var(--border);}
+.del-modal-btns button{padding:15px;border:none;background:none;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
+.del-cancel{color:var(--muted);border-right:0.5px solid var(--border);}
+.del-cancel:active{background:var(--surf);}
+.del-confirm{color:#e03c3c;}
+.del-confirm:active{background:#fff0f0;}
 </style>
 </head>
 <body>
@@ -300,14 +314,12 @@ input[type=file]{display:none;}
           <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6"></div>
         </div>
         <div class="qs-chips">
-          <button type="button" class="qs-chip" onclick="qsFly('Fly')">🪰 Fly</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Softbait')">🐛 Softbait</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Jig')">⚓ Jig</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Bait')">🎣 Bait</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Stickbait')">🏒 Stickbait</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Popper')">💫 Popper</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Pilchard')">🐟 Pilchard</button>
-          <button type="button" class="qs-chip" onclick="qsFly('Squid')">🦑 Squid</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Popper')"> Popper</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Clouser')"> Clouser</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Crazy Charlie')"> Crazy Charlie</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Orange Fuzz Ball)"> Orange Fuzz Ball</button>
+          <button type="button" class="qs-chip" onclick="qsFly('Piper')"> Piper</button>
+                
         </div>
         <label>Notes</label>
         <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;"></textarea>
@@ -534,7 +546,20 @@ input[type=file]{display:none;}
 
 </div><!-- /app -->
 
-<!-- ══ EDIT CATCH MODAL ══ -->
+<!-- ══ DELETE CONFIRM MODAL ══ -->
+<div class="del-modal-wrap" id="delModal">
+  <div class="del-modal">
+    <div class="del-modal-body">
+      <div class="del-modal-icon">🗑️</div>
+      <div class="del-modal-msg">Are you sure you want to delete this awesome catch?</div>
+      <div class="del-modal-sub">This action cannot be undone.</div>
+    </div>
+    <div class="del-modal-btns">
+      <button class="del-cancel" onclick="closeDelModal()">Keep it</button>
+      <button class="del-confirm" onclick="confirmDelCatch()">Delete</button>
+    </div>
+  </div>
+</div>
 <div class="edit-modal-wrap" id="editModal">
   <div class="edit-modal">
     <div class="edit-modal-card">
@@ -608,6 +633,55 @@ input[type=file]{display:none;}
 <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/lite.umd.cjs"></script>
 <script>
 // ─────────────────────────────────────────────
+// INDEXEDDB — Photo Storage
+// Photos are stored separately from catch metadata so localStorage
+// is never burdened with large base64 strings.
+// ─────────────────────────────────────────────
+const IDB_NAME = 'fishinglog-photos', IDB_STORE = 'photos', IDB_VER = 1;
+let _idb = null;
+
+function idbOpen() {
+  if (_idb) return Promise.resolve(_idb);
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VER);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+    req.onsuccess  = e => { _idb = e.target.result; res(_idb); };
+    req.onerror    = e => rej(e.target.error);
+  });
+}
+function idbPut(id, dataUrl) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(dataUrl, id);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  }));
+}
+function idbGet(id) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(id);
+    req.onsuccess = e => res(e.target.result || null);
+    req.onerror   = e => rej(e.target.error);
+  }));
+}
+function idbDel(id) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  }));
+}
+function idbGetAll() {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const out = {}, req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).openCursor();
+    req.onsuccess = e => {
+      const cur = e.target.result;
+      if (cur) { out[cur.key] = cur.value; cur.continue(); } else res(out);
+    };
+    req.onerror = e => rej(e.target.error);
+  }));
+}
+
+// ─────────────────────────────────────────────
 // PWA INSTALL
 // ─────────────────────────────────────────────
 let deferredPrompt;
@@ -674,6 +748,37 @@ const now = new Date(), today = now.toISOString().split('T')[0], nowT = now.toTi
 ['cdate','mdate','bcdate'].forEach(id => { const e=document.getElementById(id); if(e) e.value=today; });
 ['ctime'].forEach(id => { const e=document.getElementById(id); if(e) e.value=nowT; });
 updateHeader();
+
+// ─────────────────────────────────────────────
+// STORAGE INIT — migrate + hydrate photos from IDB
+// Runs async after UI is ready; photos appear once IDB resolves.
+// ─────────────────────────────────────────────
+async function initStorage() {
+  try {
+    // 1. Migrate: any catch that still has a base64 photo in localStorage
+    //    (from a previous app version) gets moved into IDB and stripped from LS.
+    let migrated = false;
+    for (const c of catches) {
+      if (c.photo) {
+        await idbPut(c.id, c.photo);
+        migrated = true;
+      }
+    }
+    if (migrated) {
+      persist(); // re-saves without photos, shrinking localStorage
+    }
+
+    // 2. Hydrate: load all photos from IDB into in-memory catch objects
+    const allPhotos = await idbGetAll();
+    catches.forEach(c => { if (allPhotos[c.id]) c.photo = allPhotos[c.id]; });
+
+    // 3. Refresh any tab that's already visible
+    if (currentTab === 'list')  renderList();
+    if (currentTab === 'stats') renderStats();
+  } catch(e) {
+    console.warn('Photo storage init error:', e);
+  }
+}
 
 // ─────────────────────────────────────────────
 // VIBRATION + TAB NAV
@@ -1398,7 +1503,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
 // ─────────────────────────────────────────────
 // SAVE CATCH
 // ─────────────────────────────────────────────
-function saveCatch() {
+async function saveCatch() {
   const fish=document.getElementById('ftype').value==='Other'?document.getElementById('fcust').value:document.getElementById('ftype').value;
   if(!fish){showToast('Please select a fish species.','error');vibrate(60);return;}
   const d=document.getElementById('cdate').value, t=document.getElementById('ctime').value;
@@ -1417,6 +1522,8 @@ function saveCatch() {
     bi=(Math.abs(h-so.m1)<1||Math.abs(h-so.m2)<1)?'🟢 Major period':(Math.abs(h-so.n1)<0.5||Math.abs(h-so.n2)<0.5)?'🟡 Minor period':'Between periods';
   }
   const id='c'+Date.now();
+  const catchPhoto = photo; // capture before reset
+  // Store catch metadata (no photo) — photo lives in IDB
   catches.unshift({id,fish,
     length:document.getElementById('flen').value,
     weight:document.getElementById('fwt').value,
@@ -1430,9 +1537,18 @@ function saveCatch() {
     lng:parseFloat(document.getElementById('clng').value)||176.1651,
     date:d,time:t,tide:ti,moon:mi,bite:bi,
     weather:document.getElementById('wxd').textContent||'—',
-    photo
+    photo: catchPhoto  // kept in-memory for this session
   });
-  persist(); updateHeader();
+  persist(); // saves metadata only to localStorage
+  // Save photo to IndexedDB — completely separate from localStorage quota
+  if (catchPhoto) {
+    try {
+      await idbPut(id, catchPhoto);
+    } catch(e) {
+      showToast('⚠️ Photo could not be saved to device storage.', 'error');
+    }
+  }
+  updateHeader();
   vibrate([40,20,40]);
   showToast('Your catch has been logged! 🎣', 'success');
   document.getElementById('cnum').textContent=catches.length;
@@ -1449,30 +1565,39 @@ function saveCatch() {
 }
 
 function persist() {
-  // 1. Try full save (photos included)
+  // Save catch metadata only — photos are never written to localStorage.
+  // This keeps localStorage small (a few KB per catch) regardless of how
+  // many photos have been taken. Photos live in IndexedDB instead.
+  const lite = catches.map(({ photo, ...rest }) => rest);
   try {
-    localStorage.setItem('fishinglog', JSON.stringify(catches));
-    return;
-  } catch(e) { /* quota exceeded — fall through */ }
-
-  // 2. Strip photos from oldest entries one-by-one until it fits
-  try {
-    const lite = catches.map(c => c.photo ? {...c, photo: null} : c);
     localStorage.setItem('fishinglog', JSON.stringify(lite));
-    showToast('⚠️ Storage full — photos removed from saved data. Catches are safe, but photos won\'t survive a reload. Delete old catches to reclaim space.', 'error');
-    return;
-  } catch(e) { /* still too big */ }
-
-  // 3. Give up — can't save at all
-  showToast('⚠️ Storage completely full. Please delete old catches so new ones can be saved.', 'error');
+  } catch(e) {
+    showToast('⚠️ Could not save catch data. Try freeing up device storage.', 'error');
+  }
 }
 
+let _pendingDelId = null;
 function delCatch(id) {
-  if(!confirm('Are you sure you want to delete this log?')) return;
-  catches=catches.filter(c=>c.id!==id);
-  if(cmaps[id]){try{cmaps[id].remove();}catch(e){}delete cmaps[id];}
-  persist(); updateHeader(); renderList();
+  _pendingDelId = id;
+  document.getElementById('delModal').classList.add('open');
 }
+function closeDelModal() {
+  document.getElementById('delModal').classList.remove('open');
+  _pendingDelId = null;
+}
+function confirmDelCatch() {
+  if(!_pendingDelId) return;
+  const id = _pendingDelId;
+  closeDelModal();
+  catches = catches.filter(c => c.id !== id);
+  if(cmaps[id]){try{cmaps[id].remove();}catch(e){}delete cmaps[id];}
+  persist();
+  idbDel(id).catch(() => {});
+  updateHeader(); renderList();
+  showToast('Catch deleted.', 'error');
+}
+// Close on backdrop tap
+document.getElementById('delModal').addEventListener('click', function(e){ if(e.target===this) closeDelModal(); });
 
 function updateHeader() {
   document.getElementById('hcount').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+' logged';
@@ -1836,6 +1961,7 @@ function renderStats() {
 calcTide(); drawCurve(); calcMoon(); calcBite();
 setTimeout(initLogMap, 400);
 setTimeout(autoWeather, 800);
+initStorage(); // async: migrates legacy photos + hydrates IDB photos into memory
 </script>
 </body>
 </html>
