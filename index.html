@@ -244,7 +244,7 @@ input[type=file]{display:none;}
 
       <div class="sec">
         <div class="stitle">📸 Photo</div>
-        <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
+        <label for="fiLib" class="pu" id="puEl" style="cursor:pointer;">
           <div class="pu-inner" id="puInner">
             <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
               <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
@@ -258,13 +258,13 @@ input[type=file]{display:none;}
             </svg>
             <span style="font-size:12px;color:#aaa;margin-top:4px;">Add a photo of your catch</span>
           </div>
-        </div>
+        </label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+          <label for="fiCam" class="gpsbtn" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;margin:0;">📷 Take Photo</label>
+          <label for="fiLib" class="gpsbtn" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;margin:0;">🖼 Upload Photo</label>
         </div>
         <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)">
-        <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
+        <input type="file" id="fiLib" accept="image/jpeg,image/png,image/webp,image/gif,image/*" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
       </div>
@@ -634,11 +634,11 @@ input[type=file]{display:none;}
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-            <button class="gpsbtn" onclick="const i=document.getElementById('efiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
-            <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+            <label for="efiCam" class="gpsbtn" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;margin:0;">📷 Take Photo</label>
+            <label for="efiLib" class="gpsbtn" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;margin:0;">🖼 Upload Photo</label>
           </div>
           <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditPhoto(event)">
-          <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
+          <input type="file" id="efiLib" accept="image/jpeg,image/png,image/webp,image/gif,image/*" onchange="handleEditPhoto(event)">
           <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         </div>
           <label>Fish species</label>
@@ -992,17 +992,27 @@ async function handlePhoto(e) {
   infoEl.style.display  = 'none';
 
   // ── 1. Extract EXIF (GPS + datetime) from original file ──
-  // Single comprehensive parse — avoids multiple reads of the same File object,
-  // which can silently fail on Samsung content:// URIs in Android WebView.
-  // xmp:true is critical: Samsung Gallery stores GPS in XMP on many devices,
-  // not in the standard EXIF GPS IFD that prior strategies were checking.
+  // On Android, gallery photos arrive via content:// URIs. Passing the File
+  // object directly to exifr can result in only the first chunk being read,
+  // missing GPS data stored deeper in the file. Reading the entire file into
+  // an ArrayBuffer first forces Android's content resolver to deliver all bytes,
+  // then we parse that buffer — this works for both gallery and Files tab picks.
   let exifFilled = [];
   try {
     let parsed = null;
+
+    // Read full file bytes upfront — critical for Android gallery content:// URIs
+    let fileBuffer = null;
     try {
-      parsed = await exifr.parse(f, {
+      fileBuffer = await f.arrayBuffer();
+    } catch(err) { console.warn('ArrayBuffer read failed, will try File directly:', err); }
+
+    const exifSource = fileBuffer || f; // use buffer if available, else raw File
+
+    try {
+      parsed = await exifr.parse(exifSource, {
         tiff: true, exif: true, gps: true,
-        xmp:  true,   // ← Samsung & modern Android often store GPS here
+        xmp:  true,   // Samsung & modern Android often store GPS in XMP
         icc: false, iptc: false,
         translateValues: true,
         mergeOutput: true  // flatten all IFDs into one object
@@ -1029,10 +1039,10 @@ async function handlePhoto(e) {
         if (!isNaN(latD) && !isNaN(lngD)) { lat = latD; lng = lngD; }
       }
     }
-    // Path C: dedicated gps() helper as final fallback (reads file once more, but only if needed)
+    // Path C: dedicated gps() helper on the buffer as final fallback
     if (lat == null) {
       try {
-        const g = await exifr.gps(f);
+        const g = await exifr.gps(exifSource);
         if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
       } catch(err) { console.warn('exifr.gps() fallback failed:', err); }
     }
