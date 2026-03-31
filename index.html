@@ -559,6 +559,12 @@ input[type=file]{display:none;}
           <option value="length">Longest first</option>
         </select>
       </div>
+      <!-- Backup / Restore bar -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="exportBackup()">💾 Backup Data</button>
+        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="document.getElementById('importFile').click()">📂 Import Backup</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" onchange="importBackup(event)">
       <div id="clist">
         <div class="empty">
           <div style="font-size:46px;opacity:0.35;">🎣</div>
@@ -1750,6 +1756,92 @@ async function saveCatch() {
   photo=null;
   const pu=document.getElementById('puEl'),img=pu.querySelector('img');if(img)img.remove();
   document.getElementById('puInner').style.display='flex';
+}
+
+// ─────────────────────────────────────────────
+// BACKUP — Export & Import
+// ─────────────────────────────────────────────
+async function exportBackup() {
+  try {
+    showToast('Preparing backup…', 'success');
+    // Grab all photos from IndexedDB
+    const photos = await idbGetAll();
+    // Build combined backup object
+    const backup = {
+      version: 1,
+      exported: new Date().toISOString(),
+      app: 'NZ Fishing Log',
+      catchCount: catches.length,
+      catches: catches.map(({ photo, ...meta }) => meta), // metadata only (no in-memory blobs)
+      photos // { catchId: dataUrl, … }
+    };
+    const json = JSON.stringify(backup);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href     = url;
+    a.download = `fishing-log-backup-${date}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast(`Backup saved — ${catches.length} catch${catches.length !== 1 ? 'es' : ''} + photos`, 'success');
+  } catch(e) {
+    console.error('Backup error:', e);
+    showToast('Backup failed. Please try again.', 'error');
+  }
+}
+
+async function importBackup(event) {
+  const file = event.target.files[0];
+  event.target.value = ''; // reset so same file can be re-imported if needed
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    // Basic validation
+    if (!data.catches || !Array.isArray(data.catches)) {
+      showToast('Invalid backup file.', 'error'); return;
+    }
+    const incoming = data.catches.length;
+    const existingIds = new Set(catches.map(c => c.id));
+    let added = 0, skipped = 0;
+    // Merge catches — skip any whose ID already exists
+    for (const c of data.catches) {
+      if (existingIds.has(c.id)) { skipped++; continue; }
+      catches.push(c);
+      added++;
+    }
+    // Sort newest-first after merge
+    catches.sort((a, b) => {
+      const da = new Date((a.date || '1970-01-01') + 'T' + (a.time || '00:00'));
+      const db = new Date((b.date || '1970-01-01') + 'T' + (b.time || '00:00'));
+      return db - da;
+    });
+    persist();
+    // Restore photos into IndexedDB
+    let photoCount = 0;
+    if (data.photos && typeof data.photos === 'object') {
+      for (const [id, dataUrl] of Object.entries(data.photos)) {
+        if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+          await idbPut(id, dataUrl);
+          photoCount++;
+        }
+      }
+    }
+    // Hydrate in-memory photos for newly added catches
+    const allPhotos = await idbGetAll();
+    catches.forEach(c => { if (allPhotos[c.id]) c.photo = allPhotos[c.id]; });
+    updateHeader();
+    renderList();
+    renderStats();
+    const msg = added > 0
+      ? `Imported ${added} catch${added !== 1 ? 'es' : ''} + ${photoCount} photo${photoCount !== 1 ? 's' : ''}${skipped ? ` (${skipped} already existed)` : ''}`
+      : `Nothing new to import — ${skipped} catch${skipped !== 1 ? 'es' : ''} already in your log`;
+    showToast(msg, added > 0 ? 'success' : 'error');
+  } catch(e) {
+    console.error('Import error:', e);
+    showToast('Could not read backup file. Is it a valid Fishing Log backup?', 'error');
+  }
 }
 
 function persist() {
