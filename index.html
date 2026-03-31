@@ -245,7 +245,7 @@ input[type=file]{display:none;}
 
       <div class="sec">
         <div class="stitle">📸 Photo</div>
-        <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
+        <div class="pu" id="puEl" onclick="openPhotoPicker('fiPhoto')">
           <div class="pu-inner" id="puInner">
             <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
               <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
@@ -261,11 +261,10 @@ input[type=file]{display:none;}
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+          <button class="gpsbtn" onclick="openPhotoPicker('fiPhoto')" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
+          <button class="gpsbtn" onclick="openPhotoPicker('fiPhoto')" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
         </div>
-        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)">
-        <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
+        <input type="file" id="fiPhoto" accept="image/*" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
       </div>
@@ -635,11 +634,10 @@ input[type=file]{display:none;}
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-            <button class="gpsbtn" onclick="const i=document.getElementById('efiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
-            <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+            <button class="gpsbtn" onclick="openPhotoPicker('efiPhoto')" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
+            <button class="gpsbtn" onclick="openPhotoPicker('efiPhoto')" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
           </div>
-          <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditPhoto(event)">
-          <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
+          <input type="file" id="efiPhoto" accept="image/*" onchange="handleEditPhoto(event)">
           <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         </div>
           <label>Fish species</label>
@@ -912,53 +910,34 @@ function go(p) {
 }
 
 // ─────────────────────────────────────────────
+// PHOTO PICKER — single input, no capture attr
+// Avoids Samsung "failed to open picker" bug
+// caused by value-reset + dual-input pattern
+// ─────────────────────────────────────────────
+function openPhotoPicker(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  // Do NOT reset .value here — that's what breaks Samsung's picker.
+  // If the user picks the same photo twice, the change event still fires
+  // because we're not resetting, which is fine for a fishing log.
+  input.click();
+}
+
+// ─────────────────────────────────────────────
 // IMAGE COMPRESSION
 // ─────────────────────────────────────────────
 function compressImage(file, maxPx, quality) {
-  return new Promise(async (resolve, reject) => {
-
-    // ── Read EXIF orientation FIRST (Samsung Galaxy stores rotation here) ──
-    let orientation = 1;
-    try {
-      const exif = await exifr.parse(file, { tiff: true, exif: false, gps: false });
-      if (exif?.Orientation) orientation = exif.Orientation;
-    } catch(e) { /* non-fatal — default to 1 (no rotation) */ }
-
+  return new Promise((resolve, reject) => {
     function drawAndCompress(img) {
-      let sw = img.width, sh = img.height;
-
-      // Samsung photos are typically orientation 6 (90° CW) or 8 (90° CCW).
-      // For rotated images, swap width/height so the canvas is the right shape.
-      const rotated = orientation >= 5 && orientation <= 8;
-      let w = rotated ? sh : sw;
-      let h = rotated ? sw : sh;
-
-      if (w > maxPx || h > maxPx) {
-        const ratio = Math.min(maxPx / w, maxPx / h);
+      let w = img.width, h = img.height;
+      if(w > maxPx || h > maxPx) {
+        const ratio = Math.min(maxPx/w, maxPx/h);
         w = Math.round(w * ratio);
         h = Math.round(h * ratio);
       }
-
       const canvas = document.createElement('canvas');
-      canvas.width  = w;
-      canvas.height = h;
-      const ctx = canvas.getContext('2d');
-
-      // Apply the EXIF rotation transform before drawing
-      ctx.save();
-      switch (orientation) {
-        case 2: ctx.transform(-1,  0,  0,  1,  w, 0); break;          // flip H
-        case 3: ctx.transform(-1,  0,  0, -1,  w, h); break;          // 180°
-        case 4: ctx.transform( 1,  0,  0, -1,  0, h); break;          // flip V
-        case 5: ctx.transform( 0,  1,  1,  0,  0, 0); break;          // transpose
-        case 6: ctx.transform( 0,  1, -1,  0,  h, 0); break;          // 90° CW  ← Samsung default
-        case 7: ctx.transform( 0, -1, -1,  0,  h, w); break;          // transverse
-        case 8: ctx.transform( 0, -1,  1,  0,  0, w); break;          // 90° CCW
-        default: break;                                                  // 1 = normal
-      }
-      ctx.drawImage(img, 0, 0, rotated ? h : w, rotated ? w : h);
-      ctx.restore();
-
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       const compressed = canvas.toDataURL('image/jpeg', quality);
       resolve({ dataUrl: compressed, origSize: file.size, compSize: Math.round(compressed.length * 0.75), w, h });
     }
@@ -967,9 +946,9 @@ function compressImage(file, maxPx, quality) {
     let objectUrl;
     try { objectUrl = URL.createObjectURL(file); } catch(e) { objectUrl = null; }
 
-    if (objectUrl) {
+    if(objectUrl) {
       const img = new Image();
-      img.onload  = () => { drawAndCompress(img); URL.revokeObjectURL(objectUrl); };
+      img.onload = () => { drawAndCompress(img); URL.revokeObjectURL(objectUrl); };
       img.onerror = () => {
         // Samsung HEIC or other format Chrome canvas can't handle — fall back to FileReader
         URL.revokeObjectURL(objectUrl);
@@ -982,9 +961,9 @@ function compressImage(file, maxPx, quality) {
 
     function tryFileReader() {
       const reader = new FileReader();
-      reader.onload  = e => {
+      reader.onload = e => {
         const img = new Image();
-        img.onload  = () => drawAndCompress(img);
+        img.onload = () => drawAndCompress(img);
         img.onerror = () => { showToast('Could not load image — try a different photo', 'error'); reject(new Error('img load failed')); };
         img.src = e.target.result;
       };
