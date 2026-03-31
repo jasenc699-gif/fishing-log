@@ -781,7 +781,6 @@ let logMap = null, logPin = null, logStreetLayer = null, logSatLayer = null, log
 let mainMap = null, mainPins = [], mainStreetLayer = null, mainSatLayer = null, mainLayerMode = 'street';
 let cmaps = {};
 let geoTimer = null, revTimer = null;
-let wxLat = -37.6878, wxLng = 176.1651; // default Tauranga
 
 // ── Shared app-level GPS (used by Tide & Bite tabs) ──
 const APP_DEFAULT_LAT = -37.6878, APP_DEFAULT_LNG = 176.1651;
@@ -847,6 +846,7 @@ async function initStorage() {
     for (const c of catches) {
       if (c.photo) {
         await idbPut(c.id, c.photo);
+        delete c.photo; // remove from in-memory object; IDB is now the source of truth
         migrated = true;
       }
     }
@@ -1017,6 +1017,12 @@ async function handlePhoto(e) {
           typeof parsed.longitude === 'number' && !isNaN(parsed.longitude)) {
         lat = parsed.latitude;
         lng = parsed.longitude;
+      }
+      // Path A2: exifr sometimes nests GPS under a 'gps' sub-object
+      if (lat == null && parsed.gps &&
+          typeof parsed.gps.latitude === 'number' && !isNaN(parsed.gps.latitude)) {
+        lat = parsed.gps.latitude;
+        lng = parsed.gps.longitude;
       }
       // Path B: raw DMS rational arrays (some Samsung firmware versions)
       if (lat == null && Array.isArray(parsed.GPSLatitude) && Array.isArray(parsed.GPSLongitude)) {
@@ -2067,21 +2073,6 @@ function updateHeader() {
   document.getElementById('hcount').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+' logged';
 }
 
-// ─────────────────────────────────────────────
-// DEFAULT LOGO SVG
-// ─────────────────────────────────────────────
-const DEFAULT_SVG_HTML = `
-  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="width:52px;height:52px;opacity:0.45;">
-    <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#aaa" stroke-width="18" stroke-linecap="round"/>
-    <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#bbb"/>
-    <path d="M210 260 L165 225 L165 295 Z" fill="#bbb"/>
-    <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#bbb"/>
-    <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#bbb"/>
-    <circle cx="310" cy="250" r="5" fill="#e0e0dc"/>
-    <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#ccc" stroke-width="20" stroke-linecap="round"/>
-    <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#ccc" stroke-width="12" stroke-linecap="round"/>
-  </svg>`;
-
 function renderList() {
   // FIX: destroy stale Leaflet instances before rebuilding to prevent memory leaks
   Object.keys(cmaps).forEach(id => { try { cmaps[id].remove(); } catch(e) {} });
@@ -2231,7 +2222,82 @@ async function handleEditPhoto(e) {
     );
     return;
   }
+
   const infoEl = document.getElementById('editPhotoInfo');
+  infoEl.style.display = 'none';
+
+  // ── Extract EXIF (GPS + datetime) from original file ──
+  let exifFilled = [];
+  try {
+    let parsed = null;
+    try {
+      parsed = await exifr.parse(f, {
+        tiff: true, exif: true, gps: true,
+        xmp: true, icc: false, iptc: false,
+        translateValues: true, mergeOutput: true
+      });
+    } catch(err) { console.warn('Edit EXIF primary parse failed:', err); }
+
+    let lat = null, lng = null;
+    if (parsed) {
+      if (typeof parsed.latitude === 'number' && !isNaN(parsed.latitude) &&
+          typeof parsed.longitude === 'number' && !isNaN(parsed.longitude)) {
+        lat = parsed.latitude; lng = parsed.longitude;
+      }
+      if (lat == null && parsed.gps &&
+          typeof parsed.gps.latitude === 'number' && !isNaN(parsed.gps.latitude)) {
+        lat = parsed.gps.latitude; lng = parsed.gps.longitude;
+      }
+      if (lat == null && Array.isArray(parsed.GPSLatitude) && Array.isArray(parsed.GPSLongitude)) {
+        const dms2dd = (dms, ref) => {
+          const dd = dms[0] + dms[1] / 60 + dms[2] / 3600;
+          return (ref === 'S' || ref === 'W') ? -dd : dd;
+        };
+        const latD = dms2dd(parsed.GPSLatitude, parsed.GPSLatitudeRef || 'N');
+        const lngD = dms2dd(parsed.GPSLongitude, parsed.GPSLongitudeRef || 'E');
+        if (!isNaN(latD) && !isNaN(lngD)) { lat = latD; lng = lngD; }
+      }
+    }
+    if (lat == null) {
+      try {
+        const g = await exifr.gps(f);
+        if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
+      } catch(err) { console.warn('Edit exifr.gps() fallback failed:', err); }
+    }
+
+    if (lat != null && lng != null) {
+      document.getElementById('elat').value = lat.toFixed(4);
+      document.getElementById('elng').value = lng.toFixed(4);
+      if (editMap && editPin) { editPin.setLatLng([lat, lng]); editMap.setView([lat, lng], 14); }
+      clearTimeout(editRevTimer); editRevTimer = setTimeout(() => revGeoEdit(lat, lng), 300);
+      exifFilled.push('📍 GPS location');
+    }
+
+    if (parsed) {
+      const dt = parsed.DateTimeOriginal ?? parsed.CreateDate ?? parsed.DateTime;
+      if (dt) {
+        const d = dt instanceof Date ? dt : new Date(dt);
+        if (!isNaN(d)) {
+          const yy = d.getFullYear(), mm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+          const hh = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
+          document.getElementById('edate').value = `${yy}-${mm}-${dd}`;
+          document.getElementById('etime').value = `${hh}:${mi}`;
+          exifFilled.push('📅 Date & time');
+        }
+      }
+    }
+  } catch(err) { console.warn('Edit EXIF parse error:', err); }
+
+  infoEl.style.display = 'block';
+  if (exifFilled.length) {
+    infoEl.style.color = 'var(--teal)';
+    infoEl.textContent = '✅ Auto-filled from photo: ' + exifFilled.join(' · ');
+  } else {
+    infoEl.style.color = 'var(--hint)';
+    infoEl.textContent = 'ℹ️ No location/date found in photo';
+  }
+
+  // ── Compress and display ──
   let result;
   try { result = await compressImage(f, 1200, 0.78); } catch(e) { return; }
   editPhoto = result.dataUrl;
@@ -2242,7 +2308,7 @@ async function handleEditPhoto(e) {
   epuEl.appendChild(img);
   const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
   infoEl.style.display = 'block';
-  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB`;
+  infoEl.textContent += ` · 📸 ${origKB}KB → ${compKB}KB`;
 }
 
 function saveEdit() {
