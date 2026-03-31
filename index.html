@@ -263,7 +263,7 @@ input[type=file]{display:none;}
           <button class="gpsbtn" onclick="const i=document.getElementById('fiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
           <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
         </div>
-        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handleCameraPhoto(event)">
         <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
@@ -637,7 +637,7 @@ input[type=file]{display:none;}
             <button class="gpsbtn" onclick="const i=document.getElementById('efiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
             <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
           </div>
-          <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditPhoto(event)">
+          <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditCameraPhoto(event)">
           <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
           <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         </div>
@@ -992,27 +992,30 @@ async function handlePhoto(e) {
   infoEl.style.display  = 'none';
 
   // ── 1. Extract EXIF (GPS + datetime) from original file ──
-  // Single comprehensive parse — avoids multiple reads of the same File object,
-  // which can silently fail on Samsung content:// URIs in Android WebView.
-  // xmp:true is critical: Samsung Gallery stores GPS in XMP on many devices,
-  // not in the standard EXIF GPS IFD that prior strategies were checking.
+  // We read the raw bytes into an ArrayBuffer first. Passing the ArrayBuffer
+  // directly to exifr guarantees it sees the original JPEG bytes, bypassing
+  // any browser/OS re-encoding pipeline that can silently strip EXIF metadata
+  // (common on iOS Safari and Android Chrome when using the file picker).
   let exifFilled = [];
   try {
+    // Read raw bytes once — reuse the buffer for all parse attempts
+    const buf = await f.arrayBuffer();
+
     let parsed = null;
     try {
-      parsed = await exifr.parse(f, {
+      parsed = await exifr.parse(buf, {
         tiff: true, exif: true, gps: true,
-        xmp:  true,   // ← Samsung & modern Android often store GPS here
+        xmp: true,   // Samsung & modern Android often store GPS in XMP
         icc: false, iptc: false,
         translateValues: true,
-        mergeOutput: true  // flatten all IFDs into one object
+        mergeOutput: true
       });
     } catch(err) { console.warn('EXIF primary parse failed:', err); }
 
     // ── GPS ──
     let lat = null, lng = null;
     if (parsed) {
-      // Path A: exifr already translated to decimal degrees (most devices)
+      // Path A: exifr translated to decimal degrees (most devices)
       if (typeof parsed.latitude === 'number' && !isNaN(parsed.latitude) &&
           typeof parsed.longitude === 'number' && !isNaN(parsed.longitude)) {
         lat = parsed.latitude;
@@ -1035,10 +1038,10 @@ async function handlePhoto(e) {
         if (!isNaN(latD) && !isNaN(lngD)) { lat = latD; lng = lngD; }
       }
     }
-    // Path C: dedicated gps() helper as final fallback (reads file once more, but only if needed)
+    // Path C: dedicated gps() helper on the same buffer as final fallback
     if (lat == null) {
       try {
-        const g = await exifr.gps(f);
+        const g = await exifr.gps(buf);
         if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
       } catch(err) { console.warn('exifr.gps() fallback failed:', err); }
     }
@@ -1051,7 +1054,7 @@ async function handlePhoto(e) {
       exifFilled.push('📍 GPS location');
     }
 
-    // ── DateTime — reuse the same parsed object, no second file read ──
+    // ── DateTime ──
     if (parsed) {
       const dt = parsed.DateTimeOriginal ?? parsed.CreateDate ?? parsed.DateTime;
       if (dt) {
@@ -1091,8 +1094,129 @@ async function handlePhoto(e) {
 }
 
 // ─────────────────────────────────────────────
-// GEOCODING
+// CAMERA PHOTO HANDLERS
+// Camera-captured images have no EXIF GPS or datetime — the browser either
+// strips metadata on capture or the data simply isn't embedded yet.
+// Instead, we fill date/time from the device clock and GPS from the device
+// location API, giving the same auto-fill experience as a library photo.
 // ─────────────────────────────────────────────
+async function handleCameraPhoto(e) {
+  const f = e.target.files[0]; if(!f) return;
+
+  const exifEl = document.getElementById('exifInfo');
+  const infoEl = document.getElementById('compressInfo');
+  exifEl.style.display = 'none';
+  infoEl.style.display = 'none';
+
+  // ── 1. Fill date & time from device clock ──
+  const now = new Date();
+  document.getElementById('cdate').value = now.toISOString().split('T')[0];
+  document.getElementById('ctime').value = now.toTimeString().slice(0, 5);
+  const filled = ['📅 Date & time'];
+
+  // ── 2. Fill GPS from device location ──
+  exifEl.style.display = 'block';
+  exifEl.style.color = 'var(--teal)';
+  exifEl.innerHTML = '<span class="spin"></span> Getting GPS location…';
+
+  let gpsOk = false;
+  await new Promise(resolve => {
+    if (!navigator.geolocation) { resolve(); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const la = pos.coords.latitude, ln = pos.coords.longitude;
+        document.getElementById('clat').value = la.toFixed(4);
+        document.getElementById('clng').value = ln.toFixed(4);
+        if (logMap && logPin) { logPin.setLatLng([la, ln]); logMap.setView([la, ln], 14); }
+        clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(la, ln), 300);
+        filled.push('📍 GPS location');
+        gpsOk = true;
+        resolve();
+      },
+      () => resolve(), // GPS denied — continue without it
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+
+  exifEl.style.color = gpsOk ? 'var(--teal)' : 'var(--hint)';
+  exifEl.textContent = gpsOk
+    ? '✅ Auto-filled from device: ' + filled.join(' · ')
+    : '✅ Auto-filled from device: 📅 Date & time  (GPS unavailable — enter location manually)';
+
+  // ── 3. Compress and display ──
+  let result;
+  try { result = await compressImage(f, 1200, 0.78); } catch(ex) { return; }
+  photo = result.dataUrl;
+  document.getElementById('puInner').style.display = 'none';
+  const existing = document.querySelector('#puEl img'); if(existing) existing.remove();
+  const img = document.createElement('img'); img.src = photo;
+  document.getElementById('puEl').appendChild(img);
+  const origKB = Math.round(result.origSize / 1024), compKB = Math.round(result.compSize / 1024);
+  infoEl.style.display = 'block';
+  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB (${result.w}×${result.h}px)`;
+}
+
+async function handleEditCameraPhoto(e) {
+  const f = e.target.files[0]; if(!f) return;
+
+  const ftype = (f.type || '').toLowerCase();
+  const fname = (f.name || '').toLowerCase();
+  if (ftype === 'image/heic' || ftype === 'image/heif' ||
+      fname.endsWith('.heic') || fname.endsWith('.heif')) {
+    showToast('HEIC photos aren\'t supported. Switch your camera to JPEG in Settings.', 'error');
+    return;
+  }
+
+  const infoEl = document.getElementById('editPhotoInfo');
+  infoEl.style.display = 'block';
+  infoEl.style.color = 'var(--teal)';
+  infoEl.innerHTML = '<span class="spin"></span> Getting GPS location…';
+
+  // ── 1. Fill date & time from device clock ──
+  const now = new Date();
+  document.getElementById('edate').value = now.toISOString().split('T')[0];
+  document.getElementById('etime').value = now.toTimeString().slice(0, 5);
+  const filled = ['📅 Date & time'];
+
+  // ── 2. Fill GPS from device location ──
+  let gpsOk = false;
+  await new Promise(resolve => {
+    if (!navigator.geolocation) { resolve(); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const la = pos.coords.latitude, ln = pos.coords.longitude;
+        document.getElementById('elat').value = la.toFixed(4);
+        document.getElementById('elng').value = ln.toFixed(4);
+        if (editMap && editPin) { editPin.setLatLng([la, ln]); editMap.setView([la, ln], 14); }
+        clearTimeout(editRevTimer); editRevTimer = setTimeout(() => revGeoEdit(la, ln), 300);
+        filled.push('📍 GPS location');
+        gpsOk = true;
+        resolve();
+      },
+      () => resolve(),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
+
+  infoEl.style.color = gpsOk ? 'var(--teal)' : 'var(--hint)';
+  infoEl.textContent = gpsOk
+    ? '✅ Auto-filled from device: ' + filled.join(' · ')
+    : '✅ Auto-filled: 📅 Date & time  (GPS unavailable — enter location manually)';
+
+  // ── 3. Compress and display ──
+  let result;
+  try { result = await compressImage(f, 1200, 0.78); } catch(ex) { return; }
+  editPhoto = result.dataUrl;
+  const epuEl = document.getElementById('epuEl');
+  const existing = epuEl.querySelector('img'); if(existing) existing.remove();
+  document.getElementById('epuInner').style.display = 'none';
+  const img = document.createElement('img'); img.src = editPhoto;
+  epuEl.appendChild(img);
+  const origKB = Math.round(result.origSize / 1024), compKB = Math.round(result.compSize / 1024);
+  infoEl.textContent += ` · 📸 ${origKB}KB → ${compKB}KB`;
+}
+
+
 function setGeoStatus(msg, spin) {
   const e = document.getElementById('gstat');
   e.innerHTML = spin ? `<span class="spin"></span> ${msg}` : msg;
@@ -2226,12 +2350,14 @@ async function handleEditPhoto(e) {
   const infoEl = document.getElementById('editPhotoInfo');
   infoEl.style.display = 'none';
 
-  // ── Extract EXIF (GPS + datetime) from original file ──
+  // ── Extract EXIF (GPS + datetime) — read raw bytes first ──
   let exifFilled = [];
   try {
+    const buf = await f.arrayBuffer();
+
     let parsed = null;
     try {
-      parsed = await exifr.parse(f, {
+      parsed = await exifr.parse(buf, {
         tiff: true, exif: true, gps: true,
         xmp: true, icc: false, iptc: false,
         translateValues: true, mergeOutput: true
@@ -2260,7 +2386,7 @@ async function handleEditPhoto(e) {
     }
     if (lat == null) {
       try {
-        const g = await exifr.gps(f);
+        const g = await exifr.gps(buf);
         if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
       } catch(err) { console.warn('Edit exifr.gps() fallback failed:', err); }
     }
