@@ -1000,6 +1000,7 @@ async function handlePhoto(e) {
   try {
     // Read raw bytes once — reuse the buffer for all parse attempts
     const buf = await f.arrayBuffer();
+    console.log('[EXIF DEBUG] File:', f.name, f.type, f.size, 'bytes');
 
     let parsed = null;
     try {
@@ -1010,22 +1011,28 @@ async function handlePhoto(e) {
         translateValues: true,
         mergeOutput: true
       });
+      console.log('[EXIF DEBUG] Full parsed output:', JSON.stringify(parsed, null, 2));
     } catch(err) { console.warn('EXIF primary parse failed:', err); }
 
     // ── GPS ──
     let lat = null, lng = null;
     if (parsed) {
+      console.log('[EXIF DEBUG] parsed.latitude:', parsed.latitude, 'parsed.longitude:', parsed.longitude);
+      console.log('[EXIF DEBUG] parsed.gps:', parsed.gps);
+      console.log('[EXIF DEBUG] parsed.GPSLatitude:', parsed.GPSLatitude, 'parsed.GPSLongitude:', parsed.GPSLongitude);
       // Path A: exifr translated to decimal degrees (most devices)
       if (typeof parsed.latitude === 'number' && !isNaN(parsed.latitude) &&
           typeof parsed.longitude === 'number' && !isNaN(parsed.longitude)) {
         lat = parsed.latitude;
         lng = parsed.longitude;
+        console.log('[EXIF DEBUG] GPS via Path A:', lat, lng);
       }
       // Path A2: exifr sometimes nests GPS under a 'gps' sub-object
       if (lat == null && parsed.gps &&
           typeof parsed.gps.latitude === 'number' && !isNaN(parsed.gps.latitude)) {
         lat = parsed.gps.latitude;
         lng = parsed.gps.longitude;
+        console.log('[EXIF DEBUG] GPS via Path A2:', lat, lng);
       }
       // Path B: raw DMS rational arrays (some Samsung firmware versions)
       if (lat == null && Array.isArray(parsed.GPSLatitude) && Array.isArray(parsed.GPSLongitude)) {
@@ -1036,15 +1043,20 @@ async function handlePhoto(e) {
         const latD = dms2dd(parsed.GPSLatitude,  parsed.GPSLatitudeRef  || 'N');
         const lngD = dms2dd(parsed.GPSLongitude, parsed.GPSLongitudeRef || 'E');
         if (!isNaN(latD) && !isNaN(lngD)) { lat = latD; lng = lngD; }
+        console.log('[EXIF DEBUG] GPS via Path B:', lat, lng);
       }
+    } else {
+      console.warn('[EXIF DEBUG] parsed is null — exifr returned nothing');
     }
     // Path C: dedicated gps() helper on the same buffer as final fallback
     if (lat == null) {
       try {
         const g = await exifr.gps(buf);
+        console.log('[EXIF DEBUG] exifr.gps() result:', g);
         if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
       } catch(err) { console.warn('exifr.gps() fallback failed:', err); }
     }
+    console.log('[EXIF DEBUG] Final lat/lng:', lat, lng);
 
     if (lat != null && lng != null) {
       document.getElementById('clat').value = lat.toFixed(4);
