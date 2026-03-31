@@ -992,57 +992,65 @@ async function handlePhoto(e) {
   infoEl.style.display  = 'none';
 
   // ── 1. Extract EXIF (GPS + datetime) from original file ──
+  // Single comprehensive parse — avoids multiple reads of the same File object,
+  // which can silently fail on Samsung content:// URIs in Android WebView.
+  // xmp:true is critical: Samsung Gallery stores GPS in XMP on many devices,
+  // not in the standard EXIF GPS IFD that prior strategies were checking.
   let exifFilled = [];
   try {
-    // GPS — try three strategies in sequence; different phone/camera formats
-    // respond to different exifr APIs so we cascade until one succeeds.
-    const gpsCoords = await (async () => {
-      // Strategy 1: dedicated gps() helper (best for most iOS + modern Android)
+    let parsed = null;
+    try {
+      parsed = await exifr.parse(f, {
+        tiff: true, exif: true, gps: true,
+        xmp:  true,   // ← Samsung & modern Android often store GPS here
+        icc: false, iptc: false,
+        translateValues: true,
+        mergeOutput: true  // flatten all IFDs into one object
+      });
+    } catch(err) { console.warn('EXIF primary parse failed:', err); }
+
+    // ── GPS ──
+    let lat = null, lng = null;
+    if (parsed) {
+      // Path A: exifr already translated to decimal degrees (most devices)
+      if (typeof parsed.latitude === 'number' && !isNaN(parsed.latitude) &&
+          typeof parsed.longitude === 'number' && !isNaN(parsed.longitude)) {
+        lat = parsed.latitude;
+        lng = parsed.longitude;
+      }
+      // Path B: raw DMS rational arrays (some Samsung firmware versions)
+      if (lat == null && Array.isArray(parsed.GPSLatitude) && Array.isArray(parsed.GPSLongitude)) {
+        const dms2dd = (dms, ref) => {
+          const dd = dms[0] + dms[1] / 60 + dms[2] / 3600;
+          return (ref === 'S' || ref === 'W') ? -dd : dd;
+        };
+        const latD = dms2dd(parsed.GPSLatitude,  parsed.GPSLatitudeRef  || 'N');
+        const lngD = dms2dd(parsed.GPSLongitude, parsed.GPSLongitudeRef || 'E');
+        if (!isNaN(latD) && !isNaN(lngD)) { lat = latD; lng = lngD; }
+      }
+    }
+    // Path C: dedicated gps() helper as final fallback (reads file once more, but only if needed)
+    if (lat == null) {
       try {
         const g = await exifr.gps(f);
-        if(g?.latitude != null && g?.longitude != null && !isNaN(g.latitude) && !isNaN(g.longitude))
-          return { lat: g.latitude, lng: g.longitude };
-      } catch(e) {}
-      // Strategy 2: full parse with gps:true (catches Samsung & some HEIC variants)
-      try {
-        const t = await exifr.parse(f, { gps: true, tiff: true, exif: false, icc: false, iptc: false });
-        const lat = t?.latitude ?? t?.GPSLatitude;
-        const lng = t?.longitude ?? t?.GPSLongitude;
-        if(lat != null && lng != null && !isNaN(lat) && !isNaN(lng))
-          return { lat, lng };
-      } catch(e) {}
-      // Strategy 3: parse the raw GPS IFD tags and convert DMS manually
-      try {
-        const t = await exifr.parse(f, { gps: true, tiff: true, translateValues: false });
-        if(t?.GPSLatitude && t?.GPSLongitude) {
-          const dms2dd = (dms, ref) => {
-            const dd = dms[0] + dms[1]/60 + dms[2]/3600;
-            return (ref==='S'||ref==='W') ? -dd : dd;
-          };
-          const lat = dms2dd(t.GPSLatitude, t.GPSLatitudeRef);
-          const lng = dms2dd(t.GPSLongitude, t.GPSLongitudeRef);
-          if(!isNaN(lat) && !isNaN(lng)) return { lat, lng };
-        }
-      } catch(e) {}
-      return null;
-    })();
+        if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
+      } catch(err) { console.warn('exifr.gps() fallback failed:', err); }
+    }
 
-    if(gpsCoords) {
-      const { lat, lng } = gpsCoords;
+    if (lat != null && lng != null) {
       document.getElementById('clat').value = lat.toFixed(4);
       document.getElementById('clng').value = lng.toFixed(4);
-      if(logMap && logPin) { logPin.setLatLng([lat,lng]); logMap.setView([lat,lng],14); }
+      if (logMap && logPin) { logPin.setLatLng([lat, lng]); logMap.setView([lat, lng], 14); }
       clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(lat, lng), 300);
       exifFilled.push('📍 GPS location');
     }
 
-    // DateTime — parse separately for datetime fields
-    const exif = await exifr.parse(f, { tiff: true, exif: true, gps: false });
-    if(exif) {
-      const dt = exif.DateTimeOriginal ?? exif.CreateDate ?? exif.DateTime;
-      if(dt) {
+    // ── DateTime — reuse the same parsed object, no second file read ──
+    if (parsed) {
+      const dt = parsed.DateTimeOriginal ?? parsed.CreateDate ?? parsed.DateTime;
+      if (dt) {
         const d = dt instanceof Date ? dt : new Date(dt);
-        if(!isNaN(d)) {
+        if (!isNaN(d)) {
           const yy = d.getFullYear(), mm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
           const hh = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
           document.getElementById('cdate').value = `${yy}-${mm}-${dd}`;
