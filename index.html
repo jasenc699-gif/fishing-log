@@ -916,6 +916,14 @@ function go(p) {
 function compressImage(file, maxPx, quality) {
   return new Promise((resolve, reject) => {
     function drawAndCompress(img) {
+      // Guard: Samsung Cloud / virtual photos can fire onload with zero dimensions.
+      // Attempting to draw a 0×0 image produces a blank JPEG that saves silently.
+      if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+        if (objectUrl) { try { URL.revokeObjectURL(objectUrl); } catch(e) {} }
+        showToast('Photo appears empty — it may still be downloading from Samsung Cloud. Wait a moment and try again.', 'error');
+        reject(new Error('Zero-dimension image'));
+        return;
+      }
       let w = img.width, h = img.height;
       if(w > maxPx || h > maxPx) {
         const ratio = Math.min(maxPx/w, maxPx/h);
@@ -926,7 +934,9 @@ function compressImage(file, maxPx, quality) {
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       const compressed = canvas.toDataURL('image/jpeg', quality);
-      resolve({ dataUrl: compressed, origSize: file.size, compSize: Math.round(compressed.length * 0.75), w, h });
+      // Strip the `data:image/jpeg;base64,` prefix before estimating byte size.
+      const b64 = compressed.substring(compressed.indexOf(',') + 1);
+      resolve({ dataUrl: compressed, origSize: file.size, compSize: Math.round(b64.length * 0.75), w, h });
     }
 
     // Primary: URL.createObjectURL — handles Samsung Gallery content:// URIs reliably
@@ -962,6 +972,19 @@ function compressImage(file, maxPx, quality) {
 
 async function handlePhoto(e) {
   const f = e.target.files[0]; if(!f) return;
+
+  // Samsung Gallery can deliver HEIC/HEIF files that Chrome's canvas cannot decode.
+  // Detect early and give a clear, actionable message instead of a generic error.
+  const ftype = (f.type || '').toLowerCase();
+  const fname = (f.name || '').toLowerCase();
+  if (ftype === 'image/heic' || ftype === 'image/heif' ||
+      fname.endsWith('.heic') || fname.endsWith('.heif')) {
+    showToast(
+      'HEIC photos aren\'t supported. In Samsung Gallery go to ⚙️ Settings → Pictures → Picture format and choose "High efficiency (HEIF)" → switch to "High compatibility (JPEG)".',
+      'error'
+    );
+    return;
+  }
 
   const exifEl  = document.getElementById('exifInfo');
   const infoEl  = document.getElementById('compressInfo');
@@ -2188,6 +2211,18 @@ function closeEdit() {
 
 async function handleEditPhoto(e) {
   const f = e.target.files[0]; if(!f) return;
+
+  // Same HEIC guard as the main log form — Samsung Gallery can deliver HEIC.
+  const ftype = (f.type || '').toLowerCase();
+  const fname = (f.name || '').toLowerCase();
+  if (ftype === 'image/heic' || ftype === 'image/heif' ||
+      fname.endsWith('.heic') || fname.endsWith('.heif')) {
+    showToast(
+      'HEIC photos aren\'t supported. In Samsung Gallery go to ⚙️ Settings → Pictures → Picture format and switch to "High compatibility (JPEG)".',
+      'error'
+    );
+    return;
+  }
   const infoEl = document.getElementById('editPhotoInfo');
   let result;
   try { result = await compressImage(f, 1200, 0.78); } catch(e) { return; }
