@@ -263,10 +263,8 @@ input[type=file]{display:none;}
           <button class="gpsbtn" onclick="const i=document.getElementById('fiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
           <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
         </div>
-        <!-- accept="image/jpeg,image/png,image/webp" instead of image/* forces Android to use
-             the Files app rather than Google Photos/Gallery, preserving original EXIF bytes -->
-        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handleCameraPhoto(event)">
-        <input type="file" id="fiLib" accept="image/jpeg,image/png,image/webp,image/tiff" onchange="handlePhoto(event)">
+        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)">
+        <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
       </div>
@@ -639,8 +637,8 @@ input[type=file]{display:none;}
             <button class="gpsbtn" onclick="const i=document.getElementById('efiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
             <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
           </div>
-          <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditCameraPhoto(event)">
-          <input type="file" id="efiLib" accept="image/jpeg,image/png,image/webp,image/tiff" onchange="handleEditPhoto(event)">
+          <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditPhoto(event)">
+          <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
           <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         </div>
           <label>Fish species</label>
@@ -783,6 +781,7 @@ let logMap = null, logPin = null, logStreetLayer = null, logSatLayer = null, log
 let mainMap = null, mainPins = [], mainStreetLayer = null, mainSatLayer = null, mainLayerMode = 'street';
 let cmaps = {};
 let geoTimer = null, revTimer = null;
+let wxLat = -37.6878, wxLng = 176.1651; // default Tauranga
 
 // ── Shared app-level GPS (used by Tide & Bite tabs) ──
 const APP_DEFAULT_LAT = -37.6878, APP_DEFAULT_LNG = 176.1651;
@@ -848,7 +847,6 @@ async function initStorage() {
     for (const c of catches) {
       if (c.photo) {
         await idbPut(c.id, c.photo);
-        delete c.photo; // remove from in-memory object; IDB is now the source of truth
         migrated = true;
       }
     }
@@ -994,47 +992,31 @@ async function handlePhoto(e) {
   infoEl.style.display  = 'none';
 
   // ── 1. Extract EXIF (GPS + datetime) from original file ──
-  // We read the raw bytes into an ArrayBuffer first. Passing the ArrayBuffer
-  // directly to exifr guarantees it sees the original JPEG bytes, bypassing
-  // any browser/OS re-encoding pipeline that can silently strip EXIF metadata
-  // (common on iOS Safari and Android Chrome when using the file picker).
+  // Single comprehensive parse — avoids multiple reads of the same File object,
+  // which can silently fail on Samsung content:// URIs in Android WebView.
+  // xmp:true is critical: Samsung Gallery stores GPS in XMP on many devices,
+  // not in the standard EXIF GPS IFD that prior strategies were checking.
   let exifFilled = [];
   try {
-    // Read raw bytes once — reuse the buffer for all parse attempts
-    const buf = await f.arrayBuffer();
-    console.log('[EXIF DEBUG] File:', f.name, f.type, f.size, 'bytes');
-
     let parsed = null;
     try {
-      parsed = await exifr.parse(buf, {
+      parsed = await exifr.parse(f, {
         tiff: true, exif: true, gps: true,
-        xmp: true,   // Samsung & modern Android often store GPS in XMP
+        xmp:  true,   // ← Samsung & modern Android often store GPS here
         icc: false, iptc: false,
         translateValues: true,
-        mergeOutput: true
+        mergeOutput: true  // flatten all IFDs into one object
       });
-      console.log('[EXIF DEBUG] Full parsed output:', JSON.stringify(parsed, null, 2));
     } catch(err) { console.warn('EXIF primary parse failed:', err); }
 
     // ── GPS ──
     let lat = null, lng = null;
     if (parsed) {
-      console.log('[EXIF DEBUG] parsed.latitude:', parsed.latitude, 'parsed.longitude:', parsed.longitude);
-      console.log('[EXIF DEBUG] parsed.gps:', parsed.gps);
-      console.log('[EXIF DEBUG] parsed.GPSLatitude:', parsed.GPSLatitude, 'parsed.GPSLongitude:', parsed.GPSLongitude);
-      // Path A: exifr translated to decimal degrees (most devices)
+      // Path A: exifr already translated to decimal degrees (most devices)
       if (typeof parsed.latitude === 'number' && !isNaN(parsed.latitude) &&
           typeof parsed.longitude === 'number' && !isNaN(parsed.longitude)) {
         lat = parsed.latitude;
         lng = parsed.longitude;
-        console.log('[EXIF DEBUG] GPS via Path A:', lat, lng);
-      }
-      // Path A2: exifr sometimes nests GPS under a 'gps' sub-object
-      if (lat == null && parsed.gps &&
-          typeof parsed.gps.latitude === 'number' && !isNaN(parsed.gps.latitude)) {
-        lat = parsed.gps.latitude;
-        lng = parsed.gps.longitude;
-        console.log('[EXIF DEBUG] GPS via Path A2:', lat, lng);
       }
       // Path B: raw DMS rational arrays (some Samsung firmware versions)
       if (lat == null && Array.isArray(parsed.GPSLatitude) && Array.isArray(parsed.GPSLongitude)) {
@@ -1045,20 +1027,15 @@ async function handlePhoto(e) {
         const latD = dms2dd(parsed.GPSLatitude,  parsed.GPSLatitudeRef  || 'N');
         const lngD = dms2dd(parsed.GPSLongitude, parsed.GPSLongitudeRef || 'E');
         if (!isNaN(latD) && !isNaN(lngD)) { lat = latD; lng = lngD; }
-        console.log('[EXIF DEBUG] GPS via Path B:', lat, lng);
       }
-    } else {
-      console.warn('[EXIF DEBUG] parsed is null — exifr returned nothing');
     }
-    // Path C: dedicated gps() helper on the same buffer as final fallback
+    // Path C: dedicated gps() helper as final fallback (reads file once more, but only if needed)
     if (lat == null) {
       try {
-        const g = await exifr.gps(buf);
-        console.log('[EXIF DEBUG] exifr.gps() result:', g);
+        const g = await exifr.gps(f);
         if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
       } catch(err) { console.warn('exifr.gps() fallback failed:', err); }
     }
-    console.log('[EXIF DEBUG] Final lat/lng:', lat, lng);
 
     if (lat != null && lng != null) {
       document.getElementById('clat').value = lat.toFixed(4);
@@ -1067,7 +1044,8 @@ async function handlePhoto(e) {
       clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(lat, lng), 300);
       exifFilled.push('📍 GPS location');
     }
-    // ── DateTime ──
+
+    // ── DateTime — reuse the same parsed object, no second file read ──
     if (parsed) {
       const dt = parsed.DateTimeOriginal ?? parsed.CreateDate ?? parsed.DateTime;
       if (dt) {
@@ -1083,7 +1061,17 @@ async function handlePhoto(e) {
     }
   } catch(err) { console.warn('EXIF parse error:', err); }
 
-  // ── 2. Compress and display (do this while GPS resolves in background) ──
+  // Show EXIF result
+  exifEl.style.display = 'block';
+  if(exifFilled.length) {
+    exifEl.style.color = 'var(--teal)';
+    exifEl.textContent = '✅ Auto-filled from photo: ' + exifFilled.join(' · ');
+  } else {
+    exifEl.style.color = 'var(--hint)';
+    exifEl.textContent = 'ℹ️ No location or date found in photo — please enter manually below';
+  }
+
+  // ── 2. Compress and display ──
   let result;
   try { result = await compressImage(f, 1200, 0.78); } catch(e) { return; } // error already toasted
   photo = result.dataUrl;
@@ -1094,187 +1082,11 @@ async function handlePhoto(e) {
   const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
   infoEl.style.display = 'block';
   infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB (${result.w}×${result.h}px)`;
-
-  // ── 3. Show EXIF result — if no GPS, auto-fall back to device GPS ──
-  const hasGPS = exifFilled.includes('📍 GPS location');
-  const hasDate = exifFilled.includes('📅 Date & time');
-  exifEl.style.display = 'block';
-
-  if (hasGPS && hasDate) {
-    exifEl.style.color = 'var(--teal)';
-    exifEl.textContent = '✅ Auto-filled from photo: 📍 GPS location · 📅 Date & time';
-  } else if (hasDate && !hasGPS) {
-    // Got date but no GPS — photo was likely shared/synced with metadata stripped.
-    // Silently grab device GPS now.
-    exifEl.style.color = 'var(--teal)';
-    exifEl.innerHTML = '📅 Date auto-filled · <span class="spin"></span> Getting current GPS…';
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const la = pos.coords.latitude, ln = pos.coords.longitude;
-        document.getElementById('clat').value = la.toFixed(4);
-        document.getElementById('clng').value = ln.toFixed(4);
-        if (logMap && logPin) { logPin.setLatLng([la, ln]); logMap.setView([la, ln], 14); }
-        clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(la, ln), 300);
-        exifEl.textContent = '✅ Auto-filled: 📅 Date & time from photo · 📍 GPS from device';
-      }, () => {
-        exifEl.style.color = 'var(--hint)';
-        exifEl.textContent = '📅 Date auto-filled · ⚠️ GPS unavailable — enter location manually';
-      }, { enableHighAccuracy: true, timeout: 10000 });
-    } else {
-      exifEl.style.color = 'var(--hint)';
-      exifEl.textContent = '📅 Date auto-filled · enter location manually below';
-    }
-  } else {
-    // No EXIF at all — photo metadata was stripped (common with shared/cloud photos).
-    // Fall back entirely to device clock + GPS.
-    const now = new Date();
-    document.getElementById('cdate').value = now.toISOString().split('T')[0];
-    document.getElementById('ctime').value = now.toTimeString().slice(0, 5);
-    exifEl.style.color = 'var(--teal)';
-    exifEl.innerHTML = '📅 Date set to now · <span class="spin"></span> Getting current GPS…';
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const la = pos.coords.latitude, ln = pos.coords.longitude;
-        document.getElementById('clat').value = la.toFixed(4);
-        document.getElementById('clng').value = ln.toFixed(4);
-        if (logMap && logPin) { logPin.setLatLng([la, ln]); logMap.setView([la, ln], 14); }
-        clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(la, ln), 300);
-        exifEl.textContent = '✅ Auto-filled from device: 📍 GPS location · 📅 Date & time';
-      }, () => {
-        exifEl.style.color = 'var(--hint)';
-        exifEl.textContent = 'ℹ️ Photo has no location data — enter manually below (GPS also unavailable)';
-      }, { enableHighAccuracy: true, timeout: 10000 });
-    } else {
-      exifEl.style.color = 'var(--hint)';
-      exifEl.textContent = 'ℹ️ Photo has no location data — enter manually below';
-    }
-  }
 }
 
 // ─────────────────────────────────────────────
-// CAMERA PHOTO HANDLERS
-// Camera-captured images have no EXIF GPS or datetime — the browser either
-// strips metadata on capture or the data simply isn't embedded yet.
-// Instead, we fill date/time from the device clock and GPS from the device
-// location API, giving the same auto-fill experience as a library photo.
+// GEOCODING
 // ─────────────────────────────────────────────
-async function handleCameraPhoto(e) {
-  const f = e.target.files[0]; if(!f) return;
-
-  const exifEl = document.getElementById('exifInfo');
-  const infoEl = document.getElementById('compressInfo');
-  exifEl.style.display = 'none';
-  infoEl.style.display = 'none';
-
-  // ── 1. Fill date & time from device clock ──
-  const now = new Date();
-  document.getElementById('cdate').value = now.toISOString().split('T')[0];
-  document.getElementById('ctime').value = now.toTimeString().slice(0, 5);
-  const filled = ['📅 Date & time'];
-
-  // ── 2. Fill GPS from device location ──
-  exifEl.style.display = 'block';
-  exifEl.style.color = 'var(--teal)';
-  exifEl.innerHTML = '<span class="spin"></span> Getting GPS location…';
-
-  let gpsOk = false;
-  await new Promise(resolve => {
-    if (!navigator.geolocation) { resolve(); return; }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const la = pos.coords.latitude, ln = pos.coords.longitude;
-        document.getElementById('clat').value = la.toFixed(4);
-        document.getElementById('clng').value = ln.toFixed(4);
-        if (logMap && logPin) { logPin.setLatLng([la, ln]); logMap.setView([la, ln], 14); }
-        clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(la, ln), 300);
-        filled.push('📍 GPS location');
-        gpsOk = true;
-        resolve();
-      },
-      () => resolve(), // GPS denied — continue without it
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  });
-
-  exifEl.style.color = gpsOk ? 'var(--teal)' : 'var(--hint)';
-  exifEl.textContent = gpsOk
-    ? '✅ Auto-filled from device: ' + filled.join(' · ')
-    : '✅ Auto-filled from device: 📅 Date & time  (GPS unavailable — enter location manually)';
-
-  // ── 3. Compress and display ──
-  let result;
-  try { result = await compressImage(f, 1200, 0.78); } catch(ex) { return; }
-  photo = result.dataUrl;
-  document.getElementById('puInner').style.display = 'none';
-  const existing = document.querySelector('#puEl img'); if(existing) existing.remove();
-  const img = document.createElement('img'); img.src = photo;
-  document.getElementById('puEl').appendChild(img);
-  const origKB = Math.round(result.origSize / 1024), compKB = Math.round(result.compSize / 1024);
-  infoEl.style.display = 'block';
-  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB (${result.w}×${result.h}px)`;
-}
-
-async function handleEditCameraPhoto(e) {
-  const f = e.target.files[0]; if(!f) return;
-
-  const ftype = (f.type || '').toLowerCase();
-  const fname = (f.name || '').toLowerCase();
-  if (ftype === 'image/heic' || ftype === 'image/heif' ||
-      fname.endsWith('.heic') || fname.endsWith('.heif')) {
-    showToast('HEIC photos aren\'t supported. Switch your camera to JPEG in Settings.', 'error');
-    return;
-  }
-
-  const infoEl = document.getElementById('editPhotoInfo');
-  infoEl.style.display = 'block';
-  infoEl.style.color = 'var(--teal)';
-  infoEl.innerHTML = '<span class="spin"></span> Getting GPS location…';
-
-  // ── 1. Fill date & time from device clock ──
-  const now = new Date();
-  document.getElementById('edate').value = now.toISOString().split('T')[0];
-  document.getElementById('etime').value = now.toTimeString().slice(0, 5);
-  const filled = ['📅 Date & time'];
-
-  // ── 2. Fill GPS from device location ──
-  let gpsOk = false;
-  await new Promise(resolve => {
-    if (!navigator.geolocation) { resolve(); return; }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        const la = pos.coords.latitude, ln = pos.coords.longitude;
-        document.getElementById('elat').value = la.toFixed(4);
-        document.getElementById('elng').value = ln.toFixed(4);
-        if (editMap && editPin) { editPin.setLatLng([la, ln]); editMap.setView([la, ln], 14); }
-        clearTimeout(editRevTimer); editRevTimer = setTimeout(() => revGeoEdit(la, ln), 300);
-        filled.push('📍 GPS location');
-        gpsOk = true;
-        resolve();
-      },
-      () => resolve(),
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
-  });
-
-  infoEl.style.color = gpsOk ? 'var(--teal)' : 'var(--hint)';
-  infoEl.textContent = gpsOk
-    ? '✅ Auto-filled from device: ' + filled.join(' · ')
-    : '✅ Auto-filled: 📅 Date & time  (GPS unavailable — enter location manually)';
-
-  // ── 3. Compress and display ──
-  let result;
-  try { result = await compressImage(f, 1200, 0.78); } catch(ex) { return; }
-  editPhoto = result.dataUrl;
-  const epuEl = document.getElementById('epuEl');
-  const existing = epuEl.querySelector('img'); if(existing) existing.remove();
-  document.getElementById('epuInner').style.display = 'none';
-  const img = document.createElement('img'); img.src = editPhoto;
-  epuEl.appendChild(img);
-  const origKB = Math.round(result.origSize / 1024), compKB = Math.round(result.compSize / 1024);
-  infoEl.textContent += ` · 📸 ${origKB}KB → ${compKB}KB`;
-}
-
-
 function setGeoStatus(msg, spin) {
   const e = document.getElementById('gstat');
   e.innerHTML = spin ? `<span class="spin"></span> ${msg}` : msg;
@@ -2255,6 +2067,21 @@ function updateHeader() {
   document.getElementById('hcount').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+' logged';
 }
 
+// ─────────────────────────────────────────────
+// DEFAULT LOGO SVG
+// ─────────────────────────────────────────────
+const DEFAULT_SVG_HTML = `
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="width:52px;height:52px;opacity:0.45;">
+    <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#aaa" stroke-width="18" stroke-linecap="round"/>
+    <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#bbb"/>
+    <path d="M210 260 L165 225 L165 295 Z" fill="#bbb"/>
+    <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#bbb"/>
+    <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#bbb"/>
+    <circle cx="310" cy="250" r="5" fill="#e0e0dc"/>
+    <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#ccc" stroke-width="20" stroke-linecap="round"/>
+    <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#ccc" stroke-width="12" stroke-linecap="round"/>
+  </svg>`;
+
 function renderList() {
   // FIX: destroy stale Leaflet instances before rebuilding to prevent memory leaks
   Object.keys(cmaps).forEach(id => { try { cmaps[id].remove(); } catch(e) {} });
@@ -2404,130 +2231,18 @@ async function handleEditPhoto(e) {
     );
     return;
   }
-
   const infoEl = document.getElementById('editPhotoInfo');
-  infoEl.style.display = 'none';
-
-  // ── Extract EXIF (GPS + datetime) — read raw bytes first ──
-  let exifFilled = [];
-  try {
-    const buf = await f.arrayBuffer();
-
-    let parsed = null;
-    try {
-      parsed = await exifr.parse(buf, {
-        tiff: true, exif: true, gps: true,
-        xmp: true, icc: false, iptc: false,
-        translateValues: true, mergeOutput: true
-      });
-    } catch(err) { console.warn('Edit EXIF primary parse failed:', err); }
-
-    let lat = null, lng = null;
-    if (parsed) {
-      if (typeof parsed.latitude === 'number' && !isNaN(parsed.latitude) &&
-          typeof parsed.longitude === 'number' && !isNaN(parsed.longitude)) {
-        lat = parsed.latitude; lng = parsed.longitude;
-      }
-      if (lat == null && parsed.gps &&
-          typeof parsed.gps.latitude === 'number' && !isNaN(parsed.gps.latitude)) {
-        lat = parsed.gps.latitude; lng = parsed.gps.longitude;
-      }
-      if (lat == null && Array.isArray(parsed.GPSLatitude) && Array.isArray(parsed.GPSLongitude)) {
-        const dms2dd = (dms, ref) => {
-          const dd = dms[0] + dms[1] / 60 + dms[2] / 3600;
-          return (ref === 'S' || ref === 'W') ? -dd : dd;
-        };
-        const latD = dms2dd(parsed.GPSLatitude, parsed.GPSLatitudeRef || 'N');
-        const lngD = dms2dd(parsed.GPSLongitude, parsed.GPSLongitudeRef || 'E');
-        if (!isNaN(latD) && !isNaN(lngD)) { lat = latD; lng = lngD; }
-      }
-    }
-    if (lat == null) {
-      try {
-        const g = await exifr.gps(buf);
-        if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
-      } catch(err) { console.warn('Edit exifr.gps() fallback failed:', err); }
-    }
-
-    if (lat != null && lng != null) {
-      document.getElementById('elat').value = lat.toFixed(4);
-      document.getElementById('elng').value = lng.toFixed(4);
-      if (editMap && editPin) { editPin.setLatLng([lat, lng]); editMap.setView([lat, lng], 14); }
-      clearTimeout(editRevTimer); editRevTimer = setTimeout(() => revGeoEdit(lat, lng), 300);
-      exifFilled.push('📍 GPS location');
-    }
-
-    if (parsed) {
-      const dt = parsed.DateTimeOriginal ?? parsed.CreateDate ?? parsed.DateTime;
-      if (dt) {
-        const d = dt instanceof Date ? dt : new Date(dt);
-        if (!isNaN(d)) {
-          const yy = d.getFullYear(), mm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
-          const hh = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
-          document.getElementById('edate').value = `${yy}-${mm}-${dd}`;
-          document.getElementById('etime').value = `${hh}:${mi}`;
-          exifFilled.push('📅 Date & time');
-        }
-      }
-    }
-  } catch(err) { console.warn('Edit EXIF parse error:', err); }
-
-  // ── Compress and display ──
   let result;
-  try { result = await compressImage(f, 1200, 0.78); } catch(ex) { return; }
+  try { result = await compressImage(f, 1200, 0.78); } catch(e) { return; }
   editPhoto = result.dataUrl;
   const epuEl = document.getElementById('epuEl');
-  const existingImg = epuEl.querySelector('img'); if(existingImg) existingImg.remove();
+  const existing = epuEl.querySelector('img'); if(existing) existing.remove();
   document.getElementById('epuInner').style.display = 'none';
   const img = document.createElement('img'); img.src = editPhoto;
   epuEl.appendChild(img);
-
-  // ── Show result — fall back to device GPS if photo has no location ──
-  const hasGPS = exifFilled.includes('📍 GPS location');
-  const hasDate = exifFilled.includes('📅 Date & time');
   const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
   infoEl.style.display = 'block';
-
-  if (hasGPS && hasDate) {
-    infoEl.style.color = 'var(--teal)';
-    infoEl.textContent = `✅ Auto-filled: 📍 GPS · 📅 Date & time · 📸 ${origKB}KB→${compKB}KB`;
-  } else if (hasDate && !hasGPS) {
-    infoEl.style.color = 'var(--teal)';
-    infoEl.innerHTML = `📅 Date auto-filled · <span class="spin"></span> Getting GPS… · 📸 ${origKB}KB→${compKB}KB`;
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const la = pos.coords.latitude, ln = pos.coords.longitude;
-        document.getElementById('elat').value = la.toFixed(4);
-        document.getElementById('elng').value = ln.toFixed(4);
-        if (editMap && editPin) { editPin.setLatLng([la, ln]); editMap.setView([la, ln], 14); }
-        clearTimeout(editRevTimer); editRevTimer = setTimeout(() => revGeoEdit(la, ln), 300);
-        infoEl.textContent = `✅ Auto-filled: 📅 Date from photo · 📍 GPS from device · 📸 ${origKB}KB→${compKB}KB`;
-      }, () => {
-        infoEl.style.color = 'var(--hint)';
-        infoEl.textContent = `📅 Date auto-filled · GPS unavailable · 📸 ${origKB}KB→${compKB}KB`;
-      }, { enableHighAccuracy: true, timeout: 10000 });
-    }
-  } else {
-    // No EXIF at all — fall back to device clock + GPS
-    const now = new Date();
-    document.getElementById('edate').value = now.toISOString().split('T')[0];
-    document.getElementById('etime').value = now.toTimeString().slice(0, 5);
-    infoEl.style.color = 'var(--teal)';
-    infoEl.innerHTML = `📅 Date set to now · <span class="spin"></span> Getting GPS… · 📸 ${origKB}KB→${compKB}KB`;
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const la = pos.coords.latitude, ln = pos.coords.longitude;
-        document.getElementById('elat').value = la.toFixed(4);
-        document.getElementById('elng').value = ln.toFixed(4);
-        if (editMap && editPin) { editPin.setLatLng([la, ln]); editMap.setView([la, ln], 14); }
-        clearTimeout(editRevTimer); editRevTimer = setTimeout(() => revGeoEdit(la, ln), 300);
-        infoEl.textContent = `✅ Auto-filled from device: 📍 GPS · 📅 Date · 📸 ${origKB}KB→${compKB}KB`;
-      }, () => {
-        infoEl.style.color = 'var(--hint)';
-        infoEl.textContent = `ℹ️ No photo metadata — enter location manually · 📸 ${origKB}KB→${compKB}KB`;
-      }, { enableHighAccuracy: true, timeout: 10000 });
-    }
-  }
+  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB`;
 }
 
 function saveEdit() {
