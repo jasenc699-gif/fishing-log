@@ -963,19 +963,23 @@ async function handlePhoto(e) {
   // ── 1. Extract EXIF (GPS + datetime) from original file ──
   let exifFilled = [];
   try {
-    const exif = await exifr.parse(f, { gps: true, tiff: true, exif: true });
-    if(exif) {
-      // GPS — exifr returns decimal degrees directly as latitude/longitude
-      const lat = exif.latitude ?? exif.GPSLatitude;
-      const lng = exif.longitude ?? exif.GPSLongitude;
-      if(lat != null && lng != null && !isNaN(lat) && !isNaN(lng)) {
+    // GPS — use dedicated exifr.gps() which is far more reliable than parse()
+    // for extracting GPS across different phone/camera EXIF formats
+    try {
+      const gps = await exifr.gps(f);
+      if(gps && gps.latitude != null && gps.longitude != null && !isNaN(gps.latitude) && !isNaN(gps.longitude)) {
+        const lat = gps.latitude, lng = gps.longitude;
         document.getElementById('clat').value = lat.toFixed(4);
         document.getElementById('clng').value = lng.toFixed(4);
         if(logMap && logPin) { logPin.setLatLng([lat,lng]); logMap.setView([lat,lng],14); }
         clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(lat, lng), 300);
         exifFilled.push('📍 GPS location');
       }
-      // DateTime
+    } catch(gpsErr) { console.warn('GPS EXIF error:', gpsErr); }
+
+    // DateTime — parse separately for datetime fields
+    const exif = await exifr.parse(f, { tiff: true, exif: true, gps: false });
+    if(exif) {
       const dt = exif.DateTimeOriginal ?? exif.CreateDate ?? exif.DateTime;
       if(dt) {
         const d = dt instanceof Date ? dt : new Date(dt);
