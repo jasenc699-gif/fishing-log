@@ -244,7 +244,7 @@ input[type=file]{display:none;}
 
       <div class="sec">
         <div class="stitle">📸 Photo</div>
-        <div class="pu" id="puEl">
+        <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
             <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
               <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
@@ -692,6 +692,14 @@ input[type=file]{display:none;}
           <div class="stitle">📍 Location</div>
           <label>Location name</label>
           <input type="text" id="eloc" placeholder="e.g. Tauranga Harbour">
+          <div class="r2">
+            <div><label>Latitude</label><input type="number" id="elat" step="0.0001" oninput="onEditCoordInput()" inputmode="decimal"></div>
+            <div><label>Longitude</label><input type="number" id="elng" step="0.0001" oninput="onEditCoordInput()" inputmode="decimal"></div>
+          </div>
+          <button class="gpsbtn" onclick="doEditGPS()">📡 Use my GPS location</button>
+          <div class="mapbox" id="editmap" style="height:170px;">
+            <button class="map-layer-btn" id="editMapLayerBtn" onclick="toggleEditMapLayer()">🛰 Satellite</button>
+          </div>
         </div>
         <button class="sbtn teal-btn" onclick="saveEdit()">💾 Save Changes</button>
         <div style="height:10px;"></div>
@@ -1215,7 +1223,7 @@ function refreshMainMap() {
   document.getElementById('loclist').innerHTML=catches.map(c=>`
     <div style="padding:7px 0;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
       <div><div style="font-weight:600;font-size:13px;">${c.fish}</div><div style="font-size:11px;color:var(--hint);">${c.location||'No location'}</div></div>
-      <div style="font-size:11px;color:var(--hint);font-family:monospace;">${(c.lat).toFixed(3)},${(c.lng).toFixed(3)}</div>
+      <div style="font-size:11px;color:var(--hint);font-family:monospace;">${(c.lat!=null&&c.lng!=null)?parseFloat(c.lat).toFixed(3)+','+parseFloat(c.lng).toFixed(3):'—'}</div>
     </div>`).join('');
 }
 
@@ -1230,8 +1238,88 @@ function initCatchMap(id,lat,lng,lbl) {
   },200);
 }
 
-// ─────────────────────────────────────────────
-// TIDE — LINZ Harmonic Engine (NZ Port Database)
+// Edit modal map
+let editMap = null, editPin = null, editStreetLayer = null, editSatLayer = null, editLayerMode = 'street';
+let editRevTimer = null;
+
+function initEditMap(lat, lng) {
+  if(editMap) {
+    editPin.setLatLng([lat, lng]);
+    editMap.setView([lat, lng], 13);
+    editMap.invalidateSize();
+    return;
+  }
+  setTimeout(() => {
+    const el = document.getElementById('editmap'); if(!el) return;
+    editMap = L.map('editmap', { zoomControl:true, attributionControl:false }).setView([lat, lng], 13);
+    editStreetLayer = streetLayer().addTo(editMap);
+    editPin = L.marker([lat, lng], { icon:leafIcon(24), draggable:true }).addTo(editMap);
+    editPin.on('dragend', e => {
+      const p = e.target.getLatLng();
+      document.getElementById('elat').value = p.lat.toFixed(4);
+      document.getElementById('elng').value = p.lng.toFixed(4);
+      clearTimeout(editRevTimer);
+      editRevTimer = setTimeout(() => revGeoEdit(p.lat, p.lng), 300);
+    });
+    editMap.on('click', e => {
+      editPin.setLatLng(e.latlng);
+      document.getElementById('elat').value = e.latlng.lat.toFixed(4);
+      document.getElementById('elng').value = e.latlng.lng.toFixed(4);
+      clearTimeout(editRevTimer);
+      editRevTimer = setTimeout(() => revGeoEdit(e.latlng.lat, e.latlng.lng), 300);
+    });
+  }, 250);
+}
+
+async function revGeoEdit(la, ln) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${la}&lon=${ln}&zoom=12`, { headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'} });
+    const d = await r.json();
+    if(d && d.address) {
+      const a = d.address;
+      const place = a.city||a.town||a.village||a.suburb||a.county||'';
+      const region = a.state||a.county||'';
+      const name = [place, region].filter(Boolean).join(', ');
+      if(name) document.getElementById('eloc').value = name;
+    }
+  } catch(e) {}
+}
+
+function onEditCoordInput() {
+  const la = parseFloat(document.getElementById('elat').value);
+  const ln = parseFloat(document.getElementById('elng').value);
+  if(!isNaN(la) && !isNaN(ln) && editMap && editPin) {
+    editPin.setLatLng([la, ln]);
+    editMap.setView([la, ln], 13);
+  }
+}
+
+function doEditGPS() {
+  if(!navigator.geolocation) { alert('GPS not available.'); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    const la = p.coords.latitude, ln = p.coords.longitude;
+    document.getElementById('elat').value = la.toFixed(4);
+    document.getElementById('elng').value = ln.toFixed(4);
+    if(editMap && editPin) { editPin.setLatLng([la, ln]); editMap.setView([la, ln], 14); }
+    clearTimeout(editRevTimer);
+    editRevTimer = setTimeout(() => revGeoEdit(la, ln), 300);
+  }, () => alert('GPS unavailable — enter coordinates manually'));
+}
+
+function toggleEditMapLayer() {
+  if(!editMap) return;
+  if(editLayerMode === 'street') {
+    editLayerMode = 'satellite';
+    editMap.removeLayer(editStreetLayer);
+    editSatLayer = satelliteLayer().addTo(editMap);
+    document.getElementById('editMapLayerBtn').textContent = '🗺 Street';
+  } else {
+    editLayerMode = 'street';
+    editMap.removeLayer(editSatLayer);
+    editStreetLayer = streetLayer().addTo(editMap);
+    document.getElementById('editMapLayerBtn').textContent = '🛰 Satellite';
+  }
+}
 // Harmonic constants sourced from LINZ NZ tide tables.
 // Uses 6 major constituents: M2, S2, N2, K1, O1, K2.
 // Accuracy: typically within 10–20 min of published tide tables.
@@ -1312,10 +1400,11 @@ function portBounds(port) {
 function findTideEvents(fromDate, count, port) {
   const stepMs = 5 * 60000; // 5-minute scan resolution
   const start  = fromDate.getTime();
+  const limit  = start + 30 * 24 * 3600000; // safety cap: search at most 30 days ahead
   const events = [];
   let h0 = tideHeightAt(new Date(start - stepMs), port);
   let h1 = tideHeightAt(new Date(start), port);
-  for (let ms = start + stepMs; events.length < count + 1; ms += stepMs) {
+  for (let ms = start + stepMs; events.length < count && ms < limit; ms += stepMs) {
     const h2 = tideHeightAt(new Date(ms), port);
     if (h1 > h0 && h1 > h2) events.push({ type:'High', time: new Date(ms - stepMs), h: h1 });
     if (h1 < h0 && h1 < h2) events.push({ type:'Low',  time: new Date(ms - stepMs), h: h1 });
@@ -1481,7 +1570,10 @@ function solunarAt(dt, lng) {
 }
 
 function fh(h) {
-  const hh=Math.floor(h),mm=Math.round((h-hh)*60),ap=hh<12?'am':'pm',h12=hh%12||12;
+  h = ((h % 24) + 24) % 24; // normalise to [0,24)
+  let hh=Math.floor(h), mm=Math.floor((h-hh)*60);
+  if(mm===60){hh=(hh+1)%24;mm=0;}
+  const ap=hh<12?'am':'pm', h12=hh%12||12;
   return h12+':'+(mm<10?'0':'')+mm+ap;
 }
 
@@ -1742,7 +1834,8 @@ async function saveCatch() {
     ti=tl+(rising?' · Incoming':' · Outgoing');
     const mo=moonAt(dt); mi=mo.e+' '+mo.n+' ('+mo.il+'%)';
     const so=solunarAt(dt,appLng),h=dt.getHours()+dt.getMinutes()/60;
-    bi=(Math.abs(h-so.m1)<1||Math.abs(h-so.m2)<1)?'🟢 Major period':(Math.abs(h-so.n1)<0.5||Math.abs(h-so.n2)<0.5)?'🟡 Minor period':'Between periods';
+    const solDiff=(a,b)=>Math.min(Math.abs(a-b),24-Math.abs(a-b));
+    bi=(solDiff(h,so.m1)<1||solDiff(h,so.m2)<1)?'🟢 Major period':(solDiff(h,so.n1)<0.5||solDiff(h,so.n2)<0.5)?'🟡 Minor period':'Between periods';
   }
   const id='c'+Date.now();
   const catchPhoto = photo; // capture before reset
@@ -1778,6 +1871,10 @@ async function saveCatch() {
   const b=document.getElementById('sban');b.style.display='none';
   // Clear catch-specific fields but keep location so multi-catch sessions don't need GPS re-entry
   ['ftype','fcust','flen','fwt','method','platform','fly','flycol','notes'].forEach(id=>document.getElementById(id).value='');
+  // Reset date/time back to now so the next catch doesn't inherit an old EXIF date
+  const resetNow = new Date();
+  document.getElementById('cdate').value = resetNow.toISOString().split('T')[0];
+  document.getElementById('ctime').value = resetNow.toTimeString().slice(0,5);
   document.getElementById('gstat').textContent='';
   document.getElementById('compressInfo').style.display='none';
   document.getElementById('exifInfo').style.display='none';
@@ -2047,7 +2144,12 @@ function editCatch(id) {
   document.getElementById('edate').value     = c.date     || '';
   document.getElementById('etime').value     = c.time     || '';
   document.getElementById('eloc').value      = c.location || '';
+  const editLat = c.lat != null ? parseFloat(c.lat) : APP_DEFAULT_LAT;
+  const editLng = c.lng != null ? parseFloat(c.lng) : APP_DEFAULT_LNG;
+  document.getElementById('elat').value = editLat.toFixed(4);
+  document.getElementById('elng').value = editLng.toFixed(4);
   document.getElementById('editModal').classList.add('open');
+  setTimeout(() => initEditMap(editLat, editLng), 100);
 }
 
 function closeEdit() {
@@ -2096,8 +2198,9 @@ function saveEdit() {
     ti = tl + (rising ? ' · Incoming' : ' · Outgoing');
     const mo = moonAt(dt); mi = mo.e + ' ' + mo.n + ' (' + mo.il + '%)';
     const so = solunarAt(dt, appLng), h = dt.getHours() + dt.getMinutes()/60;
-    bi = (Math.abs(h-so.m1)<1 || Math.abs(h-so.m2)<1) ? '🟢 Major period'
-       : (Math.abs(h-so.n1)<0.5 || Math.abs(h-so.n2)<0.5) ? '🟡 Minor period'
+    const solDiff = (a, b) => Math.min(Math.abs(a-b), 24-Math.abs(a-b));
+    bi = (solDiff(h,so.m1)<1 || solDiff(h,so.m2)<1) ? '🟢 Major period'
+       : (solDiff(h,so.n1)<0.5 || solDiff(h,so.n2)<0.5) ? '🟡 Minor period'
        : 'Between periods';
   }
 
@@ -2118,6 +2221,8 @@ function saveEdit() {
     date:     newDate,
     time:     newTime,
     location: document.getElementById('eloc').value,
+    lat: parseFloat(document.getElementById('elat').value) || catches[idx].lat,
+    lng: parseFloat(document.getElementById('elng').value) || catches[idx].lng,
     tide: ti, moon: mi, bite: bi,
     photo: resolvedPhoto,
   };
