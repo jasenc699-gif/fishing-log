@@ -260,8 +260,8 @@ input[type=file]{display:none;}
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-          <button class="gpsbtn" onclick="document.getElementById('fiCam').click()" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
-          <button class="gpsbtn" onclick="document.getElementById('fiLib').click()" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+          <button class="gpsbtn" onclick="const i=document.getElementById('fiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
+          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
         </div>
         <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)">
         <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
@@ -634,8 +634,8 @@ input[type=file]{display:none;}
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-            <button class="gpsbtn" onclick="document.getElementById('efiCam').click()" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
-            <button class="gpsbtn" onclick="document.getElementById('efiLib').click()" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+            <button class="gpsbtn" onclick="const i=document.getElementById('efiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
+            <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
           </div>
           <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditPhoto(event)">
           <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
@@ -906,26 +906,49 @@ function go(p) {
 // IMAGE COMPRESSION
 // ─────────────────────────────────────────────
 function compressImage(file, maxPx, quality) {
-  return new Promise(resolve => {
-    const reader = new FileReader();
-    reader.onload = e => {
+  return new Promise((resolve, reject) => {
+    function drawAndCompress(img) {
+      let w = img.width, h = img.height;
+      if(w > maxPx || h > maxPx) {
+        const ratio = Math.min(maxPx/w, maxPx/h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/jpeg', quality);
+      resolve({ dataUrl: compressed, origSize: file.size, compSize: Math.round(compressed.length * 0.75), w, h });
+    }
+
+    // Primary: URL.createObjectURL — handles Samsung Gallery content:// URIs reliably
+    let objectUrl;
+    try { objectUrl = URL.createObjectURL(file); } catch(e) { objectUrl = null; }
+
+    if(objectUrl) {
       const img = new Image();
-      img.onload = () => {
-        let w = img.width, h = img.height;
-        if(w > maxPx || h > maxPx) {
-          const ratio = Math.min(maxPx/w, maxPx/h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        const compressed = canvas.toDataURL('image/jpeg', quality);
-        resolve({ dataUrl: compressed, origSize: file.size, compSize: Math.round(compressed.length * 0.75), w, h });
+      img.onload = () => { drawAndCompress(img); URL.revokeObjectURL(objectUrl); };
+      img.onerror = () => {
+        // Samsung HEIC or other format Chrome canvas can't handle — fall back to FileReader
+        URL.revokeObjectURL(objectUrl);
+        tryFileReader();
       };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+      img.src = objectUrl;
+    } else {
+      tryFileReader();
+    }
+
+    function tryFileReader() {
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = new Image();
+        img.onload = () => drawAndCompress(img);
+        img.onerror = () => { showToast('Could not load image — try a different photo', 'error'); reject(new Error('img load failed')); };
+        img.src = e.target.result;
+      };
+      reader.onerror = () => { showToast('Could not read image file', 'error'); reject(new Error('FileReader failed')); };
+      reader.readAsDataURL(file);
+    }
   });
 }
 
@@ -978,7 +1001,8 @@ async function handlePhoto(e) {
   }
 
   // ── 2. Compress and display ──
-  const result = await compressImage(f, 1200, 0.78);
+  let result;
+  try { result = await compressImage(f, 1200, 0.78); } catch(e) { return; } // error already toasted
   photo = result.dataUrl;
   document.getElementById('puInner').style.display = 'none';
   const existing = document.querySelector('#puEl img'); if(existing) existing.remove();
@@ -2031,7 +2055,8 @@ function closeEdit() {
 async function handleEditPhoto(e) {
   const f = e.target.files[0]; if(!f) return;
   const infoEl = document.getElementById('editPhotoInfo');
-  const result = await compressImage(f, 1200, 0.78);
+  let result;
+  try { result = await compressImage(f, 1200, 0.78); } catch(e) { return; }
   editPhoto = result.dataUrl;
   const epuEl = document.getElementById('epuEl');
   const existing = epuEl.querySelector('img'); if(existing) existing.remove();
