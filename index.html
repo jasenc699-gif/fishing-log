@@ -1643,6 +1643,112 @@ function nearestPort(lat, lng) {
   , NZ_PORTS[0]);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TIDECHECK API — automatic real-data tide predictions
+//
+// Sign up free at tidecheck.com (50 req/day, no credit card).
+// Paste your key below once — end users never touch anything.
+// If the key is missing or the request fails the harmonic model
+// takes over silently, so offline use always works.
+// ─────────────────────────────────────────────────────────────────────────────
+const TIDECHECK_API_KEY = 'tc_live_7cdd3523d192d9f1e67214fbf9fcb7d7'; // ← replace once with your free key
+
+let _tideCache = null; // in-memory; also persisted to localStorage
+
+function _loadTideCache() {
+  try { _tideCache = JSON.parse(localStorage.getItem('_tc_cache') || 'null'); } catch(e) { _tideCache = null; }
+}
+_loadTideCache();
+
+function _saveTideCache(obj) {
+  _tideCache = obj;
+  try { localStorage.setItem('_tc_cache', JSON.stringify(obj)); } catch(e) {}
+}
+
+// Returns true if the in-memory cache is fresh enough for (lat, lng).
+function _cacheValid(lat, lng) {
+  if (!_tideCache || !_tideCache.fetched) return false;
+  const AGE_MS = 8 * 3600000; // 8 hours — well within the 50 req/day budget
+  if (Date.now() - _tideCache.fetched > AGE_MS) return false;
+  // Accept cache if we're within ~15 km of the cached location
+  if (Math.hypot(_tideCache.lat - lat, _tideCache.lng - lng) > 0.15) return false;
+  return true;
+}
+
+// Fetch 3 days of tide data from TideCheck for the nearest station to (lat, lng).
+// Returns true on success, false on any failure (key missing, network, rate limit).
+async function fetchTidesFromAPI(lat, lng) {
+  if (!TIDECHECK_API_KEY || TIDECHECK_API_KEY === 'YOUR_API_KEY_HERE') return false;
+  if (_cacheValid(lat, lng)) return true;
+
+  const BASE = 'https://tidecheck.com';
+  const H    = { 'X-API-Key': TIDECHECK_API_KEY };
+  try {
+    // 1. Find nearest station (counts as 1 API call)
+    const nRes = await fetch(`${BASE}/api/stations/nearest?lat=${lat}&lng=${lng}`, { headers: H });
+    if (!nRes.ok) return false;
+    const stations = await nRes.json();
+    const st = Array.isArray(stations) ? stations[0] : stations?.stations?.[0];
+    if (!st?.id) return false;
+
+    // 2. Fetch 3 days of tide data with 15-min time series (1 API call)
+    const tRes = await fetch(`${BASE}/api/station/${st.id}/tides?days=3&datum=MSL`, { headers: H });
+    if (!tRes.ok) return false;
+    const td = await tRes.json();
+
+    // Store compact cache — convert ISO strings to ms timestamps
+    _saveTideCache({
+      lat, lng,
+      fetched: Date.now(),
+      stationName: st.name,
+      timezone: td.station?.timezone || 'Pacific/Auckland',
+      // Extremes: [{ms, type:'high'|'low', h}]
+      extremes: (td.extremes || []).map(e => ({ ms: new Date(e.time).getTime(), type: e.type, h: e.height })),
+      // Time series: [{ms, h}] at 15-min intervals
+      series: (td.timeSeries || []).map(p => ({ ms: new Date(p.time).getTime(), h: p.height }))
+    });
+    return true;
+  } catch(e) {
+    console.warn('TideCheck fetch error:', e);
+    return false;
+  }
+}
+
+// Interpolate tide height at timestamp `ms` from cached time series.
+// Falls back to cosine interpolation between extremes if series absent.
+function _tideHeightFromCache(ms) {
+  if (!_tideCache) return null;
+
+  // ── Time-series path (preferred — 15-min resolution) ────────────────────────
+  const ser = _tideCache.series;
+  if (ser && ser.length > 1) {
+    // Binary search for surrounding pair
+    let lo = 0, hi = ser.length - 1;
+    while (lo < hi - 1) { const mid = (lo + hi) >> 1; (ser[mid].ms <= ms ? lo : hi = mid); }
+    if (ms <= ser[0].ms)  return ser[0].h;
+    if (ms >= ser[hi].ms) return ser[hi].h;
+    const t = (ms - ser[lo].ms) / (ser[hi].ms - ser[lo].ms);
+    return ser[lo].h + t * (ser[hi].h - ser[lo].h); // linear interp between 15-min points
+  }
+
+  // ── Extremes fallback — cosine interpolation ─────────────────────────────────
+  const ext = _tideCache.extremes;
+  if (!ext || ext.length < 2) return null;
+  let before = null, after = null;
+  for (const e of ext) { if (e.ms <= ms) before = e; else if (!after) after = e; }
+  if (!before) return ext[0].h;
+  if (!after)  return ext[ext.length - 1].h;
+  const t = (ms - before.ms) / (after.ms - before.ms);
+  return before.h + (after.h - before.h) * (1 - Math.cos(t * Math.PI)) / 2;
+}
+
+// Next N tide extremes from the cache starting from timestamp `fromMs`.
+function _tideEventsFromCache(fromMs, count) {
+  if (!_tideCache?.extremes) return null;
+  const out = _tideCache.extremes.filter(e => e.ms >= fromMs).slice(0, count);
+  return out.length ? out : null;
+}
+
 // Compute equilibrium arguments V0+u0 at 0h UTC for a Julian Day
 function tideV0u0(jd0) {
   const d  = jd0 - 2451545.0; // days from J2000
@@ -1699,48 +1805,87 @@ function findTideEvents(fromDate, count, port) {
   return events.slice(0, count);
 }
 
+// Entry point called from tab switch and GPS updates.
+// Fires a background API fetch then renders with whatever data is available.
 function calcTide() {
+  _renderTideUI();                          // instant render (harmonic or cached API)
+  fetchTidesFromAPI(appLat, appLng).then(ok => {
+    if (ok) _renderTideUI();               // re-render with fresh API data
+  });
+}
+
+function _renderTideUI() {
   const now  = new Date();
-  const h    = tideHeightAt(now, activePort);
-  const h5   = tideHeightAt(new Date(now.getTime() + 5*60000), activePort);
+  const ms   = now.getTime();
+  const usingAPI = !!_tideCache?.series?.length || !!_tideCache?.extremes?.length;
+
+  // Height & direction from API or harmonic fallback
+  let h  = _tideHeightFromCache(ms);
+  let h5 = _tideHeightFromCache(ms + 5 * 60000);
+  if (h == null)  h  = tideHeightAt(now, activePort);
+  if (h5 == null) h5 = tideHeightAt(new Date(ms + 5 * 60000), activePort);
+
   const rising = h5 > h;
+
+  // For the % fill bar, derive bounds from the nearest harmonic port
+  // (API heights are MSL-relative; just use amplitude for proportion)
   const bounds = portBounds(activePort);
-  const pct  = Math.round(((h - bounds.lo) / (bounds.hi - bounds.lo)) * 100);
-  const mid  = bounds.lo + (bounds.hi - bounds.lo) * 0.5;
-  const qtr  = (bounds.hi - bounds.lo) * 0.22;
+  const pct = Math.round(((h - bounds.lo) / (bounds.hi - bounds.lo)) * 100);
+  const mid = bounds.lo + (bounds.hi - bounds.lo) * 0.5;
+  const qtr = (bounds.hi - bounds.lo) * 0.22;
+
   let label, em;
-  if (h > mid + qtr)      { label='High Tide';     em='🌊'; }
-  else if (h < mid - qtr) { label='Low Tide';      em='🏖'; }
-  else if (rising)        { label='Mid — Rising';  em='↗️'; }
-  else                    { label='Mid — Falling'; em='↘️'; }
+  if (h > mid + qtr)      { label = 'High Tide';     em = '🌊'; }
+  else if (h < mid - qtr) { label = 'Low Tide';      em = '🏖'; }
+  else if (rising)        { label = 'Mid — Rising';  em = '↗️'; }
+  else                    { label = 'Mid — Falling'; em = '↘️'; }
+
   document.getElementById('temoji').textContent = em;
   document.getElementById('tlbl').textContent   = label;
   document.getElementById('tsub').textContent   = 'Height: ' + h.toFixed(2) + ' m';
   document.getElementById('tarrow').textContent = rising ? '↑' : '↓';
   document.getElementById('tdir').textContent   = rising ? 'Incoming (Flood)' : 'Outgoing (Ebb)';
-  document.getElementById('tideLocLabel').textContent = '📍 ' + activePort.name + ' (nearest port)';
+
+  // Location label — show API station name when live, harmonic port name offline
+  const locName = usingAPI && _tideCache?.stationName
+    ? _tideCache.stationName + ' (live)'
+    : activePort.name + ' (estimated)';
+  document.getElementById('tideLocLabel').textContent = '📍 ' + locName;
+
+  // Badge
+  const badge = document.getElementById('tideBadge');
+  if (badge) {
+    badge.textContent  = usingAPI ? '⚡ Live' : '📐 Estimated';
+    badge.className    = 'api-badge ' + (usingAPI ? 'live-badge' : 'offline-badge');
+  }
+
   drawWave(Math.max(0, Math.min(100, pct)));
-  drawCurve(now);
+  _drawTideCurve(now);
   renderTideSchedule();
   fetchMarineData();
 }
 
 function renderTideSchedule() {
-  const events = findTideEvents(new Date(), 4, activePort);
+  const now    = Date.now();
+  const apiEvt = _tideEventsFromCache(now, 4);
+  const events = apiEvt
+    ? apiEvt.map(e => ({ type: e.type === 'high' ? 'High' : 'Low', time: new Date(e.ms), h: e.h }))
+    : findTideEvents(new Date(), 4, activePort);
+
   const fmt = d => {
     const h = d.getHours(), m = d.getMinutes();
-    return (h%12||12) + ':' + (m<10?'0':'') + m + (h<12?'am':'pm');
+    return (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m + (h < 12 ? 'am' : 'pm');
   };
-  const labels = ['Next','Then','Then','Then'];
-  document.getElementById('tideSchedule').innerHTML = events.map((e,i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i<3?'border-bottom:0.5px solid var(--border);':''}">
-      <div style="font-size:26px;width:32px;text-align:center;">${e.type==='High'?'🌊':'🏖'}</div>
+  const labels = ['Next', 'Then', 'Then', 'Then'];
+  document.getElementById('tideSchedule').innerHTML = events.map((e, i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < 3 ? 'border-bottom:0.5px solid var(--border);' : ''}">
+      <div style="font-size:26px;width:32px;text-align:center;">${e.type === 'High' ? '🌊' : '🏖'}</div>
       <div style="flex:1;">
-        <div style="font-size:14px;font-weight:600;color:${i===0?'var(--teal)':'var(--text)'};">${e.type==='High'?'High Tide':'Low Tide'}</div>
+        <div style="font-size:14px;font-weight:600;color:${i === 0 ? 'var(--teal)' : 'var(--text)'};">${e.type === 'High' ? 'High Tide' : 'Low Tide'}</div>
         <div style="font-size:11px;color:var(--hint);margin-top:2px;">${labels[i]}</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:16px;font-weight:700;color:${i===0?'var(--teal)':'var(--text)'};">${fmt(e.time)}</div>
+        <div style="font-size:16px;font-weight:700;color:${i === 0 ? 'var(--teal)' : 'var(--text)'};">${fmt(e.time)}</div>
         <div style="font-size:13px;color:var(--muted);margin-top:2px;">${e.h.toFixed(2)} m</div>
       </div>
     </div>`).join('');
@@ -1754,23 +1899,45 @@ function drawWave(p) {
   x.beginPath();x.moveTo(0,y);for(let i=0;i<W;i++)x.lineTo(i,y+Math.sin(i*0.09)*3.5);x.strokeStyle='#4fc3a1';x.lineWidth=1.5;x.stroke();
 }
 
-function drawCurve(cd) {
-  const c=document.getElementById('tcurve'); if(!c) return;
-  const ctx=c.getContext('2d'),W=c.width,H=c.height; ctx.clearRect(0,0,W,H);
-  const b=cd||new Date(), s0=b.getTime()-12*3600000, e0=b.getTime()+12*3600000;
-  const bounds=portBounds(activePort);
-  ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=0.5;
-  for(let i=0;i<=4;i++){const y=(i/4)*(H-20)+10;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-  ctx.beginPath();ctx.strokeStyle='#4fc3a1';ctx.lineWidth=2;let first=true;
-  for(let i=0;i<W;i++){
-    const h=tideHeightAt(new Date(s0+(i/W)*(e0-s0)),activePort);
-    const y=H-10-((h-bounds.lo)/(bounds.hi-bounds.lo))*(H-20);
-    if(first){ctx.moveTo(i,y);first=false;}else ctx.lineTo(i,y);
+function drawCurve(cd) { _drawTideCurve(cd); } // keep old call-site working
+
+function _drawTideCurve(cd) {
+  const c = document.getElementById('tcurve'); if (!c) return;
+  const ctx = c.getContext('2d'), W = c.width, H = c.height;
+  ctx.clearRect(0, 0, W, H);
+  const now  = cd || new Date();
+  const s0   = now.getTime() - 12 * 3600000;
+  const e0   = now.getTime() + 12 * 3600000;
+  const bounds = portBounds(activePort);
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 0.5;
+  for (let i = 0; i <= 4; i++) {
+    const y = (i / 4) * (H - 20) + 10;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Tide curve — prefer API time series, fall back to harmonic
+  const hasSeries = _tideCache?.series?.length > 1;
+  ctx.beginPath(); ctx.strokeStyle = '#4fc3a1'; ctx.lineWidth = 2;
+  let first = true;
+  for (let i = 0; i < W; i++) {
+    const ms = s0 + (i / W) * (e0 - s0);
+    let h = hasSeries ? _tideHeightFromCache(ms) : null;
+    if (h == null) h = tideHeightAt(new Date(ms), activePort);
+    // Normalize to canvas using harmonic bounds (stable reference)
+    const y = H - 10 - ((h - bounds.lo) / (bounds.hi - bounds.lo)) * (H - 20);
+    if (first) { ctx.moveTo(i, y); first = false; } else ctx.lineTo(i, y);
   }
   ctx.stroke();
-  const nx=(b.getTime()-s0)/(e0-s0)*W;
-  ctx.strokeStyle='#e74c3c';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(nx,0);ctx.lineTo(nx,H);ctx.stroke();ctx.setLineDash([]);
-  ctx.fillStyle='rgba(0,0,0,0.25)';ctx.font='9px system-ui';ctx.fillText('-12h',2,H-2);ctx.fillText('now',nx-10,H-2);ctx.fillText('+12h',W-30,H-2);
+
+  // "Now" line
+  const nx = (now.getTime() - s0) / (e0 - s0) * W;
+  ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(nx, 0); ctx.lineTo(nx, H); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.font = '9px system-ui';
+  ctx.fillText('-12h', 2, H - 2); ctx.fillText('now', nx - 10, H - 2); ctx.fillText('+12h', W - 30, H - 2);
 }
 
 // ─────────────────────────────────────────────
