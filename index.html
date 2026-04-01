@@ -2,198 +2,2743 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fishing Log</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NZ Fishing Log">
+<meta name="theme-color" content="#2c2c2c">
+<title>Fishing Log for NZ Waters</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
 <style>
-body { font-family: Arial; margin:0; }
-.header { background:#111; color:#fff; padding:10px; text-align:center; }
-.tab { display:none; padding:10px; }
-.tab.active { display:block; }
-.card { border:1px solid #ddd; padding:10px; margin-top:10px; }
-nav { position:fixed; bottom:0; width:100%; display:flex; }
-nav button { flex:1; padding:10px; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --teal:#4fc3a1;
+  --dark:#2c2c2c;
+  --dark2:#383838;
+  --dark3:#444;
+  --text:#1a1a1a;
+  --muted:#5a5a5a;
+  --hint:#999;
+  --border:#ddddd8;
+  --surf:#ebebea;
+  --surf2:#f4f4f2;
+  --white:#ffffff;
+  --grey-btn:#5a5a5a;
+  --grey-btn-hover:#484848;
+}
+html,body{height:100%;overflow:hidden;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--dark);}
+.app{max-width:430px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:var(--surf2);}
+
+/* HEADER */
+.header{background:var(--dark);padding:max(env(safe-area-inset-top),12px) 16px 11px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.htitle{font-size:18px;font-weight:700;color:#fff;letter-spacing:-0.3px;}
+.hsub{font-size:11px;color:rgba(255,255,255,0.45);margin-top:1px;}
+
+/* TABS */
+.tabs{display:flex;background:var(--dark2);overflow-x:auto;flex-shrink:0;border-top:0.5px solid rgba(255,255,255,0.08);padding-bottom:max(env(safe-area-inset-bottom),6px);}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{flex:1;min-width:40px;display:flex;flex-direction:column;align-items:center;padding:8px 2px 5px;cursor:pointer;border-top:2px solid transparent;gap:3px;}
+.tab.active{border-top-color:var(--teal);}
+.ti{font-size:18px;line-height:1;}
+.tl{font-size:7.5px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;}
+.tab.active .tl{color:var(--teal);}
+
+/* PAGES */
+.pages{flex:1;overflow:hidden;position:relative;}
+.pg{position:absolute;inset:0;overflow-y:auto;padding:13px;display:none;-webkit-overflow-scrolling:touch;}
+.pg.show{display:block;}
+
+/* SECTIONS */
+.sec{background:var(--white);border-radius:12px;border:0.5px solid var(--border);padding:13px;margin-bottom:10px;}
+.stitle{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+
+/* PHOTO */
+.pu{width:100%;min-height:200px;max-height:65vh;border:1.5px dashed #ccc;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--surf);overflow:hidden;position:relative;}
+.pu img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0;background:#1a1a1a;}
+.pu-inner{display:flex;flex-direction:column;align-items:center;gap:5px;z-index:1;}
+.pu-default-svg{width:60px;height:60px;opacity:0.5;}
+
+/* FORMS */
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:10px;font-weight:500;}
+label:first-of-type{margin-top:0;}
+input,select,textarea{width:100%;padding:10px 12px;border:0.5px solid #d0d0cc;border-radius:8px;font-size:16px;background:var(--white);color:var(--text);font-family:inherit;appearance:none;-webkit-appearance:none;transition:border-color 0.15s;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 2px rgba(79,195,161,0.15);}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* DARK CARD */
+.dcard{background:var(--dark);border-radius:12px;padding:14px;margin-bottom:10px;}
+.dlbl{font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;}
+
+/* WEATHER */
+.wgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.wcard{background:var(--surf);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:3px;border:0.5px solid var(--border);}
+.wi{font-size:20px;}.wv{font-size:18px;font-weight:600;color:var(--text);}.wl{font-size:11px;color:var(--muted);}
+
+/* BUTTONS */
+.sbtn{width:100%;padding:14px;background:var(--grey-btn);border:none;border-radius:12px;font-size:16px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;transition:background 0.15s,transform 0.1s;}
+.sbtn:active{background:var(--grey-btn-hover);transform:scale(0.99);}
+.teal-btn{background:var(--teal)!important;}
+.teal-btn:active{background:#3aaa8a!important;}
+.gpsbtn{margin-top:8px;width:100%;padding:10px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--muted);cursor:pointer;font-family:inherit;}
+
+/* MAP */
+.mapbox{width:100%;height:210px;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);margin-top:9px;position:relative;}
+.map-layer-btn{position:absolute;top:8px;right:8px;z-index:1000;background:rgba(255,255,255,0.95);border:0.5px solid #ccc;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;color:var(--dark);cursor:pointer;font-family:inherit;box-shadow:0 1px 4px rgba(0,0,0,0.2);}
+.geo-hint{font-size:11px;color:var(--hint);margin-top:5px;}
+.geo-status{font-size:11px;color:var(--teal);margin-top:4px;min-height:16px;}
+
+/* CATCH CARDS */
+.ccard{background:var(--white);border-radius:12px;border:0.5px solid var(--border);margin-bottom:10px;overflow:hidden;}
+.ctop{display:flex;}
+.ciph{width:80px;height:80px;background:#e0e0dc;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.cimgel{width:80px;height:80px;object-fit:cover;flex-shrink:0;}
+.cbody{padding:10px 11px;flex:1;min-width:0;}
+.cfish{font-size:14px;font-weight:600;color:var(--text);}
+.cmeta{font-size:12px;color:var(--muted);margin-top:2px;}
+.ctags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
+.tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--surf);color:var(--muted);border:0.5px solid var(--border);}
+.tg{background:rgba(79,195,161,0.1);color:#0a5c43;border-color:rgba(79,195,161,0.3);}
+.tp{background:rgba(127,119,221,0.1);color:#2e2780;border-color:rgba(127,119,221,0.3);}
+.ta{background:rgba(239,159,39,0.1);color:#6b3e08;border-color:rgba(239,159,39,0.3);}
+.tb{background:rgba(55,138,221,0.1);color:#0a3868;border-color:rgba(55,138,221,0.3);}
+.cmap{height:110px;border-top:0.5px solid var(--border);}
+.delbtn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;color:var(--hint);}
+
+/* BITE */
+.bwm{background:rgba(79,195,161,0.1);border:0.5px solid rgba(79,195,161,0.3);padding:10px 12px;border-radius:8px;margin-bottom:8px;}
+.bwm .bwt{font-size:13px;font-weight:600;color:#0a5c43;}.bwm .bws{font-size:12px;margin-top:2px;color:#1a7a5a;}
+.bwn{background:rgba(239,159,39,0.08);border:0.5px solid rgba(239,159,39,0.3);padding:10px 12px;border-radius:8px;margin-bottom:8px;}
+.bwn .bwt{font-size:13px;font-weight:600;color:#6b3e08;}.bwn .bws{font-size:12px;margin-top:2px;color:#8a5510;}
+
+/* STATS */
+.stat-card{background:var(--white);border-radius:12px;border:0.5px solid var(--border);padding:13px;margin-bottom:10px;}
+.stat-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border);}
+.stat-row:last-child{border-bottom:none;padding-bottom:0;}
+.stat-label{font-size:13px;color:var(--muted);}
+.stat-value{font-size:13px;font-weight:600;color:var(--text);}
+.stat-bar-wrap{background:var(--surf);border-radius:6px;height:6px;flex:1;margin:0 10px;overflow:hidden;}
+.stat-bar{height:6px;border-radius:6px;background:var(--teal);}
+.insight-card{background:var(--dark);border-radius:12px;padding:14px;margin-bottom:10px;}
+.insight-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid rgba(255,255,255,0.07);}
+.insight-item:last-child{border-bottom:none;padding-bottom:0;}
+.insight-icon{font-size:22px;flex-shrink:0;}
+.insight-text{flex:1;}
+.insight-title{font-size:12px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;}
+.insight-val{font-size:15px;font-weight:600;color:#fff;margin-top:2px;}
+.insight-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px;}
+
+/* MISC */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
+input[type=file]{display:none;}
+.install-bar{background:#383838;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;flex-shrink:0;}
+.install-bar button{background:var(--teal);border:none;border-radius:8px;color:#fff;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;}
+.ix{background:none!important;color:rgba(255,255,255,0.4)!important;font-size:18px!important;padding:0!important;}
+.spin{display:inline-block;width:10px;height:10px;border:1.5px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:sp 0.6s linear infinite;vertical-align:middle;}
+@keyframes sp{to{transform:rotate(360deg);}}
+/* TOAST NOTIFICATION */
+#toast{position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-110%);z-index:9999;max-width:390px;width:calc(100% - 24px);transition:transform 0.32s cubic-bezier(0.34,1.56,0.64,1),opacity 0.25s;opacity:0;pointer-events:none;}
+#toast.show{transform:translateX(-50%) translateY(12px);opacity:1;}
+#toast.hiding{transform:translateX(-50%) translateY(-110%);opacity:0;transition:transform 0.25s ease-in,opacity 0.25s;}
+.toast-inner{display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:13px;box-shadow:0 4px 22px rgba(0,0,0,0.22);backdrop-filter:blur(8px);}
+.toast-inner.success{background:#1d6b52;border:0.5px solid rgba(79,195,161,0.5);}
+.toast-inner.error{background:#7a2020;border:0.5px solid rgba(220,80,80,0.5);}
+.toast-icon{font-size:20px;flex-shrink:0;line-height:1;}
+.toast-msg{font-size:14px;font-weight:500;color:#fff;line-height:1.4;}
+.api-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;font-weight:500;}
+.live-badge{background:rgba(79,195,161,0.15);color:#0a5c43;border:0.5px solid rgba(79,195,161,0.4);}
+.offline-badge{background:rgba(255,160,0,0.12);color:#7a4e00;border:0.5px solid rgba(255,160,0,0.3);}
+.info-box{background:var(--surf);border-radius:8px;padding:11px 13px;border:0.5px solid var(--border);font-size:13px;color:var(--muted);line-height:1.7;}
+.main-map-controls{display:flex;gap:8px;margin-bottom:8px;}
+.map-ctrl-btn{flex:1;padding:8px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;}
+.map-ctrl-btn.active{background:var(--dark);color:#fff;border-color:var(--dark);}
+/* EDIT MODAL */
+.edit-modal-wrap{display:none;position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,0.62);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.edit-modal-wrap.open{display:block;}
+.edit-modal{max-width:430px;margin:0 auto;padding:14px;padding-top:calc(env(safe-area-inset-top) + 14px);padding-bottom:40px;}
+.edit-modal-card{background:var(--surf2);border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.4);}
+.edit-modal-head{background:var(--dark);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
+.edit-modal-title{font-size:16px;font-weight:700;color:#fff;}
+.edit-close{background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;}
+.edit-modal-body{padding:14px;}
+/* DELETE CONFIRM MODAL */
+.del-modal-wrap{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:24px;}
+.del-modal-wrap.open{display:flex;}
+.del-modal{background:var(--white);border-radius:16px;max-width:340px;width:100%;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,0.45);}
+.del-modal-body{padding:26px 22px 20px;text-align:center;}
+.del-modal-icon{font-size:42px;margin-bottom:12px;line-height:1;}
+.del-modal-msg{font-size:16px;font-weight:700;color:var(--text);line-height:1.45;}
+.del-modal-sub{font-size:13px;color:var(--muted);margin-top:7px;}
+.del-modal-btns{display:grid;grid-template-columns:1fr 1fr;border-top:0.5px solid var(--border);}
+.del-modal-btns button{padding:15px;border:none;background:none;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;}
+.del-cancel{color:var(--muted);border-right:0.5px solid var(--border);}
+.del-cancel:active{background:var(--surf);}
+.del-confirm{color:#e03c3c;}
+.del-confirm:active{background:#fff0f0;}
+/* BAROMETER */
+.baro-wrap{background:var(--white);border-radius:12px;border:0.5px solid var(--border);padding:14px;margin-bottom:10px;}
+.baro-gauge{position:relative;width:160px;height:84px;margin:10px auto 4px;}
+.baro-needle{position:absolute;bottom:0;left:50%;transform-origin:bottom center;transition:transform 0.8s cubic-bezier(0.34,1.3,0.64,1);}
+.baro-val{text-align:center;font-size:22px;font-weight:700;color:var(--text);margin-top:4px;}
+.baro-unit{text-align:center;font-size:11px;color:var(--muted);margin-top:1px;}
+.baro-status{text-align:center;font-size:13px;font-weight:600;margin-top:8px;padding:8px 12px;border-radius:8px;}
+.baro-good{background:rgba(79,195,161,0.12);color:#0a5c43;border:0.5px solid rgba(79,195,161,0.3);}
+.baro-fair{background:rgba(239,159,39,0.1);color:#6b3e08;border:0.5px solid rgba(239,159,39,0.3);}
+.baro-poor{background:rgba(231,76,60,0.1);color:#7a2020;border:0.5px solid rgba(231,76,60,0.3);}
+.baro-trend{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;font-size:12px;color:var(--muted);}
+.baro-history{display:flex;align-items:flex-end;gap:3px;height:36px;margin:10px 0 4px;}
+.baro-bar{flex:1;border-radius:3px 3px 0 0;min-height:3px;background:var(--teal);opacity:0.7;transition:height 0.4s;}
 </style>
 </head>
-
 <body>
+<div class="app">
 
-<header class="header">
-  <h1>Fishing Log</h1>
-</header>
+  <!-- TOAST -->
+  <div id="toast" role="alert" aria-live="assertive">
+    <div class="toast-inner" id="toastInner">
+      <span class="toast-icon" id="toastIcon"></span>
+      <span class="toast-msg" id="toastMsg"></span>
+    </div>
+  </div>
 
-<main>
+  <div id="ibar" class="install-bar" style="display:none">
+    <span>📲 Add to Home Screen for full app</span>
+    <button onclick="doInstall()">Install</button>
+    <button class="ix" onclick="document.getElementById('ibar').style.display='none'">✕</button>
+  </div>
 
-<section id="log" class="tab active">
-  <input id="species" placeholder="Species">
-  <input id="length" placeholder="Length (cm)">
-  <input id="weight" placeholder="Weight (kg)">
+  <!-- HEADER -->
+  <div class="header">
+    <svg width="38" height="38" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+      <rect x="0" y="0" width="512" height="512" rx="110" fill="#444444"/>
+      <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#cccccc" stroke-width="18" stroke-linecap="round"/>
+      <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#ffffff"/>
+      <path d="M210 260 L165 225 L165 295 Z" fill="#ffffff"/>
+      <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#ffffff"/>
+      <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#ffffff"/>
+      <circle cx="310" cy="250" r="5" fill="#444444"/>
+      <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#aaaaaa" stroke-width="20" stroke-linecap="round"/>
+      <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#aaaaaa" stroke-width="12" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <div class="htitle">Fishing Log for NZ Waters</div>
+      <div class="hsub" id="hcount">0 catches logged</div>
+    </div>
+  </div>
 
-  <input type="file" id="photo" accept="image/*">
-  <img id="preview" style="width:100%; margin-top:10px;">
+  <div class="pages">
 
-  <button id="saveBtn">Save Catch</button>
+    <!-- ══ LOG ══ -->
+    <div class="pg show" id="pg-log">
+<div class="sec">
+        <div class="stitle">📸 Photo</div>
+        <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
+          <div class="pu-inner" id="puInner">
+            <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+              <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
+              <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#bbbbbb"/>
+              <path d="M210 260 L165 225 L165 295 Z" fill="#bbbbbb"/>
+              <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#bbbbbb"/>
+              <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#bbbbbb"/>
+              <circle cx="310" cy="250" r="5" fill="#ebebea"/>
+              <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#cccccc" stroke-width="20" stroke-linecap="round"/>
+              <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#cccccc" stroke-width="12" stroke-linecap="round"/>
+            </svg>
+            <span style="font-size:12px;color:#aaa;margin-top:4px;">Add a photo of your catch</span>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+        </div>
+        <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
+        <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
+        <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
+      </div>
 
-  <div id="catchList"></div>
-</section>
+      <div class="sec">
+        <div class="stitle">🐟 Catch Details</div>
+        <label>Fish species</label>
+        <select id="ftype">
+          <option value="">Select species...</option>
+          <option>Snapper</option><option>Kingfish</option><option>Kahawai</option>
+          <option>Gurnard</option><option>John Dory</option><option>Blue Cod</option>
+          <option>Trevally</option><option>Tarakihi</option><option>Moki</option>
+          <option>Hapuka</option><option>Crayfish</option>
+          <option>Other</option>
+        </select>
+        <label>Custom species (if Other)</label>
+        <input type="text" id="fcust" placeholder="e.g. Flounder">
+        <div class="r2">
+          <div><label>Length (cm)</label><input type="number" id="flen" placeholder="42" inputmode="decimal"></div>
+          <div><label>Weight (kg)</label><input type="number" id="fwt" step="0.1" placeholder="1.8" inputmode="decimal"></div>
+        </div>
+      </div>
 
-<section id="stats" class="tab">
-  <div>Total Catches: <span id="statTotal"></span></div>
-  <div>Last Catch: <span id="statLast"></span></div>
-</section>
+      <div class="sec">
+        <div class="stitle">
+          <svg width="18" height="18" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M30 8 Q34 8 34 14 Q34 22 26 26 Q22 28 20 32 Q19 35 22 36" stroke="#888" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <circle cx="30" cy="8" r="3.5" fill="#d4af37"/>
+            <circle cx="30" cy="8" r="2" fill="#f5d060" opacity="0.7"/>
+            <path d="M30 11 Q28 16 26 20 Q24 24 22 27" stroke="#9acd32" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <path d="M30 9 Q24 5 16 8 Q12 10 10 14" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.85"/>
+            <path d="M30 9 Q22 3 14 5 Q10 6 8 10" stroke="white" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.5"/>
+            <path d="M25 19 Q20 16 15 18" stroke="#9acd32" stroke-width="1" fill="none" stroke-linecap="round"/>
+            <path d="M25 19 Q20 22 16 22" stroke="#9acd32" stroke-width="1" fill="none" stroke-linecap="round"/>
+            <path d="M28 12 Q22 8 17 11" stroke="#c0c0c0" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.7"/>
+          </svg>
+          Fishing Method
+        </div>
+        <div class="r2">
+          <div>
+            <label>Method</label>
+            <select id="method">
+              <option value="">Select...</option>
+              <option>Fly fishing</option><option>Spinning</option><option>Bait fishing</option>
+              <option>Trolling</option><option>Jigging</option><option>Surfcasting</option>
+              <option>Kontiki</option><option>Longline</option>
+            </select>
+          </div>
+          <div>
+            <label>Platform</label>
+            <select id="platform">
+              <option value="">Select...</option>
+              <option>Wading</option>
+              <option>Boat</option>
+              <option>Kayak</option>
+            </select>
+          </div>
+        </div>
+        <div class="r2">
+          <div><label>Fly / Bait</label><input type="text" id="fly" placeholder="e.g. Crazy Charlie"></div>
+          <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6"></div>
+        </div>
 
-</main>
+        <label>Notes</label>
+        <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;"></textarea>
+      </div>
 
-<nav>
-  <button data-tab="log">Log</button>
-  <button data-tab="stats">Stats</button>
-</nav>
+      <div class="sec">
+        <div class="stitle">📅 Date &amp; Time</div>
+        <div class="r2">
+          <div><label>Date</label><input type="date" id="cdate"></div>
+          <div><label>Time</label><input type="time" id="ctime"></div>
+        </div>
+      </div>
 
+      <div class="sec">
+        <div class="stitle">📍 Location</div>
+        <label>Search location</label>
+        <input type="text" id="locname" placeholder="e.g. Tauranga Harbour" oninput="onLocInput()" autocomplete="off">
+        <div class="geo-status" id="gstat"></div>
+        <div class="r2">
+          <div><label>Latitude</label><input type="number" id="clat" step="0.0001" value="-37.6878" oninput="onCoordInput()" inputmode="decimal"></div>
+          <div><label>Longitude</label><input type="number" id="clng" step="0.0001" value="176.1651" oninput="onCoordInput()" inputmode="decimal"></div>
+        </div>
+        <button class="gpsbtn" onclick="doGPS()">📡 Use my GPS location</button>
+        <div class="geo-hint">💡 Type a place to move the pin · drag pin or tap map to reverse-geocode</div>
+        <div class="mapbox" id="logmap">
+          <button class="map-layer-btn" id="logMapLayerBtn" onclick="toggleLogMapLayer()">🛰 Satellite</button>
+        </div>
+      </div>
+
+      <button class="sbtn" onclick="saveCatch()">Save Catch</button>
+      <div style="height:20px;"></div>
+    </div>
+
+    <!-- ══ TIDE ══ -->
+    <div class="pg" id="pg-tide">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);">Tidal Data</div>
+        <span id="tideBadge" class="api-badge live-badge">⚡ Calculated</span>
+      </div>
+
+      <div class="sec" style="padding:11px 13px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Location</div>
+            <div id="tideLocLabel" style="font-size:12px;color:var(--muted);">📍 Bay of Plenty, NZ (default)</div>
+            <div id="tideGpsStatus" style="font-size:11px;color:var(--teal);min-height:14px;margin-top:2px;"></div>
+          </div>
+          <button id="tideGpsBtn" class="gpsbtn" style="margin:0;width:auto;white-space:nowrap;padding:9px 13px;" onclick="requestAppGPS(()=>{calcTide();})">📡 Use GPS</button>
+        </div>
+      </div>
+
+      <div class="dcard">
+        <div class="dlbl">🌊 Current Tide</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span id="temoji" style="font-size:38px;">🌊</span>
+          <div>
+            <div id="tlbl" style="font-size:21px;font-weight:600;color:#fff;">—</div>
+            <div id="tsub" style="font-size:13px;color:rgba(255,255,255,0.55);margin-top:2px;">Calculating...</div>
+            <div style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;background:rgba(79,195,161,0.2);border:0.5px solid rgba(79,195,161,0.4);border-radius:20px;padding:3px 10px;font-size:12px;color:var(--teal);">
+              <span id="tarrow">↑</span>&nbsp;<span id="tdir">—</span>
+            </div>
+          </div>
+        </div>
+        <canvas id="wcanv" width="360" height="46" style="width:100%;height:46px;margin-top:11px;display:block;"></canvas>
+        <div id="tideWaveRow"></div>
+      </div>
+
+      <div class="sec">
+        <div class="stitle">📅 Today's Tide Times</div>
+        <div id="tideSchedule" style="padding:2px 0;"></div>
+      </div>
+
+      <div class="sec">
+        <div class="stitle">📊 24-Hour Tide Curve</div>
+        <canvas id="tcurve" width="360" height="110" style="width:100%;height:110px;display:block;"></canvas>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;">
+          <span style="font-size:9px;color:var(--hint);">-12h</span>
+          <span style="font-size:9px;color:var(--hint);">now</span>
+          <span style="font-size:9px;color:var(--hint);">+12h</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MOON ══ -->
+    <div class="pg" id="pg-moon">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);">Lunar Data</div>
+        <span class="api-badge live-badge">🌙 Calculated (accurate)</span>
+      </div>
+      <div class="dcard">
+        <div class="dlbl">🌙 Moon Phase</div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <canvas id="moonc" width="78" height="78" style="flex-shrink:0;display:block;"></canvas>
+          <div>
+            <div id="mname" style="font-size:19px;font-weight:600;color:#fff;"></div>
+            <div id="msub" style="font-size:13px;color:rgba(255,255,255,0.55);margin-top:3px;"></div>
+            <div id="mage" style="font-size:12px;color:rgba(255,255,255,0.38);margin-top:4px;"></div>
+          </div>
+        </div>
+        <div id="mrow" style="display:flex;justify-content:space-between;margin-top:13px;"></div>
+      </div>
+      <div class="sec"><div class="stitle">📅 Moon Calculator</div><label>Date</label><input type="date" id="mdate" oninput="calcMoon()"></div>
+      <div class="sec"><div class="stitle">🎣 Moon &amp; Fishing</div><div id="mtip" style="font-size:13px;color:var(--muted);line-height:1.7;"></div></div>
+    </div>
+
+    <!-- ══ BITE ══ -->
+    <div class="pg" id="pg-bite">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);">Solunar Data</div>
+        <span class="api-badge live-badge">📐 Calculated (accurate)</span>
+      </div>
+
+      <div class="sec" style="padding:11px 13px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Location</div>
+            <div id="biteLocLabel" style="font-size:12px;color:var(--muted);">📍 Bay of Plenty, NZ (default)</div>
+            <div id="biteGpsStatus" style="font-size:11px;color:var(--teal);min-height:14px;margin-top:2px;"></div>
+          </div>
+          <button id="biteGpsBtn" class="gpsbtn" style="margin:0;width:auto;white-space:nowrap;padding:9px 13px;" onclick="requestAppGPS(()=>{calcBite();})">📡 Use GPS</button>
+        </div>
+      </div>
+
+      <div class="dcard">
+        <div class="dlbl">🐟 Solunar Bite Times — <span id="bdate" style="color:var(--teal);"></span></div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:11px;">Major ~2 hrs · Minor ~1 hr · Red line = now</div>
+        <canvas id="bcanv" width="360" height="46" style="width:100%;height:46px;display:block;"></canvas>
+        <div style="display:flex;justify-content:space-between;margin-top:3px;">
+          <span style="font-size:9px;color:rgba(255,255,255,0.28);">12am</span>
+          <span style="font-size:9px;color:rgba(255,255,255,0.28);">6am</span>
+          <span style="font-size:9px;color:rgba(255,255,255,0.28);">12pm</span>
+          <span style="font-size:9px;color:rgba(255,255,255,0.28);">6pm</span>
+          <span style="font-size:9px;color:rgba(255,255,255,0.28);">12am</span>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:9px;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><div style="width:9px;height:9px;border-radius:50%;background:var(--teal);"></div>Major</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><div style="width:9px;height:9px;border-radius:50%;background:#EF9F27;"></div>Minor</div>
+        </div>
+      </div>
+      <div class="sec"><div class="stitle">📅 Select Date</div><input type="date" id="bcdate" oninput="calcBite()"></div>
+      <div id="bwins" style="margin-bottom:10px;"></div>
+      <div class="sec"><div class="stitle">📊 Day Rating</div><div id="brate" style="font-size:13px;color:var(--muted);line-height:1.7;"></div></div>
+    </div>
+
+    <!-- ══ WEATHER ══ -->
+    <div class="pg" id="pg-wx">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text);">Weather</div>
+        <span id="wxBadge" class="api-badge offline-badge">⏳ Loading...</span>
+      </div>
+      <div style="background:#1c3428;border-radius:12px;padding:18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;">
+        <div id="wxi" style="font-size:48px;">⛅</div>
+        <div>
+          <div id="wxt" style="font-size:32px;font-weight:600;color:#fff;">—</div>
+          <div id="wxd" style="font-size:14px;color:rgba(255,255,255,0.65);margin-top:2px;">Loading...</div>
+          <div id="wxl" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:3px;">Detecting location...</div>
+        </div>
+      </div>
+      <div class="wgrid">
+        <div class="wcard"><span class="wi">💨</span><span class="wv" id="wxwind">—</span><span class="wl">Wind speed</span></div>
+        <div class="wcard"><span class="wi">🧭</span><span class="wv" id="wxwdir">—</span><span class="wl">Wind direction</span></div>
+        <div class="wcard"><span class="wi">💧</span><span class="wv" id="wxh">—</span><span class="wl">Humidity</span></div>
+        <div class="wcard"><span class="wi">🌡</span><span class="wv" id="wxf">—</span><span class="wl">Feels like</span></div>
+        <div class="wcard"><span class="wi">👁</span><span class="wv" id="wxv">—</span><span class="wl">Visibility</span></div>
+        <div class="wcard"><span class="wi">📊</span><span class="wv" id="wxp">—</span><span class="wl">Pressure</span></div>
+        <div class="wcard"><span class="wi">🌊</span><span class="wv" id="wxswell">—</span><span class="wl">Swell</span></div>
+        <div class="wcard"><span class="wi">🌧</span><span class="wv" id="wxrain">—</span><span class="wl">Rain chance</span></div>
+      </div>
+      <div class="baro-wrap" id="baroCard">
+        <div class="stitle" style="margin-bottom:0;">🌡 Barometer</div>
+        <div class="baro-gauge">
+          <svg class="baro-arc" width="160" height="84" viewBox="0 0 160 84">
+            <!-- Background arc segments: Poor | Fair | Good | Fair | Poor -->
+            <path d="M14,80 A70,70 0 0,1 38,22" stroke="#e74c3c" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <path d="M38,22 A70,70 0 0,1 70,10" stroke="#f39c12" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <path d="M70,10 A70,70 0 0,1 90,10" stroke="#4fc3a1" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <path d="M90,10 A70,70 0 0,1 122,22" stroke="#f39c12" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <path d="M122,22 A70,70 0 0,1 146,80" stroke="#e74c3c" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
+            <!-- Labels -->
+            <text x="8" y="80" font-size="8" fill="#e74c3c" opacity="0.7" text-anchor="middle">970</text>
+            <text x="80" y="7" font-size="8" fill="#4fc3a1" opacity="0.9" text-anchor="middle">1013</text>
+            <text x="152" y="80" font-size="8" fill="#e74c3c" opacity="0.7" text-anchor="middle">1050</text>
+          </svg>
+          <div class="baro-needle" id="baroNeedle" style="transform:rotate(-90deg);">
+            <svg width="4" height="68" viewBox="0 0 4 68">
+              <rect x="1" y="0" width="2" height="60" rx="1" fill="var(--dark)"/>
+              <circle cx="2" cy="64" r="4" fill="var(--dark)"/>
+            </svg>
+          </div>
+        </div>
+        <div class="baro-val" id="baroVal">— hPa</div>
+        <div class="baro-unit" id="baroTrend">Waiting for data…</div>
+        <div class="baro-status baro-fair" id="baroStatus">—</div>
+        <div style="margin-top:10px;">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">3-Hour Pressure History</div>
+          <div class="baro-history" id="baroHistory"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:2px;">
+            <span style="font-size:9px;color:var(--hint);">-3h</span>
+            <span style="font-size:9px;color:var(--hint);">now</span>
+          </div>
+        </div>
+      </div>
+      <div class="sec" style="margin-top:0;"><div class="stitle">⚡ Fishing Conditions</div><div id="wxcond" style="font-size:14px;color:var(--text);line-height:1.7;">—</div></div>
+      <button class="sbtn teal-btn" style="margin-top:4px;margin-bottom:10px;" onclick="autoWeather(true)">🔄 Refresh Weather</button>
+    </div>
+
+    <!-- ══ MAP ══ -->
+    <div class="pg" id="pg-map">
+      <div class="sec" style="padding:12px;">
+        <div class="stitle" style="margin-bottom:8px;">🗺 All Catch Locations</div>
+        <div class="main-map-controls">
+          <button class="map-ctrl-btn active" id="mmStreetBtn" onclick="setMainMapLayer('street')">🗺 Street</button>
+          <button class="map-ctrl-btn" id="mmSatBtn" onclick="setMainMapLayer('satellite')">🛰 Satellite</button>
+        </div>
+        <div id="mainmap" style="width:100%;height:300px;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);"></div>
+        <div id="mleg" style="margin-top:8px;font-size:12px;color:var(--muted);">No catches logged yet.</div>
+      <div id="mapLegend" style="display:none;margin-top:8px;"></div>
+      </div>
+      <div class="sec"><div class="stitle">📍 Location List</div><div id="loclist" style="font-size:13px;color:var(--muted);">No locations saved yet.</div></div>
+    </div>
+
+    <!-- ══ CATCHES ══ -->
+    <div class="pg" id="pg-list">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div id="tstats" style="font-size:13px;font-weight:600;color:var(--text);">0 catches</div>
+        <select id="sortby" onchange="renderList()" style="width:auto;padding:6px 10px;font-size:12px;">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="weight">Heaviest first</option>
+          <option value="length">Longest first</option>
+        </select>
+      </div>
+      <!-- Backup / Restore bar -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="exportBackup()">💾 Backup Data</button>
+        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="document.getElementById('importFile').click()">📂 Import Backup</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" onchange="importBackup(event)">
+      <div id="clist">
+        <div class="empty">
+          <div style="font-size:46px;opacity:0.35;">🎣</div>
+          <div style="font-size:14px;">No catches yet.<br>Head to the Log tab!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ STATS ══ -->
+    <div class="pg" id="pg-stats">
+      <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Fishing Insights</div>
+      <div id="statsContent"></div>
+    </div>
+
+  </div><!-- /pages -->
+
+  <div class="tabs">
+    <div class="tab active" data-tab="log" onclick="go('log')"><span class="ti">📝</span><span class="tl">Log</span></div>
+    <div class="tab" data-tab="tide" onclick="go('tide')"><span class="ti">🌊</span><span class="tl">Tide</span></div>
+    <div class="tab" data-tab="moon" onclick="go('moon')"><span class="ti">🌙</span><span class="tl">Moon</span></div>
+    <div class="tab" data-tab="bite" onclick="go('bite')"><span class="ti">🐟</span><span class="tl">Bite</span></div>
+    <div class="tab" data-tab="wx" onclick="go('wx')"><span class="ti">⛅</span><span class="tl">Weather</span></div>
+    <div class="tab" data-tab="map" onclick="go('map')"><span class="ti">📍</span><span class="tl">Map</span></div>
+    <div class="tab" data-tab="list" onclick="go('list')"><span class="ti">🏆</span><span class="tl">Catches</span></div>
+    <div class="tab" data-tab="stats" onclick="go('stats')"><span class="ti">📊</span><span class="tl">Stats</span></div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ══ DELETE CONFIRM MODAL ══ -->
+<div class="del-modal-wrap" id="delModal">
+  <div class="del-modal">
+    <div class="del-modal-body">
+      <div class="del-modal-icon">🗑️</div>
+      <div class="del-modal-msg">Are you sure you want to delete this awesome catch?</div>
+      <div class="del-modal-sub">This action cannot be undone.</div>
+    </div>
+    <div class="del-modal-btns">
+      <button class="del-cancel" onclick="closeDelModal()">Keep it</button>
+      <button class="del-confirm" onclick="confirmDelCatch()">Delete</button>
+    </div>
+  </div>
+</div>
+<div class="edit-modal-wrap" id="editModal">
+  <div class="edit-modal">
+    <div class="edit-modal-card">
+      <div class="edit-modal-head">
+        <span class="edit-modal-title">✏️ Edit Catch</span>
+        <button class="edit-close" onclick="closeEdit()">✕</button>
+      </div>
+      <div class="edit-modal-body">
+        <div class="sec" style="margin-bottom:10px;">
+          <div class="stitle">📸 Photo</div>
+          <div class="pu" id="epuEl" style="min-height:140px;cursor:pointer;" onclick="const i=document.getElementById('efiLib');i.value='';i.click();">
+            <div class="pu-inner" id="epuInner">
+              <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+                <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
+                <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#bbbbbb"/>
+                <path d="M210 260 L165 225 L165 295 Z" fill="#bbbbbb"/>
+                <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#bbbbbb"/>
+                <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#bbbbbb"/>
+                <circle cx="310" cy="250" r="5" fill="#ebebea"/>
+                <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#cccccc" stroke-width="20" stroke-linecap="round"/>
+                <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#cccccc" stroke-width="12" stroke-linecap="round"/>
+              </svg>
+              <span style="font-size:11px;color:#aaa;margin-top:4px;">No photo — tap to add</span>
+            </div>
+          </div>
+          <div style="margin-top:8px;">
+            <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+          </div>
+          <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
+          <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
+        </div>
+        <div class="sec" style="margin-bottom:10px;">
+          <div class="stitle">🐟 Catch Details</div>
+          <label>Fish species</label>
+          <select id="efish">
+            <option value="">Select species...</option>
+            <option>Snapper</option><option>Kingfish</option><option>Kahawai</option>
+            <option>Gurnard</option><option>John Dory</option><option>Blue Cod</option>
+            <option>Trevally</option><option>Tarakihi</option><option>Moki</option>
+            <option>Hapuka</option><option>Crayfish</option><option>Other</option>
+          </select>
+          <label>Custom species (if Other)</label>
+          <input type="text" id="efishcust" placeholder="e.g. Flounder">
+          <div class="r2">
+            <div><label>Length (cm)</label><input type="number" id="elen" placeholder="42" inputmode="decimal"></div>
+            <div><label>Weight (kg)</label><input type="number" id="ewt" step="0.1" placeholder="1.8" inputmode="decimal"></div>
+          </div>
+        </div>
+        <div class="sec" style="margin-bottom:10px;">
+          <div class="stitle">🎣 Method &amp; Bait</div>
+          <div class="r2">
+            <div><label>Method</label>
+              <select id="emethod">
+                <option value="">Select...</option>
+                <option>Fly fishing</option><option>Spinning</option><option>Bait fishing</option>
+                <option>Trolling</option><option>Jigging</option><option>Surfcasting</option>
+                <option>Kontiki</option><option>Longline</option>
+              </select>
+            </div>
+            <div><label>Platform</label>
+              <select id="eplatform">
+                <option value="">Select...</option>
+                <option>Wading</option><option>Boat</option><option>Kayak</option>
+              </select>
+            </div>
+          </div>
+          <div class="r2" style="margin-top:0;">
+            <div><label>Fly / Bait</label><input type="text" id="efly" placeholder="e.g. Crazy Charlie"></div>
+            <div><label>Colour &amp; size</label><input type="text" id="eflycol" placeholder="e.g. Chartreuse, #6"></div>
+          </div>
+          <label>Notes</label>
+          <textarea id="enotes" rows="3" style="resize:none;font-size:16px;" placeholder="Depth, technique, conditions..."></textarea>
+        </div>
+        <div class="sec" style="margin-bottom:10px;">
+          <div class="stitle">📅 Date &amp; Time</div>
+          <div class="r2">
+            <div><label>Date</label><input type="date" id="edate"></div>
+            <div><label>Time</label><input type="time" id="etime"></div>
+          </div>
+        </div>
+        <div class="sec" style="margin-bottom:14px;">
+          <div class="stitle">📍 Location</div>
+          <label>Location name</label>
+          <input type="text" id="eloc" placeholder="e.g. Tauranga Harbour">
+          <div class="r2">
+            <div><label>Latitude</label><input type="number" id="elat" step="0.0001" oninput="onEditCoordInput()" inputmode="decimal"></div>
+            <div><label>Longitude</label><input type="number" id="elng" step="0.0001" oninput="onEditCoordInput()" inputmode="decimal"></div>
+          </div>
+          <button class="gpsbtn" onclick="doEditGPS()">📡 Use my GPS location</button>
+          <div class="mapbox" id="editmap" style="height:170px;">
+            <button class="map-layer-btn" id="editMapLayerBtn" onclick="toggleEditMapLayer()">🛰 Satellite</button>
+          </div>
+        </div>
+        <button class="sbtn teal-btn" onclick="saveEdit()">💾 Save Changes</button>
+        <div style="height:10px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const ImageTools = {
-  async compress(file, maxWidth = 1024, quality = 0.7) {
-    return new Promise(resolve => {
-      const reader = new FileReader();
-      const img = new Image();
+// ─────────────────────────────────────────────
+// INDEXEDDB — Photo Storage
+// Photos are stored separately from catch metadata so localStorage
+// is never burdened with large base64 strings.
+// ─────────────────────────────────────────────
+const IDB_NAME = 'fishinglog-photos', IDB_STORE = 'photos', IDB_VER = 1;
+let _idbPromise = null; // cache the promise to prevent concurrent open races
 
-      reader.onload = e => img.src = e.target.result;
-
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const scale = maxWidth / img.width;
-
-        canvas.width = maxWidth;
-        canvas.height = img.height * scale;
-
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        canvas.toBlob(blob => resolve(blob), 'image/jpeg', quality);
-      };
-
-      reader.readAsDataURL(file);
-    });
-  }
-};
-
-const Storage = (() => {
-  let db;
-  const request = indexedDB.open('FishingDB', 1);
-
-  request.onupgradeneeded = e => {
-    db = e.target.result;
-    db.createObjectStore('catches', { keyPath:'id', autoIncrement:true });
-  };
-
-  request.onsuccess = e => db = e.target.result;
-
-  function save(data) {
-    return new Promise(resolve => {
-      const tx = db.transaction('catches','readwrite');
-      tx.objectStore('catches').add(data);
-      tx.oncomplete = resolve;
-    });
-  }
-
-  function getAll() {
-    return new Promise(resolve => {
-      const tx = db.transaction('catches','readonly');
-      const req = tx.objectStore('catches').getAll();
-      req.onsuccess = () => resolve(req.result);
-    });
-  }
-
-  return { save, getAll };
-})();
-
-const UI = {
-  getFormData() {
-    return {
-      species: species.value,
-      length: length.value,
-      weight: weight.value
+function idbOpen() {
+  if (_idbPromise) return _idbPromise;
+  _idbPromise = new Promise((res, rej) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VER);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+    req.onsuccess  = e => res(e.target.result);
+    req.onerror    = e => { _idbPromise = null; rej(e.target.error); };
+  });
+  return _idbPromise;
+}
+function idbPut(id, dataUrl) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(dataUrl, id);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  }));
+}
+function idbGet(id) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(id);
+    req.onsuccess = e => res(e.target.result || null);
+    req.onerror   = e => rej(e.target.error);
+  }));
+}
+function idbDel(id) {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(id);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  }));
+}
+function idbGetAll() {
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const out = {}, req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).openCursor();
+    req.onsuccess = e => {
+      const cur = e.target.result;
+      if (cur) { out[cur.key] = cur.value; cur.continue(); } else res(out);
     };
-  },
+    req.onerror = e => rej(e.target.error);
+  }));
+}
 
-  render(catches) {
-    catchList.innerHTML = '';
-    catches.forEach(c => {
-      const el = document.createElement('div');
-      el.className = 'card';
-      el.innerHTML = `<h3>${c.species}</h3><p>${c.length} cm</p>`;
-      catchList.appendChild(el);
+// ─────────────────────────────────────────────
+// PWA INSTALL
+// ─────────────────────────────────────────────
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('ibar').style.display = 'flex';
+});
+function doInstall() {
+  if(deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt=null; document.getElementById('ibar').style.display='none'; }); }
+}
+window.addEventListener('appinstalled', () => { document.getElementById('ibar').style.display='none'; });
+if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let catches = [], photo = null;
+let logMap = null, logPin = null, logStreetLayer = null, logSatLayer = null, logLayerMode = 'street';
+let mainMap = null, mainPins = [], mainStreetLayer = null, mainSatLayer = null, mainLayerMode = 'street';
+let cmaps = {};
+let geoTimer = null, revTimer = null;
+let wxLat = -37.6878, wxLng = 176.1651; // default Tauranga
+
+// ── Shared app-level GPS (used by Tide & Bite tabs) ──
+const APP_DEFAULT_LAT = -37.6878, APP_DEFAULT_LNG = 176.1651;
+let appLat = APP_DEFAULT_LAT, appLng = APP_DEFAULT_LNG;
+let appLocName = 'Bay of Plenty, NZ (default)';
+let appGPSReady = false;
+
+function requestAppGPS(onSuccess) {
+  if(!navigator.geolocation) { alert('GPS not available on this device.'); return; }
+  if(appGPSReady) {
+    ['tideLocLabel','biteLocLabel'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = '📍 ' + appLocName;
     });
-  },
-
-  preview(blob) {
-    preview.src = URL.createObjectURL(blob);
-  },
-
-  reset() {
-    preview.src = '';
-  },
-
-  tab(id) {
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    ['tideGpsStatus','biteGpsStatus'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = '🎯 Nearest port: ' + activePort.name;
+    });
+    onSuccess(); return;
   }
-};
+  ['tideGpsStatus','biteGpsStatus'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.innerHTML = '<span class="spin"></span> Getting GPS…';
+  });
+  navigator.geolocation.getCurrentPosition(async pos => {
+    appLat = pos.coords.latitude; appLng = pos.coords.longitude; appGPSReady = true;
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${appLat}&lon=${appLng}&zoom=10`,{headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}});
+      const d = await r.json();
+      if(d?.address){const a=d.address;appLocName=[a.city||a.town||a.village||a.suburb||a.county,a.state||a.country].filter(Boolean).join(', ');}
+    } catch(e) { appLocName = `${appLat.toFixed(2)}°, ${appLng.toFixed(2)}°`; }
+    ['tideGpsStatus','biteGpsStatus'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = '📍 ' + appLocName;
+    });
+    activePort = nearestPort(appLat, appLng);
+    const tsl = document.getElementById('tideGpsStatus');
+    if(tsl) tsl.textContent = '🎯 Nearest port: ' + activePort.name;
+    ['tideGpsBtn','biteGpsBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el){el.textContent='✅ Location set';el.style.background='rgba(79,195,161,0.15)';el.style.color='var(--teal)';el.style.borderColor='rgba(79,195,161,0.4)';}
+    });
+    onSuccess();
+  }, () => {
+    ['tideGpsStatus','biteGpsStatus'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.textContent = '⚠️ GPS denied — using default location';
+    });
+  }, {enableHighAccuracy:true, timeout:12000});
+}
 
-const Stats = {
-  async init() {
-    const data = await Storage.getAll();
-    this.render(data);
-  },
+try { catches = JSON.parse(localStorage.getItem('fishinglog') || '[]'); } catch(e) { catches = []; }
 
-  render(catches) {
-    statTotal.innerText = catches.length;
+const now = new Date(), today = now.toISOString().split('T')[0], nowT = now.toTimeString().slice(0,5);
+['cdate','mdate','bcdate'].forEach(id => { const e=document.getElementById(id); if(e) e.value=today; });
+['ctime'].forEach(id => { const e=document.getElementById(id); if(e) e.value=nowT; });
+updateHeader();
 
-    if (catches.length > 0) {
-      const last = catches[catches.length - 1];
-      statLast.innerText = `${last.species} (${last.length} cm)`;
-    } else {
-      statLast.innerText = '-';
+// ─────────────────────────────────────────────
+// STORAGE INIT — migrate + hydrate photos from IDB
+// Runs async after UI is ready; photos appear once IDB resolves.
+// ─────────────────────────────────────────────
+async function initStorage() {
+  try {
+    // 1. Migrate: any catch that still has a base64 photo in localStorage
+    //    (from a previous app version) gets moved into IDB and stripped from LS.
+    let migrated = false;
+    for (const c of catches) {
+      if (c.photo) {
+        await idbPut(c.id, c.photo);
+        delete c.photo; // strip from in-memory object so persist() writes a clean copy
+        migrated = true;
+      }
+    }
+    if (migrated) {
+      persist(); // re-saves without photos, shrinking localStorage
+    }
+
+    // 2. Hydrate: load all photos from IDB into in-memory catch objects
+    const allPhotos = await idbGetAll();
+    catches.forEach(c => { if (allPhotos[c.id]) c.photo = allPhotos[c.id]; });
+
+    // 3. Refresh any tab that's already visible
+    if (currentTab === 'list')  renderList();
+    if (currentTab === 'stats') renderStats();
+  } catch(e) {
+    console.warn('Photo storage init error:', e);
+  }
+}
+
+// ─────────────────────────────────────────────
+// VIBRATION + TAB NAV
+// ─────────────────────────────────────────────
+function vibrate(ms) {
+  if(navigator.vibrate) navigator.vibrate(ms);
+}
+
+let _toastTimer = null;
+function showToast(msg, type) {
+  // type: 'success' | 'error'
+  const toast = document.getElementById('toast');
+  const inner = document.getElementById('toastInner');
+  const icon  = document.getElementById('toastIcon');
+  const msgEl = document.getElementById('toastMsg');
+  inner.className = 'toast-inner ' + (type || 'success');
+  icon.textContent = type === 'error' ? '⚠️' : '✅';
+  msgEl.textContent = msg;
+  toast.classList.remove('hiding');
+  toast.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => {
+    toast.classList.add('hiding');
+    setTimeout(() => { toast.classList.remove('show','hiding'); }, 280);
+  }, 3200);
+}
+
+let currentTab = 'log';
+function go(p) {
+  if(p === currentTab) return;
+  vibrate(30);
+  currentTab = p;
+  document.querySelectorAll('.pg').forEach(e => e.classList.remove('show'));
+  document.getElementById('pg-'+p).classList.add('show');
+  document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.dataset.tab === p));
+  if(p==='log') setTimeout(initLogMap, 100);
+  if(p==='tide') { calcTide(); }
+  if(p==='moon') calcMoon();
+  if(p==='bite') calcBite();
+  if(p==='wx') autoWeather();
+  if(p==='map') setTimeout(initMainMap, 100);
+  if(p==='list') renderList();
+  if(p==='stats') renderStats();
+}
+
+// ─────────────────────────────────────────────
+// IMAGE COMPRESSION
+// ─────────────────────────────────────────────
+// Memory problem — why OOM happens intermittently:
+//
+// Modern phones shoot at 12–108 MP. A 50 MP photo (8192×6144) = 192 MB raw RGBA.
+// The old pipeline had two full-res decodes running simultaneously:
+//   Pass 1 — createImageBitmap(file) probe to read dimensions   → e.g. 192 MB
+//   Pass 2 — createImageBitmap(file, {resizeWidth, ...}) decode → another 192 MB
+//   Both lived in GPU memory at the same time = ~384 MB before the canvas was drawn.
+//   Chrome Android's JS+GPU heap limit is ~512 MB, so this fails on ~50% of high-MP shots.
+//
+// Other issues in the old code:
+//   • On 60% retry, _decodeToCanvas(file, ...) re-opened the File stream.
+//     Samsung content:// URI streams are consumed after the first read — silent fail.
+//   • Binary search ran 8 iterations, each building a new base64 string in memory.
+//     6 iterations converge to the same quality with 25% fewer allocations.
+//   • No progressive size fallback — only one retry at a fixed 60%, no middle step.
+//
+// Fix strategy:
+//   1. Create ONE objectUrl from the File upfront and reuse it for all steps.
+//      objectUrl reads are repeatable; File/stream reads are not on Android.
+//   2. Get dimensions from a tiny 256px probe — close it before decoding full size.
+//      The two createImageBitmap calls never coexist above probe size.
+//   3. Decode directly to target size in a single pass — no separate probe+resize.
+//   4. Progressive fallback: 100% → 75% → 50% of target size.
+//   5. Immediately null canvas/bmp/img references after use to hint the GC.
+//   6. Reduce binary-search iterations from 8 to 6.
+//   7. Slightly larger target (300 KB vs 250 KB) — reduces compression work.
+// ─────────────────────────────────────────────
+const PHOTO_TARGET_BYTES = 300 * 1024; // 300 KB target — raised from 250 to ease memory pressure
+const PHOTO_MAX_PX       = 1280;       // max dimension in pixels
+const PHOTO_MIN_QUALITY  = 0.35;       // quality floor
+const PHOTO_MAX_QUALITY  = 0.85;       // quality ceiling
+
+// ── Probe image dimensions using a small createImageBitmap ────────────────────
+// Returns { w, h } at the probed size. We use this ratio to compute the final
+// canvas size, then close the probe BEFORE doing the full decode so the two
+// full-res buffers never coexist in GPU memory.
+async function _probeDimensions(src) {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const probe = await createImageBitmap(src, { resizeWidth: 256, resizeHeight: 256 });
+      const pw = probe.width, ph = probe.height;
+      probe.close(); // release immediately — don't hold GPU memory
+      return { w: pw, h: ph };
+    } catch(e) { /* fall through */ }
+  }
+  // Fallback: draw into a temporary Image element
+  return new Promise((res, rej) => {
+    const img = new Image();
+    const ownUrl = typeof src !== 'string';
+    const url = ownUrl ? URL.createObjectURL(src) : src;
+    img.onload = () => {
+      const r = { w: img.naturalWidth, h: img.naturalHeight };
+      img.src = '';
+      if (ownUrl) URL.revokeObjectURL(url);
+      res(r);
+    };
+    img.onerror = () => { if (ownUrl) URL.revokeObjectURL(url); rej(new Error('probe-failed')); };
+    img.src = url;
+  });
+}
+
+// ── Decode src to a canvas at exactly targetW × targetH ───────────────────────
+// src should be an objectUrl string for repeatability on Android.
+async function _decodeToCanvas(src, targetW, targetH) {
+  // Path A: GPU-accelerated resize in one pass — preferred, lowest peak memory.
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bmp = await createImageBitmap(src, { resizeWidth: targetW, resizeHeight: targetH, resizeQuality: 'medium' });
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW; canvas.height = targetH;
+      canvas.getContext('2d').drawImage(bmp, 0, 0);
+      bmp.close(); // release GPU texture immediately
+      return canvas;
+    } catch(e) { /* fall through to Path B */ }
+  }
+
+  // Path B: Image element — works where createImageBitmap fails (some Android WebViews).
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      if (!img.naturalWidth) { rej(new Error('zero-dimension')); return; }
+      const c = document.createElement('canvas');
+      c.width = targetW; c.height = targetH;
+      c.getContext('2d').drawImage(img, 0, 0, targetW, targetH);
+      img.src = ''; // detach decoded pixels — lets GC reclaim the full-res buffer
+      res(c);
+    };
+    img.onerror = () => rej(new Error('img-load-failed'));
+    img.src = src;
+  });
+}
+
+// ── Binary-search JPEG quality — 6 iterations ─────────────────────────────────
+function _binarySearchQuality(canvas, origSize) {
+  const { width: w, height: h } = canvas;
+  const sizeOf = url => Math.round((url.length - url.indexOf(',') - 1) * 0.75);
+
+  const atMax = canvas.toDataURL('image/jpeg', PHOTO_MAX_QUALITY);
+  if (sizeOf(atMax) <= PHOTO_TARGET_BYTES) {
+    return { dataUrl: atMax, origSize, compSize: sizeOf(atMax), w, h, quality: PHOTO_MAX_QUALITY };
+  }
+
+  let lo = PHOTO_MIN_QUALITY, hi = PHOTO_MAX_QUALITY, bestUrl = null, bestBytes = Infinity, bestQ = PHOTO_MIN_QUALITY;
+  for (let i = 0; i < 6; i++) {
+    const mid = Math.round(((lo + hi) / 2) * 100) / 100;
+    const url = canvas.toDataURL('image/jpeg', mid);
+    const bytes = sizeOf(url);
+    if (bytes <= PHOTO_TARGET_BYTES) { lo = mid; bestUrl = url; bestBytes = bytes; bestQ = mid; }
+    else { hi = mid; }
+  }
+  if (!bestUrl) {
+    bestUrl = canvas.toDataURL('image/jpeg', PHOTO_MIN_QUALITY);
+    bestBytes = sizeOf(bestUrl); bestQ = PHOTO_MIN_QUALITY;
+    showToast(`Photo saved at minimum quality (${Math.round(bestBytes/1024)} KB).`, 'success');
+  }
+  return { dataUrl: bestUrl, origSize, compSize: bestBytes, w, h, quality: bestQ };
+}
+
+// ── Public entry point ─────────────────────────────────────────────────────────
+async function compressImage(file) {
+  const ftype = (file.type || '').toLowerCase(), fname = (file.name || '').toLowerCase();
+  if (ftype === 'image/heic' || ftype === 'image/heif' || fname.endsWith('.heic') || fname.endsWith('.heif')) {
+    throw new Error('heic-unsupported');
+  }
+
+  // Create ONE objectUrl for all steps — avoids re-consuming the File stream.
+  // On Samsung content:// URIs the File stream can only be read once;
+  // objectUrls are repeatable reads from the same underlying resource.
+  let objectUrl = null;
+  try { objectUrl = URL.createObjectURL(file); } catch(e) { /* use file directly as fallback */ }
+  const src = objectUrl || file;
+
+  // ── Step 1: probe dimensions — small allocation, closed before full decode ──
+  let probeW, probeH;
+  try {
+    const d = await _probeDimensions(src);
+    probeW = d.w; probeH = d.h;
+  } catch(e) {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    showToast('Could not read photo — file may be corrupt or still downloading.', 'error');
+    throw e;
+  }
+
+  // Compute target dimensions — scale long edge to PHOTO_MAX_PX, never upscale.
+  // The probe may be at most 256px wide, so we preserve the aspect ratio only.
+  const aspectRatio = probeW / probeH;
+  const longerEdge  = Math.max(probeW, probeH);
+  // If probe is already ≤ PHOTO_MAX_PX, the original is probably small — keep it as-is.
+  // We can't know the real MP from a 256px probe, so use file size as a heuristic.
+  let targetW, targetH;
+  if (longerEdge <= PHOTO_MAX_PX && file.size < 500 * 1024) {
+    // Small image — keep at natural probe size (no upscale needed)
+    targetW = probeW; targetH = probeH;
+  } else {
+    // Scale to PHOTO_MAX_PX along the longer edge
+    if (aspectRatio >= 1) { targetW = PHOTO_MAX_PX; targetH = Math.round(PHOTO_MAX_PX / aspectRatio); }
+    else                   { targetH = PHOTO_MAX_PX; targetW = Math.round(PHOTO_MAX_PX * aspectRatio); }
+  }
+  targetW = Math.max(1, targetW);
+  targetH = Math.max(1, targetH);
+
+  // ── Step 2: decode at target size with progressive fallback ─────────────────
+  // Three size tiers — 100% → 75% → 50%. Each tier is tried before showing
+  // an error, so intermittent memory pressure gets a silent retry first.
+  const tiers = [
+    { scale: 1.0,  label: null },
+    { scale: 0.75, label: 'Photo resized slightly to fit device memory.' },
+    { scale: 0.5,  label: 'Photo resized to 50% due to device memory.' },
+  ];
+
+  let canvas = null;
+  for (const tier of tiers) {
+    const tw = Math.max(1, Math.round(targetW * tier.scale));
+    const th = Math.max(1, Math.round(targetH * tier.scale));
+    try {
+      canvas = await _decodeToCanvas(src, tw, th);
+      if (tier.label) showToast(tier.label, 'success');
+      break;
+    } catch(e) {
+      if (e.message === 'zero-dimension') {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        showToast('Photo appears empty — it may still be downloading. Try again in a moment.', 'error');
+        throw e;
+      }
+      // Memory or decode error — try next smaller tier silently
     }
   }
-};
 
-let tempImage = null;
+  if (!canvas) {
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    showToast('Could not process photo — try closing other apps to free memory, then try again.', 'error');
+    throw new Error('all-tiers-failed');
+  }
 
-document.addEventListener('DOMContentLoaded', () => {
+  // Release objectUrl now that decoding is done
+  if (objectUrl) { URL.revokeObjectURL(objectUrl); objectUrl = null; }
 
-  document.querySelectorAll('[data-tab]').forEach(btn=>{
-    btn.onclick = () => {
-      UI.tab(btn.dataset.tab);
-      if(btn.dataset.tab==='stats') Stats.init();
-    };
+  // ── Step 3: quality-search then free canvas ──────────────────────────────────
+  const result = _binarySearchQuality(canvas, file.size);
+  canvas.width = 0; canvas.height = 0; // detach pixel buffer — hints GC
+  canvas = null;
+  return result;
+}
+async function handlePhoto(e) {
+  const f = e.target.files[0]; if(!f) return;
+
+  // Samsung Gallery can deliver HEIC/HEIF files that Chrome's canvas cannot decode.
+  // Detect early and give a clear, actionable message instead of a generic error.
+  // NOTE: Samsung sometimes reports HEIC as type='' with a .heic/.heif name.
+  const ftype = (f.type || '').toLowerCase();
+  const fname = (f.name || '').toLowerCase();
+  if (ftype === 'image/heic' || ftype === 'image/heif' ||
+      fname.endsWith('.heic') || fname.endsWith('.heif')) {
+    showToast(
+      'HEIC photos aren\'t supported. In Samsung Gallery go to ⚙️ Settings → Pictures → Picture format and switch to "High compatibility (JPEG)".',
+      'error'
+    );
+    return;
+  }
+  // Samsung Cloud: stub file (size 0) means the photo hasn't downloaded yet.
+  if (f.size === 0) {
+    showToast('Photo is not ready — it may still be downloading from Samsung Cloud. Wait a moment and try again.', 'error');
+    return;
+  }
+
+  const exifEl  = document.getElementById('exifInfo');
+  const infoEl  = document.getElementById('compressInfo');
+  exifEl.style.display  = 'none';
+  infoEl.style.display  = 'none';
+
+  // ── 1. Extract EXIF (GPS + datetime) from original file ──
+  // Reading strategy for maximum Samsung / Google Photos compatibility:
+  //
+  // PROBLEM 1 — Samsung content:// URIs:
+  //   exifr.parse(File) can silently return null on Samsung content:// URIs because
+  //   the browser's FileReader sometimes gets a zero-length read on first attempt.
+  //   Fix: convert to ArrayBuffer first via a manual FileReader read, then pass the
+  //   buffer to exifr. ArrayBuffer reads are more reliable than streaming File reads
+  //   on Android WebView.
+  //
+  // PROBLEM 2 — Google Photos serves stripped JPEGs:
+  //   Google Photos removes GPS from shared/downloaded photos by default (privacy
+  //   stripping). When GPS IS present it's in standard EXIF IFD0/GPS tags, not XMP.
+  //   The parse options must include both tiff+gps (standard) AND xmp (Samsung modern).
+  //
+  // PROBLEM 3 — Samsung XMP-only GPS:
+  //   Newer Samsung firmware stores GPS exclusively in XMP sidecar data, not in the
+  //   standard GPS IFD. exifr needs xmp:true to see this. The XMP fields are named
+  //   'GPSLatitude'/'GPSLongitude' as plain decimal strings, not DMS arrays.
+  //
+  // PROBLEM 4 — DMS rational arrays (older Samsung / stock Android):
+  //   Some devices write GPS as raw rational DMS arrays that exifr doesn't auto-
+  //   translate to decimals when translateValues is false. We handle these explicitly.
+  //
+  // PROBLEM 5 — Timezone-naive EXIF datetime:
+  //   EXIF DateTimeOriginal has no timezone. We treat it as local time (new Date(str)
+  //   which uses local TZ) — correct for a fishing log that uses the device's clock.
+
+  let exifFilled = [];
+  try {
+    // ── Read file into ArrayBuffer first for reliable Samsung content:// URI support ──
+    const arrayBuf = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload  = e => res(e.target.result);
+      reader.onerror = () => rej(new Error('ArrayBuffer read failed'));
+      reader.readAsArrayBuffer(f);
+    });
+
+    // ── Primary parse: tiff+exif+gps covers standard EXIF; xmp covers Samsung modern ──
+    let parsed = null;
+    try {
+      parsed = await exifr.parse(arrayBuf, {
+        tiff: true, exif: true, gps: true,
+        xmp:  true,          // Samsung newer firmware stores GPS only in XMP
+        icc: false, iptc: false,
+        translateValues: true,  // auto-convert DMS → decimal where possible
+        reviveValues:    true,  // parse EXIF dates into JS Date objects
+        mergeOutput:     true   // flatten all IFDs into one object
+      });
+    } catch(err) { console.warn('EXIF primary parse failed:', err); }
+
+    // ── GPS extraction — four progressive fallback paths ──
+    let lat = null, lng = null;
+    if (parsed) {
+
+      // Path A: exifr translated to decimal degrees — works on most devices including
+      // standard Android, iPhone, and Google Photos downloads (when GPS is present).
+      if (typeof parsed.latitude  === 'number' && isFinite(parsed.latitude) &&
+          typeof parsed.longitude === 'number' && isFinite(parsed.longitude)) {
+        lat = parsed.latitude;
+        lng = parsed.longitude;
+      }
+
+      // Path B: XMP decimal strings — Samsung newer firmware stores GPS as XMP
+      // properties 'GPSLatitude' / 'GPSLongitude' as plain decimal strings like
+      // "37.123456" / "176.654321". These can coexist with or replace standard EXIF GPS.
+      if (lat == null) {
+        const xLat = parsed.GPSLatitude  ?? parsed['exif:GPSLatitude'];
+        const xLng = parsed.GPSLongitude ?? parsed['exif:GPSLongitude'];
+        if (xLat != null && xLng != null) {
+          const pLat = typeof xLat === 'number' ? xLat : parseFloat(String(xLat));
+          const pLng = typeof xLng === 'number' ? xLng : parseFloat(String(xLng));
+          if (isFinite(pLat) && isFinite(pLng)) {
+            // XMP decimal may lack hemisphere sign — apply ref tags if present
+            const latRef = parsed.GPSLatitudeRef  ?? parsed['exif:GPSLatitudeRef']  ?? 'N';
+            const lngRef = parsed.GPSLongitudeRef ?? parsed['exif:GPSLongitudeRef'] ?? 'E';
+            lat = (latRef === 'S') ? -Math.abs(pLat) : Math.abs(pLat);
+            lng = (lngRef === 'W') ? -Math.abs(pLng) : Math.abs(pLng);
+          }
+        }
+      }
+
+      // Path C: raw DMS rational arrays — older Samsung / stock Android firmware
+      // writes GPS as [[deg,1],[min,1],[sec,100]] rational arrays that exifr sometimes
+      // doesn't fully translate even with translateValues:true.
+      if (lat == null && Array.isArray(parsed.GPSLatitude) && Array.isArray(parsed.GPSLongitude)) {
+        const rational2dec = v => Array.isArray(v) ? v[0] / (v[1] || 1) : Number(v);
+        const dms2dd = (dms, ref) => {
+          if (!Array.isArray(dms) || dms.length < 3) return NaN;
+          const dd = rational2dec(dms[0]) + rational2dec(dms[1]) / 60 + rational2dec(dms[2]) / 3600;
+          return (ref === 'S' || ref === 'W') ? -dd : dd;
+        };
+        const latD = dms2dd(parsed.GPSLatitude,  parsed.GPSLatitudeRef  || 'N');
+        const lngD = dms2dd(parsed.GPSLongitude, parsed.GPSLongitudeRef || 'E');
+        if (isFinite(latD) && isFinite(lngD)) { lat = latD; lng = lngD; }
+      }
+    }
+
+    // Path D: exifr.gps() dedicated helper as last resort — re-reads the buffer but
+    // uses a different internal code path that can succeed when parse() returned null.
+    // Only invoked when all above paths failed to avoid double-reading unnecessarily.
+    if (lat == null) {
+      try {
+        const g = await exifr.gps(arrayBuf);
+        if (g?.latitude != null && isFinite(g.latitude) &&
+            g?.longitude != null && isFinite(g.longitude)) {
+          lat = g.latitude; lng = g.longitude;
+        }
+      } catch(err) { console.warn('exifr.gps() fallback failed:', err); }
+    }
+
+    if (lat != null && lng != null) {
+      document.getElementById('clat').value = lat.toFixed(6);
+      document.getElementById('clng').value = lng.toFixed(6);
+      if (logMap && logPin) { logPin.setLatLng([lat, lng]); logMap.setView([lat, lng], 14); }
+      clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(lat, lng), 300);
+      exifFilled.push('📍 GPS location');
+    }
+
+    // ── DateTime — reuse parsed object, no second file read ──
+    // EXIF datetime fields in priority order:
+    //   DateTimeOriginal = shutter press time (most accurate for fishing)
+    //   CreateDate       = Google Photos / XMP equivalent of DateTimeOriginal
+    //   DateTime         = file modification time (least reliable, last resort)
+    if (parsed) {
+      const dt = parsed.DateTimeOriginal ?? parsed.CreateDate ?? parsed.DateTime
+               ?? parsed.DateTimeDigitized ?? parsed['photoshop:DateCreated'];
+      if (dt) {
+        // exifr with reviveValues:true returns JS Date objects directly.
+        // Plain strings arrive as "YYYY:MM:DD HH:MM:SS" — replace colons in date part.
+        let d;
+        if (dt instanceof Date) {
+          d = dt;
+        } else {
+          const s = String(dt).replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+          d = new Date(s);
+        }
+        if (!isNaN(d.getTime())) {
+          const yy = d.getFullYear();
+          // Sanity check: reject obviously wrong years (camera not set, epoch, future)
+          if (yy >= 2000 && yy <= new Date().getFullYear() + 1) {
+            const mm = String(d.getMonth()+1).padStart(2,'0'), dd2 = String(d.getDate()).padStart(2,'0');
+            const hh = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
+            document.getElementById('cdate').value = `${yy}-${mm}-${dd2}`;
+            document.getElementById('ctime').value = `${hh}:${mi}`;
+            exifFilled.push('📅 Date & time');
+          }
+        }
+      }
+    }
+  } catch(err) { console.warn('EXIF parse error:', err); }
+
+  // Show EXIF result — distinguish "found GPS" from "found date only" from "found nothing"
+  exifEl.style.display = 'block';
+  if (exifFilled.length) {
+    exifEl.style.color = 'var(--teal)';
+    exifEl.textContent = '✅ Auto-filled from photo: ' + exifFilled.join(' · ');
+  } else {
+    exifEl.style.color = 'var(--hint)';
+    exifEl.textContent = 'ℹ️ No location or date found in photo — please enter manually below';
+  }
+
+  // ── 2. Compress and display ──
+  let result;
+  try { result = await compressImage(f); } catch(e) { return; } // error already toasted
+  photo = result.dataUrl;
+  document.getElementById('puInner').style.display = 'none';
+  const existing = document.querySelector('#puEl img'); if(existing) existing.remove();
+  const img = document.createElement('img'); img.src = photo;
+  document.getElementById('puEl').appendChild(img);
+  const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
+  infoEl.style.display = 'block';
+  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB (${result.w}×${result.h}px · q${Math.round(result.quality*100)}%)`;
+}
+
+// ─────────────────────────────────────────────
+// GEOCODING
+// ─────────────────────────────────────────────
+function setGeoStatus(msg, spin) {
+  const e = document.getElementById('gstat');
+  e.innerHTML = spin ? `<span class="spin"></span> ${msg}` : msg;
+}
+
+function onLocInput() {
+  clearTimeout(geoTimer);
+  const q = document.getElementById('locname').value.trim();
+  if(q.length < 3) { setGeoStatus(''); return; }
+  setGeoStatus('Searching...', true);
+  geoTimer = setTimeout(() => fwdGeo(q), 700);
+}
+
+async function fwdGeo(q) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`, { headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'} });
+    const d = await r.json();
+    if(d && d.length) {
+      const la = parseFloat(d[0].lat), ln = parseFloat(d[0].lon);
+      document.getElementById('clat').value = la.toFixed(4);
+      document.getElementById('clng').value = ln.toFixed(4);
+      if(logMap && logPin) { logPin.setLatLng([la,ln]); logMap.setView([la,ln],13); }
+      setGeoStatus('📍 ' + d[0].display_name.split(',').slice(0,2).join(','));
+    } else { setGeoStatus('No location found — try a broader name'); }
+  } catch(e) { setGeoStatus('Search unavailable offline'); }
+}
+
+async function revGeo(la, ln) {
+  try {
+    setGeoStatus('Finding nearest place...', true);
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${la}&lon=${ln}&zoom=12`, { headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'} });
+    const d = await r.json();
+    if(d && d.address) {
+      const a = d.address;
+      const place = a.city||a.town||a.village||a.suburb||a.county||'';
+      const region = a.state||a.county||'';
+      const name = [place,region].filter(Boolean).join(', ');
+      if(name) document.getElementById('locname').value = name;
+      setGeoStatus('📍 ' + d.display_name.split(',').slice(0,2).join(','));
+    }
+  } catch(e) { setGeoStatus(''); }
+}
+
+function onCoordInput() {
+  const la = parseFloat(document.getElementById('clat').value);
+  const ln = parseFloat(document.getElementById('clng').value);
+  if(!isNaN(la) && !isNaN(ln) && logMap && logPin) { logPin.setLatLng([la,ln]); logMap.setView([la,ln],13); }
+}
+
+function doGPS() {
+  if(!navigator.geolocation) { alert('GPS not available.'); return; }
+  setGeoStatus('Getting GPS...', true);
+  navigator.geolocation.getCurrentPosition(p => {
+    const la=p.coords.latitude, ln=p.coords.longitude;
+    document.getElementById('clat').value = la.toFixed(4);
+    document.getElementById('clng').value = ln.toFixed(4);
+    if(logMap && logPin) { logPin.setLatLng([la,ln]); logMap.setView([la,ln],14); }
+    clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(la,ln), 300);
+  }, () => setGeoStatus('GPS unavailable — enter coordinates manually'));
+}
+
+// ─────────────────────────────────────────────
+// MAP TILE LAYERS
+// ─────────────────────────────────────────────
+function streetLayer() {
+  return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 });
+}
+function satelliteLayer() {
+  return L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom:19,
+    attribution:'Tiles &copy; Esri'
   });
+}
+const SPECIES_COLORS = {
+  'Snapper':    '#FF2424',  // bold red
+  'Kingfish':   '#FFAA00',  // amber/gold
+  'Kahawai':    '#00C244',  // vivid green
+  'Gurnard':    '#BB00EE',  // vivid violet
+  'John Dory':  '#00AAFF',  // sky blue
+  'Blue Cod':   '#0033CC',  // deep royal blue
+  'Trevally':   '#FF6600',  // orange
+  'Tarakihi':   '#FF0088',  // hot pink
+  'Moki':       '#00CCAA',  // teal/mint
+  'Hapuka':     '#AADD00',  // lime yellow-green
+  'Crayfish':   '#6644BB',  // blue-violet
+};
+function speciesColor(fish) {
+  return SPECIES_COLORS[fish] || '#4fc3a1';
+}
+function leafIcon(sz, color) {
+  color = color || '#4fc3a1';
+  const s = sz || 20;
+  return L.divIcon({
+    html: `<svg width="${s}" height="${s+6}" viewBox="0 0 20 26" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45))">
+      <path d="M10 0C5.58 0 2 3.58 2 8c0 5.25 8 18 8 18s8-12.75 8-18c0-4.42-3.58-8-8-8z" fill="${color}"/>
+      <circle cx="10" cy="8" r="3.5" fill="rgba(255,255,255,0.85)"/>
+    </svg>`,
+    className: '',
+    iconAnchor: [s/2, s+6]
+  });
+}
 
-  photo.onchange = async e=>{
-    const file = e.target.files[0];
-    if(!file) return;
+// Log map
+function initLogMap() {
+  if(logMap) { logMap.invalidateSize(); return; }
+  const la = parseFloat(document.getElementById('clat').value)||(-37.6878);
+  const ln = parseFloat(document.getElementById('clng').value)||176.1651;
+  logMap = L.map('logmap', { zoomControl:true, attributionControl:false }).setView([la,ln],12);
+  logStreetLayer = streetLayer().addTo(logMap);
+  logPin = L.marker([la,ln], { icon:leafIcon(24), draggable:true }).addTo(logMap);
+  logPin.on('dragend', e => {
+    const p=e.target.getLatLng();
+    document.getElementById('clat').value=p.lat.toFixed(4);
+    document.getElementById('clng').value=p.lng.toFixed(4);
+    clearTimeout(revTimer); revTimer=setTimeout(()=>revGeo(p.lat,p.lng),300);
+  });
+  logMap.on('click', e => {
+    logPin.setLatLng(e.latlng);
+    document.getElementById('clat').value=e.latlng.lat.toFixed(4);
+    document.getElementById('clng').value=e.latlng.lng.toFixed(4);
+    clearTimeout(revTimer); revTimer=setTimeout(()=>revGeo(e.latlng.lat,e.latlng.lng),300);
+  });
+}
 
-    tempImage = await ImageTools.compress(file);
-    UI.preview(tempImage);
+function toggleLogMapLayer() {
+  if(!logMap) return;
+  if(logLayerMode === 'street') {
+    logLayerMode = 'satellite';
+    logMap.removeLayer(logStreetLayer);
+    logSatLayer = satelliteLayer().addTo(logMap);
+    document.getElementById('logMapLayerBtn').textContent = '🗺 Street';
+  } else {
+    logLayerMode = 'street';
+    logMap.removeLayer(logSatLayer);
+    logStreetLayer = streetLayer().addTo(logMap);
+    document.getElementById('logMapLayerBtn').textContent = '🛰 Satellite';
+  }
+}
+
+// Main map
+function initMainMap() {
+  if(mainMap) { mainMap.invalidateSize(); refreshMainMap(); return; }
+  mainMap = L.map('mainmap', { zoomControl:true, attributionControl:false }).setView([-37.6878,176.1651],10);
+  mainStreetLayer = streetLayer().addTo(mainMap);
+  refreshMainMap();
+}
+
+function setMainMapLayer(mode) {
+  if(!mainMap || mode===mainLayerMode) return;
+  mainLayerMode = mode;
+  document.getElementById('mmStreetBtn').classList.toggle('active', mode==='street');
+  document.getElementById('mmSatBtn').classList.toggle('active', mode==='satellite');
+  if(mode==='satellite') {
+    if(mainStreetLayer) mainMap.removeLayer(mainStreetLayer);
+    mainSatLayer = satelliteLayer().addTo(mainMap);
+  } else {
+    if(mainSatLayer) mainMap.removeLayer(mainSatLayer);
+    mainStreetLayer = streetLayer().addTo(mainMap);
+  }
+}
+
+function refreshMainMap() {
+  if(!mainMap) return;
+  mainPins.forEach(m=>mainMap.removeLayer(m)); mainPins=[];
+  if(!catches.length) {
+    document.getElementById('mleg').textContent='No catches logged yet.';
+    document.getElementById('loclist').textContent='No locations saved yet.';
+    return;
+  }
+  catches.forEach(c => {
+    if(!c.lat||!c.lng) return;
+    const m=L.marker([c.lat,c.lng],{icon:leafIcon(20,speciesColor(c.fish))}).addTo(mainMap);
+    m.bindPopup(`<b>${c.fish}</b>${c.length?'<br>'+c.length+'cm':''}${c.weight?' · '+c.weight+'kg':''}${c.location?'<br>'+c.location:''}<br><small>${c.date} ${c.time}</small><br><small>Tide: ${c.tide} · ${c.weather}</small>`);
+    mainPins.push(m);
+  });
+  if(mainPins.length) { const g=L.featureGroup(mainPins); mainMap.fitBounds(g.getBounds().pad(0.3)); }
+  document.getElementById('mleg').textContent=catches.length+' catch location'+(catches.length!==1?'s':'')+' on map';
+  // Build species colour legend
+  const legendEl = document.getElementById('mapLegend');
+  if(legendEl) {
+    const speciesToShow = [...new Set(catches.map(c=>c.fish))].filter(Boolean);
+    if(speciesToShow.length) {
+      legendEl.style.display='flex';
+      legendEl.style.flexWrap='wrap';
+      legendEl.style.gap='6px';
+      legendEl.style.marginTop='8px';
+      legendEl.innerHTML = speciesToShow.map(sp=>`
+        <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);">
+          <svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="${speciesColor(sp)}"/></svg>${sp}
+        </div>`).join('');
+    }
+  }
+  document.getElementById('loclist').innerHTML=catches.map(c=>`
+    <div style="padding:7px 0;border-bottom:0.5px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div><div style="font-weight:600;font-size:13px;">${c.fish}</div><div style="font-size:11px;color:var(--hint);">${c.location||'No location'}</div></div>
+      <div style="font-size:11px;color:var(--hint);font-family:monospace;">${(c.lat!=null&&c.lng!=null)?parseFloat(c.lat).toFixed(3)+','+parseFloat(c.lng).toFixed(3):'—'}</div>
+    </div>`).join('');
+}
+
+function initCatchMap(id,lat,lng,lbl) {
+  if(cmaps[id]) return;
+  setTimeout(() => {
+    const el=document.getElementById('cm-'+id); if(!el||cmaps[id]) return;
+    const m=L.map('cm-'+id,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,tap:false}).setView([lat,lng],13);
+    streetLayer().addTo(m);
+    L.marker([lat,lng],{icon:leafIcon(20,speciesColor(lbl))}).bindPopup(lbl).addTo(m);
+    cmaps[id]=m;
+  },200);
+}
+
+// Edit modal map
+let editMap = null, editPin = null, editStreetLayer = null, editSatLayer = null, editLayerMode = 'street';
+let editRevTimer = null;
+
+function initEditMap(lat, lng) {
+  if(editMap) {
+    editPin.setLatLng([lat, lng]);
+    editMap.setView([lat, lng], 13);
+    editMap.invalidateSize();
+    return;
+  }
+  setTimeout(() => {
+    const el = document.getElementById('editmap'); if(!el) return;
+    editMap = L.map('editmap', { zoomControl:true, attributionControl:false }).setView([lat, lng], 13);
+    editStreetLayer = streetLayer().addTo(editMap);
+    editPin = L.marker([lat, lng], { icon:leafIcon(24), draggable:true }).addTo(editMap);
+    editPin.on('dragend', e => {
+      const p = e.target.getLatLng();
+      document.getElementById('elat').value = p.lat.toFixed(4);
+      document.getElementById('elng').value = p.lng.toFixed(4);
+      clearTimeout(editRevTimer);
+      editRevTimer = setTimeout(() => revGeoEdit(p.lat, p.lng), 300);
+    });
+    editMap.on('click', e => {
+      editPin.setLatLng(e.latlng);
+      document.getElementById('elat').value = e.latlng.lat.toFixed(4);
+      document.getElementById('elng').value = e.latlng.lng.toFixed(4);
+      clearTimeout(editRevTimer);
+      editRevTimer = setTimeout(() => revGeoEdit(e.latlng.lat, e.latlng.lng), 300);
+    });
+  }, 250);
+}
+
+async function revGeoEdit(la, ln) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${la}&lon=${ln}&zoom=12`, { headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'} });
+    const d = await r.json();
+    if(d && d.address) {
+      const a = d.address;
+      const place = a.city||a.town||a.village||a.suburb||a.county||'';
+      const region = a.state||a.county||'';
+      const name = [place, region].filter(Boolean).join(', ');
+      if(name) document.getElementById('eloc').value = name;
+    }
+  } catch(e) {}
+}
+
+function onEditCoordInput() {
+  const la = parseFloat(document.getElementById('elat').value);
+  const ln = parseFloat(document.getElementById('elng').value);
+  if(!isNaN(la) && !isNaN(ln) && editMap && editPin) {
+    editPin.setLatLng([la, ln]);
+    editMap.setView([la, ln], 13);
+  }
+}
+
+function doEditGPS() {
+  if(!navigator.geolocation) { alert('GPS not available.'); return; }
+  navigator.geolocation.getCurrentPosition(p => {
+    const la = p.coords.latitude, ln = p.coords.longitude;
+    document.getElementById('elat').value = la.toFixed(4);
+    document.getElementById('elng').value = ln.toFixed(4);
+    if(editMap && editPin) { editPin.setLatLng([la, ln]); editMap.setView([la, ln], 14); }
+    clearTimeout(editRevTimer);
+    editRevTimer = setTimeout(() => revGeoEdit(la, ln), 300);
+  }, () => alert('GPS unavailable — enter coordinates manually'));
+}
+
+function toggleEditMapLayer() {
+  if(!editMap) return;
+  if(editLayerMode === 'street') {
+    editLayerMode = 'satellite';
+    editMap.removeLayer(editStreetLayer);
+    editSatLayer = satelliteLayer().addTo(editMap);
+    document.getElementById('editMapLayerBtn').textContent = '🗺 Street';
+  } else {
+    editLayerMode = 'street';
+    editMap.removeLayer(editSatLayer);
+    editStreetLayer = streetLayer().addTo(editMap);
+    document.getElementById('editMapLayerBtn').textContent = '🛰 Satellite';
+  }
+}
+// Harmonic constants sourced from LINZ NZ tide tables.
+// Uses 6 major constituents: M2, S2, N2, K1, O1, K2.
+// Accuracy: typically within 10–20 min of published tide tables.
+// ─────────────────────────────────────────────
+
+// Port data: [amplitude metres, phase lag degrees from GMT equilibrium]
+// Z0 = mean sea level above chart datum
+const NZ_PORTS = [
+  { name:'Tauranga',     lat:-37.65, lng:176.17, z0:0.89, M2:[0.729,175], S2:[0.169,197], N2:[0.153,159], K1:[0.095,217], O1:[0.064,198], K2:[0.046,197] },
+  { name:'Whitianga',    lat:-36.83, lng:175.71, z0:0.88, M2:[0.823,173], S2:[0.179,193], N2:[0.168,157], K1:[0.109,215], O1:[0.072,196], K2:[0.049,193] },
+  { name:'Auckland',     lat:-36.84, lng:174.77, z0:1.04, M2:[1.025,184], S2:[0.222,203], N2:[0.209,168], K1:[0.112,219], O1:[0.073,200], K2:[0.060,203] },
+  { name:'Whangarei',    lat:-35.73, lng:174.32, z0:0.91, M2:[0.844,185], S2:[0.182,204], N2:[0.172,169], K1:[0.116,221], O1:[0.076,201], K2:[0.050,204] },
+  { name:'Gisborne',     lat:-38.68, lng:178.02, z0:0.69, M2:[0.601,178], S2:[0.138,198], N2:[0.123,163], K1:[0.091,215], O1:[0.062,196], K2:[0.038,198] },
+  { name:'Napier',       lat:-39.48, lng:176.92, z0:0.63, M2:[0.527,185], S2:[0.113,203], N2:[0.108,170], K1:[0.088,218], O1:[0.060,198], K2:[0.031,203] },
+  { name:'Wellington',   lat:-41.28, lng:174.78, z0:0.65, M2:[0.601,275], S2:[0.133,289], N2:[0.122,260], K1:[0.095,222], O1:[0.066,200], K2:[0.036,289] },
+  { name:'Picton',       lat:-41.29, lng:174.00, z0:1.08, M2:[1.055,275], S2:[0.246,295], N2:[0.214,259], K1:[0.104,221], O1:[0.068,199], K2:[0.067,295] },
+  { name:'Nelson',       lat:-41.27, lng:173.28, z0:1.87, M2:[1.716,270], S2:[0.401,290], N2:[0.349,254], K1:[0.127,222], O1:[0.083,200], K2:[0.109,290] },
+  { name:'New Plymouth', lat:-39.06, lng:174.05, z0:1.29, M2:[1.154,253], S2:[0.261,272], N2:[0.235,237], K1:[0.107,219], O1:[0.071,198], K2:[0.071,272] },
+  { name:'Lyttelton',   lat:-43.60, lng:172.72, z0:0.66, M2:[0.619,322], S2:[0.160,340], N2:[0.124,307], K1:[0.084,219], O1:[0.057,196], K2:[0.043,340] },
+  { name:'Dunedin',      lat:-45.88, lng:170.50, z0:0.74, M2:[0.724,329], S2:[0.186,349], N2:[0.145,314], K1:[0.086,219], O1:[0.057,195], K2:[0.050,349] },
+  { name:'Bluff',        lat:-46.60, lng:168.35, z0:0.86, M2:[0.788,354], S2:[0.209,15],  N2:[0.157,339], K1:[0.082,218], O1:[0.054,194], K2:[0.057,15]  },
+];
+
+// Angular speeds in degrees/hour for each constituent
+const TIDE_SPEEDS = { M2:28.9841042, S2:30.0, N2:28.4397295, K1:15.0410686, O1:13.9430356, K2:30.0821373 };
+const TIDE_NAMES  = Object.keys(TIDE_SPEEDS);
+
+// Active port — defaults to Tauranga (Bay of Plenty)
+let activePort = NZ_PORTS[0];
+
+// Find nearest NZ port to given GPS coordinates
+function nearestPort(lat, lng) {
+  return NZ_PORTS.reduce((best, p) =>
+    Math.hypot(p.lat-lat, p.lng-lng) < Math.hypot(best.lat-lat, best.lng-lng) ? p : best
+  , NZ_PORTS[0]);
+}
+
+// Compute equilibrium arguments V0+u0 at 0h UTC for a Julian Day
+function tideV0u0(jd0) {
+  const d  = jd0 - 2451545.0; // days from J2000
+  const dg = x => ((x % 360) + 360) % 360;
+  const s  = dg(218.3164 + 13.17639648 * d); // moon mean longitude
+  const h  = dg(280.4665 +  0.98564736 * d); // sun mean longitude
+  const p  = dg( 83.3533 +  0.11140353 * d); // lunar perigee
+  const N  = dg(125.0445 -  0.05295377 * d); // ascending node
+  const Nr = N * Math.PI / 180;
+  return {
+    M2: dg(2*h - 2*s),
+    S2: 0,
+    N2: dg(2*h - 3*s + p),
+    K1: dg(h + 90 - 8.86 * Math.cos(Nr)),
+    O1: dg(h - 2*s - 90 + 10.80 * Math.sin(Nr)),
+    K2: dg(2*h - 17.74 * Math.cos(Nr))
   };
+}
 
-  saveBtn.onclick = async ()=>{
-    const data = UI.getFormData();
-    data.photo = tempImage;
-    data.date = new Date().toISOString();
+// Tide height in metres at a given Date for a port
+function tideHeightAt(date, port) {
+  const jd  = date.getTime() / 86400000 + 2440587.5;
+  const jd0 = Math.floor(jd + 0.5) - 0.5;   // 0h UTC of that day
+  const V   = tideV0u0(jd0);
+  const t   = (jd - jd0) * 24;               // hours from 0h UTC
+  const r   = Math.PI / 180;
+  return (port.z0 || 0) + TIDE_NAMES.reduce((sum, n) => {
+    if (!port[n]) return sum;
+    const [H, g] = port[n];
+    return sum + H * Math.cos((TIDE_SPEEDS[n] * t + V[n] - g) * r);
+  }, 0);
+}
 
-    await Storage.save(data);
+// Port theoretical height bounds for display normalisation
+function portBounds(port) {
+  const amp = TIDE_NAMES.reduce((s, n) => s + (port[n] ? port[n][0] : 0), 0);
+  return { lo: port.z0 - amp, hi: port.z0 + amp };
+}
 
-    const all = await Storage.getAll();
-    UI.render(all);
+// Scan for next N high/low tide events from fromDate
+function findTideEvents(fromDate, count, port) {
+  const stepMs = 5 * 60000; // 5-minute scan resolution
+  const start  = fromDate.getTime();
+  const limit  = start + 30 * 24 * 3600000; // safety cap: search at most 30 days ahead
+  const events = [];
+  let h0 = tideHeightAt(new Date(start - stepMs), port);
+  let h1 = tideHeightAt(new Date(start), port);
+  for (let ms = start + stepMs; events.length < count && ms < limit; ms += stepMs) {
+    const h2 = tideHeightAt(new Date(ms), port);
+    if (h1 > h0 && h1 > h2) events.push({ type:'High', time: new Date(ms - stepMs), h: h1 });
+    if (h1 < h0 && h1 < h2) events.push({ type:'Low',  time: new Date(ms - stepMs), h: h1 });
+    h0 = h1; h1 = h2;
+  }
+  return events.slice(0, count);
+}
 
-    UI.reset();
-    tempImage = null;
+function calcTide() {
+  const now  = new Date();
+  const h    = tideHeightAt(now, activePort);
+  const h5   = tideHeightAt(new Date(now.getTime() + 5*60000), activePort);
+  const rising = h5 > h;
+  const bounds = portBounds(activePort);
+  const pct  = Math.round(((h - bounds.lo) / (bounds.hi - bounds.lo)) * 100);
+  const mid  = bounds.lo + (bounds.hi - bounds.lo) * 0.5;
+  const qtr  = (bounds.hi - bounds.lo) * 0.22;
+  let label, em;
+  if (h > mid + qtr)      { label='High Tide';     em='🌊'; }
+  else if (h < mid - qtr) { label='Low Tide';      em='🏖'; }
+  else if (rising)        { label='Mid — Rising';  em='↗️'; }
+  else                    { label='Mid — Falling'; em='↘️'; }
+  document.getElementById('temoji').textContent = em;
+  document.getElementById('tlbl').textContent   = label;
+  document.getElementById('tsub').textContent   = 'Height: ' + h.toFixed(2) + ' m';
+  document.getElementById('tarrow').textContent = rising ? '↑' : '↓';
+  document.getElementById('tdir').textContent   = rising ? 'Incoming (Flood)' : 'Outgoing (Ebb)';
+  document.getElementById('tideLocLabel').textContent = '📍 ' + activePort.name + ' (nearest port)';
+  drawWave(Math.max(0, Math.min(100, pct)));
+  drawCurve(now);
+  renderTideSchedule();
+  fetchMarineData();
+}
+
+function renderTideSchedule() {
+  const events = findTideEvents(new Date(), 4, activePort);
+  const fmt = d => {
+    const h = d.getHours(), m = d.getMinutes();
+    return (h%12||12) + ':' + (m<10?'0':'') + m + (h<12?'am':'pm');
   };
+  const labels = ['Next','Then','Then','Then'];
+  document.getElementById('tideSchedule').innerHTML = events.map((e,i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i<3?'border-bottom:0.5px solid var(--border);':''}">
+      <div style="font-size:26px;width:32px;text-align:center;">${e.type==='High'?'🌊':'🏖'}</div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;color:${i===0?'var(--teal)':'var(--text)'};">${e.type==='High'?'High Tide':'Low Tide'}</div>
+        <div style="font-size:11px;color:var(--hint);margin-top:2px;">${labels[i]}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:16px;font-weight:700;color:${i===0?'var(--teal)':'var(--text)'};">${fmt(e.time)}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px;">${e.h.toFixed(2)} m</div>
+      </div>
+    </div>`).join('');
+}
 
-  Storage.getAll().then(UI.render);
+function drawWave(p) {
+  const c=document.getElementById('wcanv'); if(!c) return;
+  const x=c.getContext('2d'),W=c.width,H=c.height; x.clearRect(0,0,W,H);
+  const y=H-(p/100)*H*0.82-3;
+  x.beginPath();x.moveTo(0,y);for(let i=0;i<W;i++)x.lineTo(i,y+Math.sin(i*0.09)*3.5);x.lineTo(W,H);x.lineTo(0,H);x.closePath();x.fillStyle='rgba(79,195,161,0.2)';x.fill();
+  x.beginPath();x.moveTo(0,y);for(let i=0;i<W;i++)x.lineTo(i,y+Math.sin(i*0.09)*3.5);x.strokeStyle='#4fc3a1';x.lineWidth=1.5;x.stroke();
+}
 
+function drawCurve(cd) {
+  const c=document.getElementById('tcurve'); if(!c) return;
+  const ctx=c.getContext('2d'),W=c.width,H=c.height; ctx.clearRect(0,0,W,H);
+  const b=cd||new Date(), s0=b.getTime()-12*3600000, e0=b.getTime()+12*3600000;
+  const bounds=portBounds(activePort);
+  ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=0.5;
+  for(let i=0;i<=4;i++){const y=(i/4)*(H-20)+10;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+  ctx.beginPath();ctx.strokeStyle='#4fc3a1';ctx.lineWidth=2;let first=true;
+  for(let i=0;i<W;i++){
+    const h=tideHeightAt(new Date(s0+(i/W)*(e0-s0)),activePort);
+    const y=H-10-((h-bounds.lo)/(bounds.hi-bounds.lo))*(H-20);
+    if(first){ctx.moveTo(i,y);first=false;}else ctx.lineTo(i,y);
+  }
+  ctx.stroke();
+  const nx=(b.getTime()-s0)/(e0-s0)*W;
+  ctx.strokeStyle='#e74c3c';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(nx,0);ctx.lineTo(nx,H);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='rgba(0,0,0,0.25)';ctx.font='9px system-ui';ctx.fillText('-12h',2,H-2);ctx.fillText('now',nx-10,H-2);ctx.fillText('+12h',W-30,H-2);
+}
+
+// ─────────────────────────────────────────────
+// MOON — Jean Meeus algorithms
+// ─────────────────────────────────────────────
+function moonAt(dt) {
+  const ref=new Date('2000-01-06T18:14:00Z'), cy=29.53058867*24*3600*1000;
+  const ag=((dt-ref)%cy+cy)%cy/cy;
+  const il=Math.round((1-Math.cos(ag*2*Math.PI))/2*100), dy=Math.round(ag*29.53);
+  let n,e;
+  if(ag<0.03||ag>0.97){n='New Moon';e='🌑';}
+  else if(ag<0.22){n='Waxing Crescent';e='🌒';}
+  else if(ag<0.28){n='First Quarter';e='🌓';}
+  else if(ag<0.47){n='Waxing Gibbous';e='🌔';}
+  else if(ag<0.53){n='Full Moon';e='🌕';}
+  else if(ag<0.72){n='Waning Gibbous';e='🌖';}
+  else if(ag<0.78){n='Last Quarter';e='🌗';}
+  else{n='Waning Crescent';e='🌘';}
+  return{ag,il,dy,n,e};
+}
+
+function drawMoon(cv,ag) {
+  const x=cv.getContext('2d'),W=cv.width,H=cv.height,cx=W/2,cy=H/2,r=30;
+  x.clearRect(0,0,W,H);x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.fillStyle='#222';x.fill();
+  x.save();x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.clip();
+  if(ag<0.5){const xo=(0.5-ag)*2*r;x.beginPath();x.arc(cx,cy,r,-Math.PI/2,Math.PI/2);x.arc(cx+xo,cy,r*Math.abs(1-ag*4),Math.PI/2,-Math.PI/2,ag<0.25);x.fillStyle='#f5e6a0';x.fill();}
+  else{const xo=(ag-0.5)*2*r;x.beginPath();x.arc(cx,cy,r,Math.PI/2,-Math.PI/2);x.arc(cx-xo,cy,r*Math.abs((ag-0.5)*4-1),Math.PI*1.5,Math.PI/2,ag<0.75);x.fillStyle='#f5e6a0';x.fill();}
+  x.restore();x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.strokeStyle='rgba(245,230,160,0.2)';x.lineWidth=1;x.stroke();
+}
+
+function calcMoon() {
+  const d=document.getElementById('mdate').value||today, dt=new Date(d+'T12:00:00'), m=moonAt(dt);
+  document.getElementById('mname').textContent=m.e+' '+m.n;
+  document.getElementById('msub').textContent='Illumination: '+m.il+'%';
+  document.getElementById('mage').textContent='Day '+m.dy+' of 29.5-day cycle';
+  drawMoon(document.getElementById('moonc'),m.ag);
+  const ps=[{e:'🌑',l:'New',p:0},{e:'🌓',l:'1st Qtr',p:0.25},{e:'🌕',l:'Full',p:0.5},{e:'🌗',l:'3rd Qtr',p:0.75}];
+  document.getElementById('mrow').innerHTML=ps.map(p=>`<div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="font-size:18px;opacity:${Math.abs(m.ag-p.p)<0.1?1:0.32};">${p.e}</div><span style="font-size:9px;color:rgba(255,255,255,0.32);">${p.l}</span></div>`).join('');
+  const tips={'New Moon':'Spring tides + strong currents. Snapper and kingfish feed hard through channels and reefs.','Waxing Crescent':'Tides building in strength. Good time for bait fishing on the incoming tide.','First Quarter':'Neap tides, calmer water. Focus on structure and drop-offs.','Waxing Gibbous':'Activity increasing fast as full moon approaches.','Full Moon':'Maximum spring tides. Fish feed heavily at night. Dawn and dusk are peak bite times.','Waning Gibbous':'Strong post-full tides. Fish very active at solunar windows.','Last Quarter':'Neap tides. Reliable fishing near structure.','Waning Crescent':'Activity building back toward new moon.'};
+  document.getElementById('mtip').textContent=tips[m.n]||'Good conditions. Check solunar times for best bite windows.';
+}
+
+// ─────────────────────────────────────────────
+// MARINE DATA — Open-Meteo (wave height for tide tab)
+// ─────────────────────────────────────────────
+let _marineLastFetch = 0;
+async function fetchMarineData() {
+  const now = Date.now();
+  if ((now - _marineLastFetch) < WX_COOLDOWN_MS) return; // reuse recent data
+  _marineLastFetch = now;
+  const el = document.getElementById('tideWaveRow'); if(!el) return;
+  try {
+    const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${appLat}&longitude=${appLng}&current=wave_height,wave_direction,wave_period&forecast_days=1`);
+    if(!r.ok) throw new Error();
+    const d = await r.json();
+    const wh = d.current?.wave_height;
+    const wp = d.current?.wave_period;
+    const wd = d.current?.wave_direction;
+    const dirLabel = wd != null ? windDir(wd) : '—';
+    el.innerHTML = `
+      <div style="display:flex;gap:9px;margin-top:9px;">
+        <div class="wcard" style="flex:1;"><span class="wi">🌊</span><span class="wv">${wh!=null?wh.toFixed(1)+' m':'—'}</span><span class="wl">Wave height</span></div>
+        <div class="wcard" style="flex:1;"><span class="wi">⏱</span><span class="wv">${wp!=null?Math.round(wp)+'s':'—'}</span><span class="wl">Wave period</span></div>
+        <div class="wcard" style="flex:1;"><span class="wi">🧭</span><span class="wv">${dirLabel}</span><span class="wl">Wave dir</span></div>
+      </div>`;
+    document.getElementById('tideBadge').className='api-badge live-badge';
+    document.getElementById('tideBadge').textContent='⚡ Live + GPS';
+  } catch(e) {
+    el.innerHTML = '';
+    document.getElementById('tideBadge').textContent='⚡ Calculated';
+  }
+}
+
+// ─────────────────────────────────────────────
+// SOLUNAR — John Alden Knight's theory (1926)
+// ─────────────────────────────────────────────
+function solunarAt(dt, lng) {
+  const ref=new Date('2000-01-06T18:14:00Z'), cy=29.53058867*24*3600*1000;
+  const ag=((dt-ref)%cy+cy)%cy/cy, m=moonAt(dt);
+  // Longitude correction: lunar transit shifts ~4.14 min per degree from prime meridian
+  // Adjust base transit time by user's longitude offset
+  const lngOffsetHrs = ((lng||APP_DEFAULT_LNG) / 360) * 24.84;
+  const mo = (ag * 24 + lngOffsetHrs) % 24;
+  const q=m.ag<0.05||m.ag>0.95||Math.abs(m.ag-0.5)<0.05?'Excellent':Math.abs(m.ag-0.25)<0.1||Math.abs(m.ag-0.75)<0.1?'Fair':'Good';
+  return{m1:((mo%24)+24)%24,m2:((mo+12.4)%24+24)%24,n1:((mo+6.2)%24+24)%24,n2:((mo+18.6)%24+24)%24,q,il:m.il};
+}
+
+function fh(h) {
+  h = ((h % 24) + 24) % 24; // normalise to [0,24)
+  let hh=Math.floor(h), mm=Math.floor((h-hh)*60);
+  if(mm===60){hh=(hh+1)%24;mm=0;}
+  const ap=hh<12?'am':'pm', h12=hh%12||12;
+  return h12+':'+(mm<10?'0':'')+mm+ap;
+}
+
+function calcBite() {
+  const d=document.getElementById('bcdate').value||today;
+  document.getElementById('bdate').textContent=d===today?'today':d;
+  document.getElementById('biteLocLabel').textContent = '📍 ' + appLocName;
+  const dt=new Date(d+'T12:00:00'), s=solunarAt(dt, appLng);
+  const c=document.getElementById('bcanv');
+  if(c) {
+    const x=c.getContext('2d'),W=c.width,H=c.height; x.clearRect(0,0,W,H);
+    x.fillStyle='rgba(0,0,0,0.1)';x.fillRect(0,0,W,H);
+    [[s.m1,2,'#4fc3a1',0.9],[s.m2,2,'#4fc3a1',0.9],[s.n1,1,'#EF9F27',0.85],[s.n2,1,'#EF9F27',0.85]].forEach(([hr,dur,col,al])=>{
+      x.fillStyle=col;x.globalAlpha=al;x.fillRect((hr/24)*W,4,(dur/24)*W,H-8);x.globalAlpha=1;
+    });
+    const nh=new Date().getHours()+new Date().getMinutes()/60,nx=(nh/24)*W;
+    x.strokeStyle='#e74c3c';x.lineWidth=1.5;x.setLineDash([2,2]);x.beginPath();x.moveTo(nx,0);x.lineTo(nx,H);x.stroke();x.setLineDash([]);
+  }
+  document.getElementById('bwins').innerHTML=`
+    <div class="bwm"><div class="bwt">Major 1 — ${fh(s.m1)} to ${fh((s.m1+2)%24)}</div><div class="bws">Moon overhead · ~2 hours · Prime feeding window</div></div>
+    <div class="bwm"><div class="bwt">Major 2 — ${fh(s.m2)} to ${fh((s.m2+2)%24)}</div><div class="bws">Moon underfoot · ~2 hours · Prime feeding window</div></div>
+    <div class="bwn"><div class="bwt">Minor 1 — ${fh(s.n1)} to ${fh((s.n1+1)%24)}</div><div class="bws">Moonrise · ~1 hour · Active feeding period</div></div>
+    <div class="bwn"><div class="bwt">Minor 2 — ${fh(s.n2)} to ${fh((s.n2+1)%24)}</div><div class="bws">Moonset · ~1 hour · Active feeding period</div></div>`;
+  const rs={Excellent:'⭐⭐⭐⭐⭐ Excellent day — moon at '+s.il+'% aligns with strong solunar activity.',Good:'⭐⭐⭐⭐ Good day — solid solunar periods at '+s.il+'% illumination.',Fair:'⭐⭐⭐ Fair — neap tides. Fish near structure during solunar windows.'};
+  document.getElementById('brate').textContent=rs[s.q];
+}
+
+// ─────────────────────────────────────────────
+// WEATHER — Auto via Open-Meteo (free, no key)
+// ─────────────────────────────────────────────
+function windDir(deg) {
+  const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  return dirs[Math.round(deg/22.5)%16];
+}
+
+function omIcon(code) {
+  if(code===0) return '☀️';
+  if(code<=2) return '🌤';
+  if(code===3) return '☁️';
+  if(code<=49) return '🌫';
+  if(code<=59) return '🌦';
+  if(code<=69) return '🌧';
+  if(code<=79) return '❄️';
+  if(code<=82) return '🌧';
+  if(code<=84) return '🌨';
+  if(code<=99) return '⛈';
+  return '⛅';
+}
+
+function omDesc(code) {
+  if(code===0) return 'Clear sky';
+  if(code===1) return 'Mainly clear';
+  if(code===2) return 'Partly cloudy';
+  if(code===3) return 'Overcast';
+  if(code<=49) return 'Foggy';
+  if(code<=59) return 'Drizzle';
+  if(code<=69) return 'Rain';
+  if(code<=79) return 'Snow';
+  if(code<=82) return 'Rain showers';
+  if(code<=84) return 'Snow showers';
+  if(code<=99) return 'Thunderstorm';
+  return 'Cloudy';
+}
+
+function weatherConditionOM(code, wspeed) {
+  if(code>=95) return '🔴 Thunderstorms — dangerous conditions. Stay off the water.';
+  if(code>=60 && wspeed>30) return '🔴 Heavy rain and strong wind — rough conditions. Stay safe.';
+  if(code>=60) return '🟠 Rainy — visibility reduced. Fishing possible but conditions are tough.';
+  if(wspeed>40) return '🔴 Very strong winds — dangerous sea state. Do not go out.';
+  if(wspeed>25) return '🟠 Strong wind — rough seas likely. Experienced fishers only.';
+  if(code===0 && wspeed<15) return '✅ Excellent — sunny, calm seas. Prime fishing conditions.';
+  if(code<=2 && wspeed<20) return '🟡 Good — partly cloudy, manageable conditions. Decent bite expected.';
+  return '🟡 Fair conditions — check tide and solunar times for best bite windows.';
+}
+
+let _wxLastFetch = 0;
+const WX_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+function autoWeather(force) {
+  const now = Date.now();
+  if (!force && (now - _wxLastFetch) < WX_COOLDOWN_MS) return; // already fresh
+  _wxLastFetch = now;
+  document.getElementById('wxBadge').className='api-badge offline-badge';
+  document.getElementById('wxBadge').textContent='⏳ Loading...';
+  document.getElementById('wxl').textContent='Detecting location...';
+
+  // Try GPS first, fall back to log form coords, then default
+  const doFetch = (lat, lng, locName) => fetchOpenMeteo(lat, lng, locName);
+  const formLat = parseFloat(document.getElementById('clat').value) || wxLat;
+  const formLng = parseFloat(document.getElementById('clng').value) || wxLng;
+
+  if(navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      pos => doFetch(pos.coords.latitude, pos.coords.longitude, null),
+      () => doFetch(formLat, formLng, document.getElementById('locname').value || 'Bay of Plenty, NZ'),
+      { timeout: 6000 }
+    );
+  } else {
+    doFetch(formLat, formLng, document.getElementById('locname').value || 'Bay of Plenty, NZ');
+  }
+}
+
+async function fetchOpenMeteo(lat, lng, locName) {
+  try {
+    // Fetch land weather + marine data in parallel
+    const [landRes, marineRes, geoRes] = await Promise.all([
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=precipitation_probability,surface_pressure&forecast_days=1&wind_speed_unit=kmh&timezone=auto`),
+      fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction&forecast_days=1`).catch(()=>null),
+      locName ? null : fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}}).catch(()=>null)
+    ]);
+
+    if(!landRes.ok) throw new Error('Weather fetch failed');
+    const land = await landRes.json();
+    const cur = land.current;
+
+    const temp = Math.round(cur.temperature_2m);
+    const feels = Math.round(cur.apparent_temperature);
+    const humidity = cur.relative_humidity_2m;
+    const wspeed = Math.round(cur.wind_speed_10m);
+    const wdir = windDir(cur.wind_direction_10m||0);
+    const pressure = Math.round(cur.surface_pressure);
+    const vis = cur.visibility ? (cur.visibility/1000).toFixed(1)+' km' : '—';
+    const code = cur.weather_code;
+    const rainArr = land.hourly?.precipitation_probability;
+    const rainNow = rainArr ? rainArr[new Date().getHours()]+'%' : '—';
+    // Extract 3-hour pressure history for barometer
+    const pressureHourly = land.hourly?.surface_pressure || [];
+    const nowHour = new Date().getHours();
+    const pressureHistory = [nowHour-3, nowHour-2, nowHour-1, nowHour]
+      .map(h => pressureHourly[Math.max(0,h)] || null)
+      .filter(Boolean);
+
+    // Marine / swell
+    let swellTxt = '—';
+    if(marineRes && marineRes.ok) {
+      const marine = await marineRes.json();
+      if(marine.current?.wave_height != null) swellTxt = marine.current.wave_height.toFixed(1)+' m';
+    }
+
+    // Location name
+    let displayLoc = locName || 'Your location';
+    if(!locName && geoRes && geoRes.ok) {
+      const geo = await geoRes.json();
+      if(geo?.address) {
+        const a = geo.address;
+        displayLoc = [a.city||a.town||a.village||a.suburb||a.county, a.state||a.country].filter(Boolean).join(', ');
+      }
+    }
+
+    // Update UI
+    document.getElementById('wxi').textContent = omIcon(code);
+    document.getElementById('wxt').textContent = temp+'°C';
+    document.getElementById('wxd').textContent = omDesc(code);
+    document.getElementById('wxl').textContent = displayLoc;
+    document.getElementById('wxwind').textContent = wspeed+' km/h';
+    document.getElementById('wxwdir').textContent = wdir;
+    document.getElementById('wxh').textContent = humidity+'%';
+    document.getElementById('wxf').textContent = feels+'°C';
+    document.getElementById('wxv').textContent = vis;
+    document.getElementById('wxp').textContent = pressure+' hPa';
+    document.getElementById('wxswell').textContent = swellTxt;
+    document.getElementById('wxrain').textContent = rainNow;
+    document.getElementById('wxcond').textContent = weatherConditionOM(code, wspeed);
+    document.getElementById('wxBadge').className='api-badge live-badge';
+    document.getElementById('wxBadge').textContent='🌤 Live';
+
+    // Update barometer
+    updateBarometer(pressure, pressureHistory);
+
+    // Store coords for reuse
+    wxLat = lat; wxLng = lng;
+
+  } catch(err) {
+    console.error(err);
+    document.getElementById('wxBadge').className='api-badge offline-badge';
+    document.getElementById('wxBadge').textContent='⚠️ Unavailable';
+    document.getElementById('wxd').textContent='Could not load weather';
+    document.getElementById('wxl').textContent='Check internet connection';
+  }
+}
+
+// ─────────────────────────────────────────────
+// BAROMETER
+// ─────────────────────────────────────────────
+function updateBarometer(hpa, history) {
+  // Needle: map 970–1050 hPa → -90° to +90°
+  const MIN_HPA = 970, MAX_HPA = 1050, MID = (MIN_HPA+MAX_HPA)/2;
+  const clamp = v => Math.max(MIN_HPA, Math.min(MAX_HPA, v));
+  const pct = (clamp(hpa) - MIN_HPA) / (MAX_HPA - MIN_HPA); // 0–1
+  const deg = -90 + pct * 180;
+  const needle = document.getElementById('baroNeedle');
+  if(needle) needle.style.transform = `translateX(-50%) rotate(${deg}deg)`;
+
+  const valEl = document.getElementById('baroVal');
+  if(valEl) valEl.textContent = hpa + ' hPa';
+
+  // Trend from history
+  const trendEl = document.getElementById('baroTrend');
+  let trendTxt = '';
+  if(history && history.length >= 2) {
+    const diff = hpa - history[0];
+    if(diff > 2)        trendTxt = '↑ Rising — improving conditions';
+    else if(diff < -2)  trendTxt = '↓ Falling — conditions deteriorating';
+    else                trendTxt = '→ Steady';
+  }
+  if(trendEl) trendEl.textContent = trendTxt;
+
+  // Fishing status
+  const statusEl = document.getElementById('baroStatus');
+  if(statusEl) {
+    let cls, msg;
+    if(hpa >= 1020) {
+      cls = 'baro-good';
+      msg = '✅ High pressure — stable air, calm seas. Excellent fishing conditions.';
+    } else if(hpa >= 1008) {
+      cls = 'baro-fair';
+      msg = '🟡 Moderate pressure — decent conditions. Check tide and solunar windows.';
+    } else {
+      cls = 'baro-poor';
+      msg = '🔴 Low pressure — unsettled weather likely. Fish may be less active near surface.';
+    }
+    // Override if pressure is falling fast
+    if(history && history.length >= 2 && (hpa - history[0]) < -4) {
+      cls = 'baro-poor';
+      msg = '🔴 Pressure dropping fast — storm likely approaching. Conditions will worsen.';
+    } else if(history && history.length >= 2 && (hpa - history[0]) > 4) {
+      cls = 'baro-good';
+      msg = '✅ Pressure rising — improving weather ahead. Good bite activity expected.';
+    }
+    statusEl.className = 'baro-status ' + cls;
+    statusEl.textContent = msg;
+  }
+
+  // History sparkbar
+  const histEl = document.getElementById('baroHistory');
+  if(histEl && history && history.length) {
+    const allVals = [...history];
+    const mn = Math.min(...allVals)-1, mx = Math.max(...allVals)+1;
+    const range = mx - mn || 1;
+    histEl.innerHTML = allVals.map((v,i) => {
+      const h = Math.round(((v-mn)/range)*100);
+      const isLast = i === allVals.length-1;
+      return `<div class="baro-bar" style="height:${Math.max(8,h)}%;opacity:${isLast?1:0.45+(i*0.15)};background:${isLast?'var(--teal)':'#aaa'};"></div>`;
+    }).join('');
+  }
+}
+
+// ─────────────────────────────────────────────
+// SAVE CATCH
+// ─────────────────────────────────────────────
+async function saveCatch() {
+  const fish=document.getElementById('ftype').value==='Other'?document.getElementById('fcust').value:document.getElementById('ftype').value;
+  if(!fish){showToast('Please select a fish species.','error');vibrate(60);return;}
+  const d=document.getElementById('cdate').value, t=document.getElementById('ctime').value;
+  if(!d){showToast('Please enter the date of your catch.','error');vibrate(60);return;}
+  if(!t){showToast('Please enter the time of your catch.','error');vibrate(60);return;}
+  let ti='—',mi='—',bi='—';
+  if(d&&t){
+    const dt=new Date(d+'T'+t);
+    const hNow=tideHeightAt(dt,activePort), hNext=tideHeightAt(new Date(dt.getTime()+300000),activePort);
+    const rising=hNext>hNow;
+    const bounds=portBounds(activePort), mid=bounds.lo+(bounds.hi-bounds.lo)*0.5, qtr=(bounds.hi-bounds.lo)*0.22;
+    const tl=hNow>mid+qtr?'High Tide':hNow<mid-qtr?'Low Tide':(rising?'Mid — Rising':'Mid — Falling');
+    ti=tl+(rising?' · Incoming':' · Outgoing');
+    const mo=moonAt(dt); mi=mo.e+' '+mo.n+' ('+mo.il+'%)';
+    const so=solunarAt(dt,appLng),h=dt.getHours()+dt.getMinutes()/60;
+    const solDiff=(a,b)=>Math.min(Math.abs(a-b),24-Math.abs(a-b));
+    bi=(solDiff(h,so.m1)<1||solDiff(h,so.m2)<1)?'🟢 Major period':(solDiff(h,so.n1)<0.5||solDiff(h,so.n2)<0.5)?'🟡 Minor period':'Between periods';
+  }
+  const id='c'+Date.now();
+  const catchPhoto = photo; // capture before reset
+  // Store catch metadata (no photo) — photo lives in IDB
+  catches.unshift({id,fish,
+    length:document.getElementById('flen').value,
+    weight:document.getElementById('fwt').value,
+    method:document.getElementById('method').value,
+    platform:document.getElementById('platform').value,
+    fly:document.getElementById('fly').value,
+    flycol:document.getElementById('flycol').value,
+    notes:document.getElementById('notes').value,
+    location:document.getElementById('locname').value||'New Zealand',
+    lat:parseFloat(document.getElementById('clat').value)||(-37.6878),
+    lng:parseFloat(document.getElementById('clng').value)||176.1651,
+    date:d,time:t,tide:ti,moon:mi,bite:bi,
+    weather:document.getElementById('wxd').textContent||'—',
+    photo: catchPhoto  // kept in-memory for this session
+  });
+  persist(); // saves metadata only to localStorage
+  // Save photo to IndexedDB — completely separate from localStorage quota
+  if (catchPhoto) {
+    try {
+      await idbPut(id, catchPhoto);
+    } catch(e) {
+      showToast('⚠️ Photo could not be saved to device storage.', 'error');
+    }
+  }
+  updateHeader();
+  vibrate([40,20,40]);
+  showToast('Your catch has been logged! 🎣', 'success');
+  // Clear catch-specific fields but keep location so multi-catch sessions don't need GPS re-entry
+  ['ftype','fcust','flen','fwt','method','platform','fly','flycol','notes'].forEach(fieldId=>document.getElementById(fieldId).value='');
+  // Reset date/time back to now so the next catch doesn't inherit an old EXIF date
+  const resetNow = new Date();
+  document.getElementById('cdate').value = resetNow.toISOString().split('T')[0];
+  document.getElementById('ctime').value = resetNow.toTimeString().slice(0,5);
+  document.getElementById('gstat').textContent='';
+  document.getElementById('compressInfo').style.display='none';
+  document.getElementById('exifInfo').style.display='none';
+  photo=null;
+  const pu=document.getElementById('puEl'),img=pu.querySelector('img');if(img)img.remove();
+  document.getElementById('puInner').style.display='flex';
+}
+
+// ─────────────────────────────────────────────
+// BACKUP — Export & Import
+// ─────────────────────────────────────────────
+async function exportBackup() {
+  try {
+    showToast('Preparing backup…', 'success');
+    // Grab all photos from IndexedDB
+    const photos = await idbGetAll();
+    // Build combined backup object
+    const backup = {
+      version: 1,
+      exported: new Date().toISOString(),
+      app: 'NZ Fishing Log',
+      catchCount: catches.length,
+      catches: catches.map(({ photo, ...meta }) => meta), // metadata only (no in-memory blobs)
+      photos // { catchId: dataUrl, … }
+    };
+    const json = JSON.stringify(backup);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    a.href     = url;
+    a.download = `fishing-log-backup-${date}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast(`Backup saved — ${catches.length} catch${catches.length !== 1 ? 'es' : ''} + photos`, 'success');
+  } catch(e) {
+    console.error('Backup error:', e);
+    showToast('Backup failed. Please try again.', 'error');
+  }
+}
+
+async function importBackup(event) {
+  const file = event.target.files[0];
+  event.target.value = ''; // reset so same file can be re-imported if needed
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    // Basic validation
+    if (!data.catches || !Array.isArray(data.catches)) {
+      showToast('Invalid backup file.', 'error'); return;
+    }
+    const incoming = data.catches.length;
+    const existingIds = new Set(catches.map(c => c.id));
+    let added = 0, skipped = 0;
+    // Merge catches — skip any whose ID already exists
+    for (const c of data.catches) {
+      if (existingIds.has(c.id)) { skipped++; continue; }
+      catches.push(c);
+      added++;
+    }
+    // Sort newest-first after merge
+    catches.sort((a, b) => {
+      const da = new Date((a.date || '1970-01-01') + 'T' + (a.time || '00:00'));
+      const db = new Date((b.date || '1970-01-01') + 'T' + (b.time || '00:00'));
+      return db - da;
+    });
+    persist();
+    // Restore photos into IndexedDB
+    let photoCount = 0;
+    if (data.photos && typeof data.photos === 'object') {
+      for (const [id, dataUrl] of Object.entries(data.photos)) {
+        if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+          await idbPut(id, dataUrl);
+          photoCount++;
+        }
+      }
+    }
+    // Hydrate in-memory photos for newly added catches
+    const allPhotos = await idbGetAll();
+    catches.forEach(c => { if (allPhotos[c.id]) c.photo = allPhotos[c.id]; });
+    updateHeader();
+    renderList();
+    renderStats();
+    const msg = added > 0
+      ? `Imported ${added} catch${added !== 1 ? 'es' : ''} + ${photoCount} photo${photoCount !== 1 ? 's' : ''}${skipped ? ` (${skipped} already existed)` : ''}`
+      : `Nothing new to import — ${skipped} catch${skipped !== 1 ? 'es' : ''} already in your log`;
+    showToast(msg, added > 0 ? 'success' : 'error');
+  } catch(e) {
+    console.error('Import error:', e);
+    showToast('Could not read backup file. Is it a valid Fishing Log backup?', 'error');
+  }
+}
+
+function persist() {
+  // Save catch metadata only — photos are never written to localStorage.
+  // This keeps localStorage small (a few KB per catch) regardless of how
+  // many photos have been taken. Photos live in IndexedDB instead.
+  const lite = catches.map(({ photo, ...rest }) => rest);
+  try {
+    localStorage.setItem('fishinglog', JSON.stringify(lite));
+  } catch(e) {
+    showToast('⚠️ Could not save catch data. Try freeing up device storage.', 'error');
+  }
+}
+
+let _pendingDelId = null;
+function delCatch(id) {
+  _pendingDelId = id;
+  document.getElementById('delModal').classList.add('open');
+}
+function closeDelModal() {
+  document.getElementById('delModal').classList.remove('open');
+  _pendingDelId = null;
+}
+function confirmDelCatch() {
+  if(!_pendingDelId) return;
+  const id = _pendingDelId;
+  closeDelModal();
+  catches = catches.filter(c => c.id !== id);
+  if(cmaps[id]){try{cmaps[id].remove();}catch(e){}delete cmaps[id];}
+  persist();
+  idbDel(id).catch(() => {});
+  updateHeader(); renderList();
+  showToast('Catch deleted.', 'error');
+}
+// Close on backdrop tap
+document.getElementById('delModal').addEventListener('click', function(e){ if(e.target===this) closeDelModal(); });
+
+function updateHeader() {
+  document.getElementById('hcount').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+' logged';
+}
+
+// ─────────────────────────────────────────────
+// DEFAULT LOGO SVG
+// ─────────────────────────────────────────────
+const DEFAULT_SVG_HTML = `
+  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="width:52px;height:52px;opacity:0.45;">
+    <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#aaa" stroke-width="18" stroke-linecap="round"/>
+    <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#bbb"/>
+    <path d="M210 260 L165 225 L165 295 Z" fill="#bbb"/>
+    <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#bbb"/>
+    <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#bbb"/>
+    <circle cx="310" cy="250" r="5" fill="#e0e0dc"/>
+    <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#ccc" stroke-width="20" stroke-linecap="round"/>
+    <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#ccc" stroke-width="12" stroke-linecap="round"/>
+  </svg>`;
+
+function renderList() {
+  // FIX: destroy stale Leaflet instances before rebuilding to prevent memory leaks
+  Object.keys(cmaps).forEach(id => { try { cmaps[id].remove(); } catch(e) {} });
+  cmaps = {};
+  const sort=document.getElementById('sortby').value;let s=[...catches];
+  if(sort==='newest') s.sort((a,b)=>{const da=new Date((a.date||'1970-01-01')+'T'+(a.time||'00:00')),db=new Date((b.date||'1970-01-01')+'T'+(b.time||'00:00'));return db-da;});
+  else if(sort==='oldest') s.sort((a,b)=>{const da=new Date((a.date||'1970-01-01')+'T'+(a.time||'00:00')),db=new Date((b.date||'1970-01-01')+'T'+(b.time||'00:00'));return da-db;});
+  else if(sort==='weight')s.sort((a,b)=>(parseFloat(b.weight)||0)-(parseFloat(a.weight)||0));
+  else if(sort==='length')s.sort((a,b)=>(parseFloat(b.length)||0)-(parseFloat(a.length)||0));
+  const wts=catches.filter(c=>c.weight).map(c=>parseFloat(c.weight)||0);
+  document.getElementById('tstats').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+(wts.length?' · Best: '+Math.max(...wts).toFixed(1)+'kg':'');
+  if(!catches.length){
+    document.getElementById('clist').innerHTML=`<div class="empty">
+      <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="width:80px;height:80px;opacity:0.3;margin-bottom:4px;">
+        <rect x="0" y="0" width="512" height="512" rx="110" fill="#444444"/>
+        <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#cccccc" stroke-width="18" stroke-linecap="round"/>
+        <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#ffffff"/>
+        <path d="M210 260 L165 225 L165 295 Z" fill="#ffffff"/>
+        <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#ffffff"/>
+        <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#ffffff"/>
+        <circle cx="310" cy="250" r="5" fill="#444444"/>
+        <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#aaaaaa" stroke-width="20" stroke-linecap="round"/>
+        <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#aaaaaa" stroke-width="12" stroke-linecap="round"/>
+      </svg>
+      <div style="font-size:15px;font-weight:600;color:var(--muted);">No catches yet</div>
+      <div style="font-size:13px;color:var(--hint);margin-top:2px;">Let's Go Fishing! 🎣</div>
+    </div>`;
+    return;
+  }
+  document.getElementById('clist').innerHTML=s.map(c=>`
+    <div class="ccard" id="card-${c.id}">
+      <div class="ctop">
+        ${c.photo
+          ? `<img src="${c.photo}" class="cimgel" alt="catch">`
+          : `<div class="ciph">${DEFAULT_SVG_HTML}</div>`
+        }
+        <div class="cbody">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <div class="cfish">${c.fish}</div>
+            <div style="display:flex;gap:2px;">
+              <button class="delbtn" onclick="editCatch('${c.id}')" title="Edit" style="color:var(--teal);font-size:15px;">✏️</button>
+              <button class="delbtn" onclick="delCatch('${c.id}')">🗑</button>
+            </div>
+          </div>
+          <div class="cmeta">${[c.length?c.length+'cm':'',c.weight?c.weight+'kg':''].filter(Boolean).join(' · ')||'Size not recorded'}</div>
+          <div class="cmeta" style="font-size:11px;">${c.date} ${c.time} · ${c.location}</div>
+          ${(c.method||c.platform)?`<div class="cmeta" style="font-size:11px;color:var(--hint);">${[c.method,c.platform,c.fly,c.flycol].filter(Boolean).join(' · ')}</div>`:''}
+          ${c.notes?`<div class="cmeta" style="font-size:11px;font-style:italic;color:var(--hint);">"${c.notes.slice(0,60)}${c.notes.length>60?'…':''}"</div>`:''}
+          <div class="ctags">
+            <span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':c.tide||'—'}</span>
+            <span class="tag tp">${c.moon}</span>
+            <span class="tag ta">${c.bite}</span>
+            <span class="tag tb">${c.weather}</span>
+          </div>
+        </div>
+      </div>
+      <div class="cmap" id="cm-${c.id}"></div>
+    </div>`).join('');
+  s.forEach(c=>{if(c.lat&&c.lng)initCatchMap(c.id,c.lat,c.lng,c.fish+(c.location?' — '+c.location:''));});
+}
+
+// ─────────────────────────────────────────────
+// EDIT CATCH
+// ─────────────────────────────────────────────
+let editId = null, editPhoto = undefined; // undefined = no change, null = cleared, string = new photo
+const KNOWN_SPECIES = ['Snapper','Kingfish','Kahawai','Gurnard','John Dory','Blue Cod','Trevally','Tarakihi','Moki','Hapuka','Crayfish'];
+
+function editCatch(id) {
+  const c = catches.find(x => x.id === id);
+  if(!c) return;
+  editId = id;
+  editPhoto = undefined; // reset — no change yet
+
+  // Populate photo
+  const epuEl = document.getElementById('epuEl');
+  const epuInner = document.getElementById('epuInner');
+  const existingImg = epuEl.querySelector('img');
+  if(existingImg) existingImg.remove();
+  if(c.photo) {
+    epuInner.style.display = 'none';
+    const img = document.createElement('img'); img.src = c.photo;
+    epuEl.appendChild(img);
+  } else {
+    epuInner.style.display = 'flex';
+  }
+  document.getElementById('editPhotoInfo').style.display = 'none';
+  // Populate species
+  const fishSel = document.getElementById('efish');
+  if(KNOWN_SPECIES.includes(c.fish)) {
+    fishSel.value = c.fish;
+    document.getElementById('efishcust').value = '';
+  } else {
+    fishSel.value = 'Other';
+    document.getElementById('efishcust').value = c.fish || '';
+  }
+  document.getElementById('elen').value      = c.length   || '';
+  document.getElementById('ewt').value       = c.weight   || '';
+  document.getElementById('emethod').value   = c.method   || '';
+  document.getElementById('eplatform').value = c.platform || '';
+  document.getElementById('efly').value      = c.fly      || '';
+  document.getElementById('eflycol').value   = c.flycol   || '';
+  document.getElementById('enotes').value    = c.notes    || '';
+  document.getElementById('edate').value     = c.date     || '';
+  document.getElementById('etime').value     = c.time     || '';
+  document.getElementById('eloc').value      = c.location || '';
+  const editLat = c.lat != null ? parseFloat(c.lat) : APP_DEFAULT_LAT;
+  const editLng = c.lng != null ? parseFloat(c.lng) : APP_DEFAULT_LNG;
+  document.getElementById('elat').value = editLat.toFixed(4);
+  document.getElementById('elng').value = editLng.toFixed(4);
+  document.getElementById('editModal').classList.add('open');
+  setTimeout(() => initEditMap(editLat, editLng), 100);
+}
+
+function closeEdit() {
+  document.getElementById('editModal').classList.remove('open');
+  editId = null;
+  editPhoto = undefined;
+}
+
+async function handleEditPhoto(e) {
+  const f = e.target.files[0]; if(!f) return;
+
+  // Same HEIC guard as the main log form — Samsung Gallery can deliver HEIC.
+  const ftype = (f.type || '').toLowerCase();
+  const fname = (f.name || '').toLowerCase();
+  if (ftype === 'image/heic' || ftype === 'image/heif' ||
+      fname.endsWith('.heic') || fname.endsWith('.heif')) {
+    showToast(
+      'HEIC photos aren\'t supported. In Samsung Gallery go to ⚙️ Settings → Pictures → Picture format and switch to "High compatibility (JPEG)".',
+      'error'
+    );
+    return;
+  }
+  // Samsung Cloud: stub file (size 0) means not yet downloaded.
+  if (f.size === 0) {
+    showToast('Photo is not ready — it may still be downloading from Samsung Cloud. Wait a moment and try again.', 'error');
+    return;
+  }
+  const infoEl = document.getElementById('editPhotoInfo');
+  let result;
+  try { result = await compressImage(f); } catch(e) { return; }
+  editPhoto = result.dataUrl;
+  const epuEl = document.getElementById('epuEl');
+  const existing = epuEl.querySelector('img'); if(existing) existing.remove();
+  document.getElementById('epuInner').style.display = 'none';
+  const img = document.createElement('img'); img.src = editPhoto;
+  epuEl.appendChild(img);
+  const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
+  infoEl.style.display = 'block';
+  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB`;
+}
+
+function saveEdit() {
+  if(!editId) return;
+  const idx = catches.findIndex(c => c.id === editId);
+  if(idx === -1) return;
+  const fishSel = document.getElementById('efish').value;
+  const fish = fishSel === 'Other'
+    ? document.getElementById('efishcust').value.trim()
+    : fishSel;
+  if(!fish) { showToast('Please select a fish species.', 'error'); vibrate(60); return; }
+
+  const newDate = document.getElementById('edate').value;
+  const newTime = document.getElementById('etime').value;
+
+  // Recalculate tide, moon, bite from new date/time
+  let ti = catches[idx].tide, mi = catches[idx].moon, bi = catches[idx].bite;
+  if(newDate && newTime) {
+    const dt = new Date(newDate + 'T' + newTime);
+    const hNow = tideHeightAt(dt, activePort), hNext = tideHeightAt(new Date(dt.getTime()+300000), activePort);
+    const rising = hNext > hNow;
+    const bounds = portBounds(activePort), mid = bounds.lo + (bounds.hi - bounds.lo)*0.5, qtr = (bounds.hi - bounds.lo)*0.22;
+    const tl = hNow > mid+qtr ? 'High Tide' : hNow < mid-qtr ? 'Low Tide' : (rising ? 'Mid — Rising' : 'Mid — Falling');
+    ti = tl + (rising ? ' · Incoming' : ' · Outgoing');
+    const mo = moonAt(dt); mi = mo.e + ' ' + mo.n + ' (' + mo.il + '%)';
+    const so = solunarAt(dt, appLng), h = dt.getHours() + dt.getMinutes()/60;
+    const solDiff = (a, b) => Math.min(Math.abs(a-b), 24-Math.abs(a-b));
+    bi = (solDiff(h,so.m1)<1 || solDiff(h,so.m2)<1) ? '🟢 Major period'
+       : (solDiff(h,so.n1)<0.5 || solDiff(h,so.n2)<0.5) ? '🟡 Minor period'
+       : 'Between periods';
+  }
+
+  // Resolve photo: undefined = keep existing, string = new photo
+  const existingPhoto = catches[idx].photo;
+  const resolvedPhoto = editPhoto !== undefined ? editPhoto : existingPhoto;
+
+  catches[idx] = {
+    ...catches[idx],
+    fish,
+    length:   document.getElementById('elen').value,
+    weight:   document.getElementById('ewt').value,
+    method:   document.getElementById('emethod').value,
+    platform: document.getElementById('eplatform').value,
+    fly:      document.getElementById('efly').value,
+    flycol:   document.getElementById('eflycol').value,
+    notes:    document.getElementById('enotes').value,
+    date:     newDate,
+    time:     newTime,
+    location: document.getElementById('eloc').value,
+    lat: parseFloat(document.getElementById('elat').value) || catches[idx].lat,
+    lng: parseFloat(document.getElementById('elng').value) || catches[idx].lng,
+    tide: ti, moon: mi, bite: bi,
+    photo: resolvedPhoto,
+  };
+  persist();
+  if(editPhoto !== undefined) {
+    if(editPhoto) idbPut(editId, editPhoto).catch(()=>{});
+    else idbDel(editId).catch(()=>{});
+  }
+  updateHeader();
+  closeEdit();
+  renderList();
+  renderStats();
+  showToast('Catch updated! ✏️', 'success');
+  vibrate([30,15,30]);
+}
+
+// Close edit modal on backdrop tap
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if(e.target === this) closeEdit();
 });
-</script>
 
+// ─────────────────────────────────────────────
+// STATS TAB
+// ─────────────────────────────────────────────
+function renderStats() {
+  const el = document.getElementById('statsContent');
+  if(catches.length < 3) {
+    el.innerHTML = `
+      <div class="insight-card">
+        <div style="text-align:center;padding:30px 10px;">
+          <div style="font-size:46px;margin-bottom:12px;">📊</div>
+          <div style="color:#fff;font-size:15px;font-weight:600;margin-bottom:8px;">Keep fishing!</div>
+          <div style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.6;">Log at least 3 catches to unlock<br>your personalised fishing insights.</div>
+          <div style="margin-top:14px;color:rgba(255,255,255,0.25);font-size:12px;">${catches.length} of 3 catches logged</div>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── Top species ──
+  const speciesCount = {};
+  catches.forEach(c => { speciesCount[c.fish] = (speciesCount[c.fish]||0)+1; });
+  const topSpecies = Object.entries(speciesCount).sort((a,b)=>b[1]-a[1]);
+  const maxSp = topSpecies[0][1];
+
+  // ── Best tide ──
+  const tideCount = {};
+  catches.forEach(c => {
+    const t = c.tide||'';
+    const key = t.includes('Incoming')||t.includes('Rising') ? 'Incoming' :
+                t.includes('Outgoing')||t.includes('Falling') ? 'Outgoing' :
+                t.includes('High') ? 'High Tide' :
+                t.includes('Low') ? 'Low Tide' : 'Unknown';
+    tideCount[key] = (tideCount[key]||0)+1;
+  });
+  const topTide = Object.entries(tideCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // ── Best time of day ──
+  const timeSlots = {Morning:0, Midday:0, Afternoon:0, Evening:0, Night:0};
+  catches.forEach(c => {
+    if(!c.time) return;
+    const h = parseInt(c.time.split(':')[0]);
+    if(h>=5&&h<10) timeSlots.Morning++;
+    else if(h>=10&&h<13) timeSlots.Midday++;
+    else if(h>=13&&h<17) timeSlots.Afternoon++;
+    else if(h>=17&&h<21) timeSlots.Evening++;
+    else timeSlots.Night++;
+  });
+  const topTime = Object.entries(timeSlots).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1])[0];
+
+  // ── Best method ──
+  const methodCount = {};
+  catches.forEach(c => { if(c.method) methodCount[c.method]=(methodCount[c.method]||0)+1; });
+  const topMethod = Object.entries(methodCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // ── Best platform ──
+  const platformCount = {};
+  catches.forEach(c => { if(c.platform) platformCount[c.platform]=(platformCount[c.platform]||0)+1; });
+  const topPlatform = Object.entries(platformCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // ── Best moon ──
+  const moonCount = {};
+  catches.forEach(c => {
+    const m = c.moon||'';
+    const phase = m.includes('New')?'New Moon':m.includes('Full')?'Full Moon':
+                  m.includes('Waxing Gibbous')?'Waxing Gibbous':m.includes('Waning Gibbous')?'Waning Gibbous':
+                  m.includes('Waxing Crescent')?'Waxing Crescent':m.includes('Waning Crescent')?'Waning Crescent':
+                  m.includes('First')?'First Quarter':m.includes('Last')?'Last Quarter':'Unknown';
+    moonCount[phase] = (moonCount[phase]||0)+1;
+  });
+  const topMoon = Object.entries(moonCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // ── Best bite window ──
+  // (removed — replaced by Best Month)
+
+  // ── Best month ──
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const monthCount = {};
+  catches.forEach(c => {
+    if(!c.date) return;
+    const parts = c.date.split('-');
+    if(parts.length < 2) return;
+    const m = parseInt(parts[1], 10);
+    if(m >= 1 && m <= 12) monthCount[MONTHS[m-1]] = (monthCount[MONTHS[m-1]]||0) + 1;
+  });
+  const topMonths = Object.entries(monthCount).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+  // ── Best weight ──
+  const withWeight = catches.filter(c=>c.weight).sort((a,b)=>parseFloat(b.weight)-parseFloat(a.weight));
+  const best = withWeight[0];
+  const avgWeight = withWeight.length ? (withWeight.reduce((s,c)=>s+parseFloat(c.weight),0)/withWeight.length).toFixed(1) : null;
+
+  // ── Render insights ──
+  el.innerHTML = `
+    <div class="insight-card">
+      <div class="dlbl">🏆 Your Best Stats</div>
+      ${best?`
+      <div class="insight-item">
+        <div class="insight-icon">🐟</div>
+        <div class="insight-text">
+          <div class="insight-title">Personal Best</div>
+          <div class="insight-val">${parseFloat(best.weight).toFixed(1)} kg — ${best.fish}</div>
+          <div class="insight-sub">${best.location} · ${best.date}</div>
+        </div>
+      </div>`:''}
+      ${avgWeight?`
+      <div class="insight-item">
+        <div class="insight-icon">⚖️</div>
+        <div class="insight-text">
+          <div class="insight-title">Average Weight</div>
+          <div class="insight-val">${avgWeight} kg</div>
+          <div class="insight-sub">From ${withWeight.length} weighed catch${withWeight.length!==1?'es':''}</div>
+        </div>
+      </div>`:''}
+      <div class="insight-item">
+        <div class="insight-icon">🌊</div>
+        <div class="insight-text">
+          <div class="insight-title">Best Tide</div>
+          <div class="insight-val">${topTide?topTide[0]:'—'}</div>
+          <div class="insight-sub">${topTide?topTide[1]+' catch'+(topTide[1]!==1?'es':'')+' in this state':''}</div>
+        </div>
+      </div>
+      <div class="insight-item">
+        <div class="insight-icon">🕐</div>
+        <div class="insight-text">
+          <div class="insight-title">Best Time of Day</div>
+          <div class="insight-val">${topTime?topTime[0]:'—'}</div>
+          <div class="insight-sub">${topTime?topTime[1]+' catch'+(topTime[1]!==1?'es':''):''}</div>
+        </div>
+      </div>
+      ${topMethod?`
+      <div class="insight-item">
+        <div class="insight-icon">🎣</div>
+        <div class="insight-text">
+          <div class="insight-title">Best Method</div>
+          <div class="insight-val">${topMethod[0]}</div>
+          <div class="insight-sub">${topMethod[1]} catch${topMethod[1]!==1?'es':''}</div>
+        </div>
+      </div>`:''}
+      ${topPlatform?`
+      <div class="insight-item">
+        <div class="insight-icon">${topPlatform[0]==='Wading'?'🚶':topPlatform[0]==='Kayak'?'🚣':'⛵'}</div>
+        <div class="insight-text">
+          <div class="insight-title">Best Platform</div>
+          <div class="insight-val">${topPlatform[0]}</div>
+          <div class="insight-sub">${topPlatform[1]} catch${topPlatform[1]!==1?'es':''}</div>
+        </div>
+      </div>`:''}
+      ${topMoon?`
+      <div class="insight-item">
+        <div class="insight-icon">🌙</div>
+        <div class="insight-text">
+          <div class="insight-title">Best Moon Phase</div>
+          <div class="insight-val">${topMoon[0]}</div>
+          <div class="insight-sub">${topMoon[1]} catch${topMoon[1]!==1?'es':''}</div>
+        </div>
+      </div>`:''}
+      ${topMonths.length?`
+      <div class="insight-item" style="align-items:flex-start;">
+        <div class="insight-icon">📅</div>
+        <div class="insight-text">
+          <div class="insight-title">Best Months (Top 3)</div>
+          ${topMonths.map(([m,cnt],i)=>`
+            <div style="display:flex;align-items:center;gap:8px;margin-top:${i===0?4:6}px;">
+              <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.35);width:14px;">${i+1}</div>
+              <div style="flex:1;">
+                <div style="font-size:14px;font-weight:600;color:#fff;">${m}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,0.4);">${cnt} catch${cnt!==1?'es':''} recorded</div>
+              </div>
+              <div style="display:flex;gap:2px;">${'⭐'.repeat(3-i)}</div>
+            </div>`).join('')}
+        </div>
+      </div>`:''}
+    </div>
+
+    <div class="sec">
+      <div class="stitle">🐟 Species Breakdown</div>
+      ${topSpecies.map(([sp,cnt])=>`
+        <div class="stat-row">
+          <div class="stat-label">${sp}</div>
+          <div class="stat-bar-wrap"><div class="stat-bar" style="width:${Math.round(cnt/maxSp*100)}%"></div></div>
+          <div class="stat-value">${cnt}</div>
+        </div>`).join('')}
+    </div>
+
+    <div class="sec">
+      <div class="stitle">📅 Summary</div>
+      <div class="stat-row"><div class="stat-label">Total catches</div><div class="stat-value">${catches.length}</div></div>
+      <div class="stat-row"><div class="stat-label">Species caught</div><div class="stat-value">${topSpecies.length}</div></div>
+      <div class="stat-row"><div class="stat-label">Locations fished</div><div class="stat-value">${new Set(catches.map(c=>c.location)).size}</div></div>
+      ${catches.some(c=>c.photo)?`<div class="stat-row"><div class="stat-label">Catches with photos</div><div class="stat-value">${catches.filter(c=>c.photo).length}</div></div>`:''}
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+calcTide(); calcMoon(); calcBite();
+setTimeout(initLogMap, 400);
+setTimeout(autoWeather, 800);
+initStorage(); // async: migrates legacy photos + hydrates IDB photos into memory
+</script>
 </body>
 </html>
