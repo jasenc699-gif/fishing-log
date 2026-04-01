@@ -9,101 +9,52 @@
 <meta name="apple-mobile-web-app-title" content="NZ Fishing Log">
 <meta name="theme-color" content="#2c2c2c">
 <title>Fishing Log for NZ Waters</title>
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
-  --teal:#4fc3a1;
-  --dark:#2c2c2c;
-  --dark2:#383838;
-  --dark3:#444;
-  --text:#1a1a1a;
-  --muted:#5a5a5a;
-  --hint:#999;
-  --border:#ddddd8;
-  --surf:#ebebea;
-  --surf2:#f4f4f2;
-  --white:#ffffff;
-  --grey-btn:#5a5a5a;
-  --grey-btn-hover:#484848;
+  --teal:#4fc3a1; --dark:#2c2c2c; --dark2:#383838; --dark3:#444; --text:#1a1a1a;
+  --muted:#5a5a5a; --hint:#999; --border:#ddddd8; --surf:#ebebea; --surf2:#f4f4f2;
+  --white:#ffffff; --grey-btn:#5a5a5a; --grey-btn-hover:#484848;
 }
 html,body{height:100%;overflow:hidden;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--dark);}
 .app{max-width:430px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:var(--surf2);}
-
-/* HEADER */
 .header{background:var(--dark);padding:max(env(safe-area-inset-top),12px) 16px 11px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
 .htitle{font-size:18px;font-weight:700;color:#fff;letter-spacing:-0.3px;}
 .hsub{font-size:11px;color:rgba(255,255,255,0.45);margin-top:1px;}
-
-/* TABS */
 .tabs{display:flex;background:var(--dark2);overflow-x:auto;flex-shrink:0;border-top:0.5px solid rgba(255,255,255,0.08);padding-bottom:max(env(safe-area-inset-bottom),6px);}
-.tabs::-webkit-scrollbar{display:none;}
 .tab{flex:1;min-width:40px;display:flex;flex-direction:column;align-items:center;padding:8px 2px 5px;cursor:pointer;border-top:2px solid transparent;gap:3px;}
 .tab.active{border-top-color:var(--teal);}
 .ti{font-size:18px;line-height:1;}
-.tl{font-size:7.5px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;}
+.tl{font-size:7.5px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.3px;}
 .tab.active .tl{color:var(--teal);}
-
-/* PAGES */
 .pages{flex:1;overflow:hidden;position:relative;}
 .pg{position:absolute;inset:0;overflow-y:auto;padding:13px;display:none;-webkit-overflow-scrolling:touch;}
 .pg.show{display:block;}
-
-/* SECTIONS */
 .sec{background:var(--white);border-radius:12px;border:0.5px solid var(--border);padding:13px;margin-bottom:10px;}
 .stitle{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
-
-/* PHOTO */
-.pu{width:100%;min-height:200px;max-height:65vh;border:1.5px dashed #ccc;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--surf);overflow:hidden;position:relative;}
-.pu img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0;background:#1a1a1a;}
-.pu-inner{display:flex;flex-direction:column;align-items:center;gap:5px;z-index:1;}
-.pu-default-svg{width:60px;height:60px;opacity:0.5;}
-
-/* FORMS */
+.pu{width:100%;min-height:200px;border:1.5px dashed #ccc;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--surf);overflow:hidden;position:relative;}
+.pu img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0;}
 label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:10px;font-weight:500;}
-label:first-of-type{margin-top:0;}
-input,select,textarea{width:100%;padding:10px 12px;border:0.5px solid #d0d0cc;border-radius:8px;font-size:16px;background:var(--white);color:var(--text);font-family:inherit;appearance:none;-webkit-appearance:none;transition:border-color 0.15s;}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 2px rgba(79,195,161,0.15);}
-select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+input,select,textarea{width:100%;padding:10px 12px;border:0.5px solid #d0d0cc;border-radius:8px;font-size:16px;font-family:inherit;}
 .r2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-
-/* BUTTONS */
-.sbtn{width:100%;padding:14px;background:var(--grey-btn);border:none;border-radius:12px;font-size:16px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;transition:background 0.15s,transform 0.1s;}
-.sbtn:active{background:var(--grey-btn-hover);transform:scale(0.99);}
+.sbtn{width:100%;padding:14px;background:var(--grey-btn);border:none;border-radius:12px;font-size:16px;font-weight:600;color:#fff;cursor:pointer;}
 .teal-btn{background:var(--teal)!important;}
-.teal-btn:active{background:#3aaa8a!important;}
-.gpsbtn{margin-top:8px;width:100%;padding:10px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--muted);cursor:pointer;font-family:inherit;}
-
-/* MAP */
-.mapbox{width:100%;height:210px;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);margin-top:9px;position:relative;}
-.geo-status{font-size:11px;color:var(--teal);margin-top:4px;min-height:16px;}
-
-/* TOAST NOTIFICATION */
-#toast{position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-110%);z-index:9999;max-width:390px;width:calc(100% - 24px);transition:transform 0.32s cubic-bezier(0.34,1.56,0.64,1),opacity 0.25s;opacity:0;pointer-events:none;}
-#toast.show{transform:translateX(-50%) translateY(12px);opacity:1;}
-.toast-inner{display:flex;align-items:center;gap:11px;padding:13px 15px;border-radius:13px;box-shadow:0 4px 22px rgba(0,0,0,0.22);backdrop-filter:blur(8px);}
-.toast-inner.success{background:#1d6b52;border:0.5px solid rgba(79,195,161,0.5);}
-.toast-inner.error{background:#7a2020;border:0.5px solid rgba(220,80,80,0.5);}
-.toast-icon{font-size:20px;flex-shrink:0;line-height:1;}
-.toast-msg{font-size:14px;font-weight:500;color:#fff;line-height:1.4;}
-
-.spin{display:inline-block;width:12px;height:12px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:sp 0.6s linear infinite;vertical-align:middle;}
-@keyframes sp{to{transform:rotate(360deg);}}
+.gpsbtn{margin-top:8px;width:100%;padding:10px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--muted);cursor:pointer;}
+.mapbox{width:100%;height:210px;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);margin-top:9px;}
+.ccard{background:var(--white);border-radius:12px;border:0.5px solid var(--border);margin-bottom:10px;padding:12px;display:flex;gap:12px;align-items:center;}
+.cbody{flex:1;}
+.cfish{font-size:15px;font-weight:700;}
+.cmeta{font-size:12px;color:var(--muted);}
+#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;padding:12px 24px;border-radius:30px;display:none;z-index:9999;}
 </style>
 </head>
 <body>
 <div class="app">
-
-  <div id="toast" role="alert" aria-live="assertive">
-    <div class="toast-inner" id="toastInner">
-      <span class="toast-icon" id="toastIcon"></span>
-      <span class="toast-msg" id="toastMsg"></span>
-    </div>
-  </div>
+  <div id="toast"></div>
 
   <div class="header">
     <div>
@@ -116,131 +67,24 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div class="pg show" id="pg-log">
       <div class="sec">
         <div class="stitle">📸 Photo</div>
-        <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
-          <div class="pu-inner" id="puInner">
-            <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-              <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
-              <circle cx="310" cy="250" r="5" fill="#bbbbbb"/>
-              <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#cccccc" stroke-width="20" stroke-linecap="round"/>
-            </svg>
-            <span style="font-size:12px;color:#aaa;margin-top:4px;">Add a photo of your catch</span>
-          </div>
+        <div class="pu" id="puEl" onclick="document.getElementById('fiLib').click();">
+          <div id="puInner">Tap to add photo</div>
           <img id="prevImg" style="display:none">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiCam');i.value='';i.click();">📷 Take Photo</button>
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">🖼 Upload Photo</button>
-        </div>
-        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)">
-        <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
+        <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)" style="display:none">
       </div>
 
       <div class="sec">
-        <div class="stitle">📍 Location</div>
-        <div class="geo-status" id="gstat"></div>
-        <div class="r2">
-          <div><label>Latitude</label><input type="number" id="clat" step="0.0001" value="-37.6878"></div>
-          <div><label>Longitude</label><input type="number" id="clng" step="0.0001" value="176.1651"></div>
+        <div class="stitle">🐟 Catch Details</div>
+        <label>Species</label>
+        <select id="ftype" onchange="toggleCustomSpecies()">
+          <option value="Snapper">Snapper</option>
+          <option value="Kingfish">Kingfish</option>
+          <option value="Kahawai">Kahawai</option>
+          <option value="Other">Other</option>
+        </select>
+        <div id="customGroup" style="display:none">
+          <label>Specify Species</label>
+          <input type="text" id="fcust">
         </div>
-        <button class="gpsbtn" onclick="doGPS()">📡 Use my GPS location</button>
-      </div>
-
-      <button class="sbtn teal-btn" onclick="saveCatch()">Save Catch</button>
-    </div>
-  </div>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-let logMap, marker;
-
-// Initialization
-window.onload = () => {
-    initLogMap();
-};
-
-function initLogMap() {
-    logMap = L.map('logmap').setView([-37.68, 176.16], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(logMap);
-    marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(logMap);
-}
-
-// Updated handlePhoto with feedback for manual entry
-async function handlePhoto(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const puInner = document.getElementById('puInner');
-  const prevImg = document.getElementById('prevImg');
-  
-  // Visual feedback for scraping process
-  puInner.innerHTML = '<div class="spin"></div> <span style="font-size:11px;color:#aaa;margin-top:6px;">Scraping location...</span>';
-
-  try {
-    // 1. Attempt to extract GPS data from EXIF
-    const gps = await exifr.gps(file);
-    
-    if (gps && gps.latitude && gps.longitude) {
-      document.getElementById('clat').value = gps.latitude.toFixed(4);
-      document.getElementById('clng').value = gps.longitude.toFixed(4);
-      
-      if (marker && logMap) {
-        const pos = [gps.latitude, gps.longitude];
-        marker.setLatLng(pos);
-        logMap.setView(pos, 14);
-      }
-      showToast("Location added from photo!", "success");
-    } else {
-      // 2. Clear feedback and notify user to enter manually
-      showToast("No location found in photo. Please add it manually.", "error");
-    }
-
-    // 3. Process image for preview
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      prevImg.src = event.target.result;
-      prevImg.style.display = 'block';
-      puInner.style.display = 'none';
-    };
-    reader.readAsDataURL(file);
-
-  } catch (err) {
-    console.error("Photo Picker Error:", err);
-    showToast("Could not read photo data. Please add location manually.", "error");
-  }
-}
-
-function showToast(msg, type) {
-  const t = document.getElementById('toast');
-  const ti = document.getElementById('toastInner');
-  const tm = document.getElementById('toastMsg');
-  
-  tm.innerText = msg;
-  ti.className = 'toast-inner ' + type;
-  t.classList.add('show');
-  
-  setTimeout(() => t.classList.remove('show'), 3500);
-}
-
-function doGPS() {
-  if (!navigator.geolocation) return showToast("GPS not supported", "error");
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      document.getElementById('clat').value = lat.toFixed(4);
-      document.getElementById('clng').value = lng.toFixed(4);
-      marker.setLatLng([lat, lng]);
-      logMap.setView([lat, lng], 14);
-      showToast("Current location set", "success");
-    },
-    () => showToast("Could not get GPS location", "error")
-  );
-}
-
-function saveCatch() {
-  showToast("Catch saved to log!", "success");
-}
-</script>
-</body>
-</html>
+        <div
