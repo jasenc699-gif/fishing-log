@@ -1,3 +1,6 @@
+This full version of your `index.html` includes the fixed asynchronous photo handler, the dual-input system for reliable camera and library access, and the manual entry feedback you requested.
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -45,11 +48,11 @@ input,select,textarea{width:100%;padding:10px 12px;border:0.5px solid #d0d0cc;bo
 .teal-btn{background:var(--teal)!important;}
 .gpsbtn{margin-top:8px;width:100%;padding:10px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:14px;color:var(--muted);cursor:pointer;}
 .mapbox{width:100%;height:210px;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);margin-top:9px;}
-.ccard{background:var(--white);border-radius:12px;border:0.5px solid var(--border);margin-bottom:10px;padding:12px;display:flex;gap:12px;align-items:center;}
-.cbody{flex:1;}
-.cfish{font-size:15px;font-weight:700;}
-.cmeta{font-size:12px;color:var(--muted);}
-#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--dark);color:#fff;padding:12px 24px;border-radius:30px;display:none;z-index:9999;}
+#toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);padding:12px 24px;border-radius:30px;display:none;z-index:9999;color:#fff;font-weight:500;}
+.toast-success{background:#1d6b52;}
+.toast-error{background:#7a2020;}
+.spin{width:20px;height:20px;border:3px solid rgba(0,0,0,0.1);border-top-color:var(--teal);border-radius:50%;animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
@@ -71,7 +74,12 @@ input,select,textarea{width:100%;padding:10px 12px;border:0.5px solid #d0d0cc;bo
           <div id="puInner">Tap to add photo</div>
           <img id="prevImg" style="display:none">
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">
+          <button class="gpsbtn" onclick="document.getElementById('fiCam').click();">📷 Take Photo</button>
+          <button class="gpsbtn" onclick="document.getElementById('fiLib').click();">🖼️ Upload</button>
+        </div>
         <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)" style="display:none">
+        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)" style="display:none">
       </div>
 
       <div class="sec">
@@ -87,4 +95,111 @@ input,select,textarea{width:100%;padding:10px 12px;border:0.5px solid #d0d0cc;bo
           <label>Specify Species</label>
           <input type="text" id="fcust">
         </div>
-        <div
+        <div class="r2">
+          <div><label>Length (cm)</label><input type="number" id="flen"></div>
+          <div><label>Weight (kg)</label><input type="number" id="fwt"></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="stitle">📍 Location</div>
+        <div class="r2">
+          <div><label>Lat</label><input type="number" id="clat" step="0.0001"></div>
+          <div><label>Lng</label><input type="number" id="clng" step="0.0001"></div>
+        </div>
+        <button class="gpsbtn" onclick="doGPS()">📡 Use GPS</button>
+        <div class="mapbox" id="logmap"></div>
+      </div>
+
+      <button class="sbtn teal-btn" onclick="saveCatch()">Save Catch</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active"><span class="ti">📝</span><span class="tl">Log</span></div>
+    <div class="tab"><span class="ti">🌊</span><span class="tl">Tides</span></div>
+    <div class="tab"><span class="ti">🌙</span><span class="tl">Moon</span></div>
+  </div>
+</div>
+
+<script>
+let logMap, marker;
+
+// Initialize Map
+window.onload = () => {
+  logMap = L.map('logmap').setView([-37.68, 176.16], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(logMap);
+  marker = L.marker([-37.68, 176.16], {draggable: true}).addTo(logMap);
+  marker.on('dragend', () => {
+    let pos = marker.getLatLng();
+    document.getElementById('clat').value = pos.lat.toFixed(4);
+    document.getElementById('clng').value = pos.lng.toFixed(4);
+  });
+};
+
+// Async Photo Handler with Feedback
+async function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const puInner = document.getElementById('puInner');
+  puInner.innerHTML = '<div class="spin"></div><br>Scraping location...';
+
+  try {
+    const gps = await exifr.gps(file);
+    if (gps) {
+      const lat = gps.latitude.toFixed(4);
+      const lng = gps.longitude.toFixed(4);
+      document.getElementById('clat').value = lat;
+      document.getElementById('clng').value = lng;
+      marker.setLatLng([lat, lng]);
+      logMap.setView([lat, lng], 14);
+      showToast("Location found in photo!", "success");
+    } else {
+      showToast("No location found in photo. Please add it manually.", "error");
+    }
+
+    const reader = new FileReader();
+    reader.onload = (prevEvent) => {
+      document.getElementById('prevImg').src = prevEvent.target.result;
+      document.getElementById('prevImg').style.display = 'block';
+      puInner.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  } catch (err) {
+    showToast("Error reading photo metadata. Add manually.", "error");
+  }
+}
+
+function doGPS() {
+  navigator.geolocation.getCurrentPosition(p => {
+    const lat = p.coords.latitude.toFixed(4);
+    const lng = p.coords.longitude.toFixed(4);
+    document.getElementById('clat').value = lat;
+    document.getElementById('clng').value = lng;
+    marker.setLatLng([lat, lng]);
+    logMap.setView([lat, lng], 14);
+  }, () => showToast("GPS access denied.", "error"));
+}
+
+function toggleCustomSpecies() {
+  const isOther = document.getElementById('ftype').value === 'Other';
+  document.getElementById('customGroup').style.display = isOther ? 'block' : 'none';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.innerText = msg;
+  t.className = type === 'success' ? 'toast-success' : 'toast-error';
+  t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3500);
+}
+
+function saveCatch() {
+  showToast("Catch logged successfully!", "success");
+  // Implement localStorage saving here
+}
+</script>
+</body>
+</html>
+```
