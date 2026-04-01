@@ -1090,78 +1090,160 @@ async function handlePhoto(e) {
   infoEl.style.display  = 'none';
 
   // ── 1. Extract EXIF (GPS + datetime) from original file ──
-  // Single comprehensive parse — avoids multiple reads of the same File object,
-  // which can silently fail on Samsung content:// URIs in Android WebView.
-  // xmp:true is critical: Samsung Gallery stores GPS in XMP on many devices,
-  // not in the standard EXIF GPS IFD that prior strategies were checking.
+  // Reading strategy for maximum Samsung / Google Photos compatibility:
+  //
+  // PROBLEM 1 — Samsung content:// URIs:
+  //   exifr.parse(File) can silently return null on Samsung content:// URIs because
+  //   the browser's FileReader sometimes gets a zero-length read on first attempt.
+  //   Fix: convert to ArrayBuffer first via a manual FileReader read, then pass the
+  //   buffer to exifr. ArrayBuffer reads are more reliable than streaming File reads
+  //   on Android WebView.
+  //
+  // PROBLEM 2 — Google Photos serves stripped JPEGs:
+  //   Google Photos removes GPS from shared/downloaded photos by default (privacy
+  //   stripping). When GPS IS present it's in standard EXIF IFD0/GPS tags, not XMP.
+  //   The parse options must include both tiff+gps (standard) AND xmp (Samsung modern).
+  //
+  // PROBLEM 3 — Samsung XMP-only GPS:
+  //   Newer Samsung firmware stores GPS exclusively in XMP sidecar data, not in the
+  //   standard GPS IFD. exifr needs xmp:true to see this. The XMP fields are named
+  //   'GPSLatitude'/'GPSLongitude' as plain decimal strings, not DMS arrays.
+  //
+  // PROBLEM 4 — DMS rational arrays (older Samsung / stock Android):
+  //   Some devices write GPS as raw rational DMS arrays that exifr doesn't auto-
+  //   translate to decimals when translateValues is false. We handle these explicitly.
+  //
+  // PROBLEM 5 — Timezone-naive EXIF datetime:
+  //   EXIF DateTimeOriginal has no timezone. We treat it as local time (new Date(str)
+  //   which uses local TZ) — correct for a fishing log that uses the device's clock.
+
   let exifFilled = [];
   try {
+    // ── Read file into ArrayBuffer first for reliable Samsung content:// URI support ──
+    const arrayBuf = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload  = e => res(e.target.result);
+      reader.onerror = () => rej(new Error('ArrayBuffer read failed'));
+      reader.readAsArrayBuffer(f);
+    });
+
+    // ── Primary parse: tiff+exif+gps covers standard EXIF; xmp covers Samsung modern ──
     let parsed = null;
     try {
-      parsed = await exifr.parse(f, {
+      parsed = await exifr.parse(arrayBuf, {
         tiff: true, exif: true, gps: true,
-        xmp:  true,   // ← Samsung & modern Android often store GPS here
+        xmp:  true,          // Samsung newer firmware stores GPS only in XMP
         icc: false, iptc: false,
-        translateValues: true,
-        mergeOutput: true  // flatten all IFDs into one object
+        translateValues: true,  // auto-convert DMS → decimal where possible
+        reviveValues:    true,  // parse EXIF dates into JS Date objects
+        mergeOutput:     true   // flatten all IFDs into one object
       });
     } catch(err) { console.warn('EXIF primary parse failed:', err); }
 
-    // ── GPS ──
+    // ── GPS extraction — four progressive fallback paths ──
     let lat = null, lng = null;
     if (parsed) {
-      // Path A: exifr already translated to decimal degrees (most devices)
-      if (typeof parsed.latitude === 'number' && !isNaN(parsed.latitude) &&
-          typeof parsed.longitude === 'number' && !isNaN(parsed.longitude)) {
+
+      // Path A: exifr translated to decimal degrees — works on most devices including
+      // standard Android, iPhone, and Google Photos downloads (when GPS is present).
+      if (typeof parsed.latitude  === 'number' && isFinite(parsed.latitude) &&
+          typeof parsed.longitude === 'number' && isFinite(parsed.longitude)) {
         lat = parsed.latitude;
         lng = parsed.longitude;
       }
-      // Path B: raw DMS rational arrays (some Samsung firmware versions)
+
+      // Path B: XMP decimal strings — Samsung newer firmware stores GPS as XMP
+      // properties 'GPSLatitude' / 'GPSLongitude' as plain decimal strings like
+      // "37.123456" / "176.654321". These can coexist with or replace standard EXIF GPS.
+      if (lat == null) {
+        const xLat = parsed.GPSLatitude  ?? parsed['exif:GPSLatitude'];
+        const xLng = parsed.GPSLongitude ?? parsed['exif:GPSLongitude'];
+        if (xLat != null && xLng != null) {
+          const pLat = typeof xLat === 'number' ? xLat : parseFloat(String(xLat));
+          const pLng = typeof xLng === 'number' ? xLng : parseFloat(String(xLng));
+          if (isFinite(pLat) && isFinite(pLng)) {
+            // XMP decimal may lack hemisphere sign — apply ref tags if present
+            const latRef = parsed.GPSLatitudeRef  ?? parsed['exif:GPSLatitudeRef']  ?? 'N';
+            const lngRef = parsed.GPSLongitudeRef ?? parsed['exif:GPSLongitudeRef'] ?? 'E';
+            lat = (latRef === 'S') ? -Math.abs(pLat) : Math.abs(pLat);
+            lng = (lngRef === 'W') ? -Math.abs(pLng) : Math.abs(pLng);
+          }
+        }
+      }
+
+      // Path C: raw DMS rational arrays — older Samsung / stock Android firmware
+      // writes GPS as [[deg,1],[min,1],[sec,100]] rational arrays that exifr sometimes
+      // doesn't fully translate even with translateValues:true.
       if (lat == null && Array.isArray(parsed.GPSLatitude) && Array.isArray(parsed.GPSLongitude)) {
+        const rational2dec = v => Array.isArray(v) ? v[0] / (v[1] || 1) : Number(v);
         const dms2dd = (dms, ref) => {
-          const dd = dms[0] + dms[1] / 60 + dms[2] / 3600;
+          if (!Array.isArray(dms) || dms.length < 3) return NaN;
+          const dd = rational2dec(dms[0]) + rational2dec(dms[1]) / 60 + rational2dec(dms[2]) / 3600;
           return (ref === 'S' || ref === 'W') ? -dd : dd;
         };
         const latD = dms2dd(parsed.GPSLatitude,  parsed.GPSLatitudeRef  || 'N');
         const lngD = dms2dd(parsed.GPSLongitude, parsed.GPSLongitudeRef || 'E');
-        if (!isNaN(latD) && !isNaN(lngD)) { lat = latD; lng = lngD; }
+        if (isFinite(latD) && isFinite(lngD)) { lat = latD; lng = lngD; }
       }
     }
-    // Path C: dedicated gps() helper as final fallback (reads file once more, but only if needed)
+
+    // Path D: exifr.gps() dedicated helper as last resort — re-reads the buffer but
+    // uses a different internal code path that can succeed when parse() returned null.
+    // Only invoked when all above paths failed to avoid double-reading unnecessarily.
     if (lat == null) {
       try {
-        const g = await exifr.gps(f);
-        if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
+        const g = await exifr.gps(arrayBuf);
+        if (g?.latitude != null && isFinite(g.latitude) &&
+            g?.longitude != null && isFinite(g.longitude)) {
+          lat = g.latitude; lng = g.longitude;
+        }
       } catch(err) { console.warn('exifr.gps() fallback failed:', err); }
     }
 
     if (lat != null && lng != null) {
-      document.getElementById('clat').value = lat.toFixed(4);
-      document.getElementById('clng').value = lng.toFixed(4);
+      document.getElementById('clat').value = lat.toFixed(6);
+      document.getElementById('clng').value = lng.toFixed(6);
       if (logMap && logPin) { logPin.setLatLng([lat, lng]); logMap.setView([lat, lng], 14); }
       clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(lat, lng), 300);
       exifFilled.push('📍 GPS location');
     }
 
-    // ── DateTime — reuse the same parsed object, no second file read ──
+    // ── DateTime — reuse parsed object, no second file read ──
+    // EXIF datetime fields in priority order:
+    //   DateTimeOriginal = shutter press time (most accurate for fishing)
+    //   CreateDate       = Google Photos / XMP equivalent of DateTimeOriginal
+    //   DateTime         = file modification time (least reliable, last resort)
     if (parsed) {
-      const dt = parsed.DateTimeOriginal ?? parsed.CreateDate ?? parsed.DateTime;
+      const dt = parsed.DateTimeOriginal ?? parsed.CreateDate ?? parsed.DateTime
+               ?? parsed.DateTimeDigitized ?? parsed['photoshop:DateCreated'];
       if (dt) {
-        const d = dt instanceof Date ? dt : new Date(dt);
-        if (!isNaN(d)) {
-          const yy = d.getFullYear(), mm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
-          const hh = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
-          document.getElementById('cdate').value = `${yy}-${mm}-${dd}`;
-          document.getElementById('ctime').value = `${hh}:${mi}`;
-          exifFilled.push('📅 Date & time');
+        // exifr with reviveValues:true returns JS Date objects directly.
+        // Plain strings arrive as "YYYY:MM:DD HH:MM:SS" — replace colons in date part.
+        let d;
+        if (dt instanceof Date) {
+          d = dt;
+        } else {
+          const s = String(dt).replace(/^(\d{4}):(\d{2}):(\d{2})/, '$1-$2-$3');
+          d = new Date(s);
+        }
+        if (!isNaN(d.getTime())) {
+          const yy = d.getFullYear();
+          // Sanity check: reject obviously wrong years (camera not set, epoch, future)
+          if (yy >= 2000 && yy <= new Date().getFullYear() + 1) {
+            const mm = String(d.getMonth()+1).padStart(2,'0'), dd2 = String(d.getDate()).padStart(2,'0');
+            const hh = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
+            document.getElementById('cdate').value = `${yy}-${mm}-${dd2}`;
+            document.getElementById('ctime').value = `${hh}:${mi}`;
+            exifFilled.push('📅 Date & time');
+          }
         }
       }
     }
   } catch(err) { console.warn('EXIF parse error:', err); }
 
-  // Show EXIF result
+  // Show EXIF result — distinguish "found GPS" from "found date only" from "found nothing"
   exifEl.style.display = 'block';
-  if(exifFilled.length) {
+  if (exifFilled.length) {
     exifEl.style.color = 'var(--teal)';
     exifEl.textContent = '✅ Auto-filled from photo: ' + exifFilled.join(' · ');
   } else {
