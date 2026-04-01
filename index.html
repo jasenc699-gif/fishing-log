@@ -136,30 +136,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* MISC */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
 input[type=file]{display:none;}
-/* Legacy install bar — kept for fallback layout, hidden by default */
 .install-bar{background:#383838;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;flex-shrink:0;}
 .install-bar button{background:var(--teal);border:none;border-radius:8px;color:#fff;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .ix{background:none!important;color:rgba(255,255,255,0.4)!important;font-size:18px!important;padding:0!important;}
-/* INSTALL MODAL */
-.install-modal-wrap{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.72);align-items:flex-end;justify-content:center;padding:0;}
-.install-modal-wrap.open{display:flex;}
-.install-modal{background:var(--white);border-radius:22px 22px 0 0;width:100%;max-width:430px;padding:0 0 max(env(safe-area-inset-bottom),20px);box-shadow:0 -8px 48px rgba(0,0,0,0.38);animation:slideUp 0.32s cubic-bezier(0.34,1.1,0.64,1);}
-@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
-.install-modal-drag{width:36px;height:4px;background:#d0d0cc;border-radius:2px;margin:12px auto 0;}
-.install-modal-body{padding:18px 22px 6px;}
-.install-modal-app{display:flex;align-items:center;gap:14px;margin-bottom:16px;}
-.install-modal-icon{width:64px;height:64px;border-radius:16px;background:#444;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 12px rgba(0,0,0,0.22);}
-.install-modal-appname{font-size:19px;font-weight:700;color:var(--text);line-height:1.2;}
-.install-modal-appurl{font-size:12px;color:var(--hint);margin-top:3px;}
-.install-modal-features{display:flex;flex-direction:column;gap:9px;margin-bottom:18px;}
-.install-modal-feat{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);}
-.install-modal-feat-icon{font-size:18px;width:28px;text-align:center;flex-shrink:0;}
-.install-modal-divider{height:0.5px;background:var(--border);margin:4px 0 16px;}
-.install-modal-actions{display:grid;grid-template-columns:1fr 2fr;gap:10px;padding:0 22px;}
-.install-modal-cancel{padding:13px;border:0.5px solid var(--border);border-radius:12px;background:var(--surf);font-size:15px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;}
-.install-modal-cancel:active{background:var(--border);}
-.install-modal-install{padding:13px;border:none;border-radius:12px;background:var(--teal);font-size:15px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:7px;}
-.install-modal-install:active{background:#3aaa8a;}
 .spin{display:inline-block;width:10px;height:10px;border:1.5px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:sp 0.6s linear infinite;vertical-align:middle;}
 @keyframes sp{to{transform:rotate(360deg);}}
 .sban{background:var(--teal);color:#fff;text-align:center;padding:11px;font-size:14px;font-weight:500;border-radius:10px;margin-bottom:10px;display:none;}
@@ -615,48 +594,6 @@ input[type=file]{display:none;}
 
 </div><!-- /app -->
 
-<!-- ══ INSTALL MODAL ══ -->
-<div class="install-modal-wrap" id="installModal" onclick="if(event.target===this)closeInstallModal()">
-  <div class="install-modal">
-    <div class="install-modal-drag"></div>
-    <div class="install-modal-body">
-      <div class="install-modal-app">
-        <div class="install-modal-icon">
-          <svg width="46" height="46" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-            <rect x="0" y="0" width="512" height="512" rx="110" fill="#444444"/>
-            <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#cccccc" stroke-width="18" stroke-linecap="round"/>
-            <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#ffffff"/>
-            <path d="M210 260 L165 225 L165 295 Z" fill="#ffffff"/>
-            <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#ffffff"/>
-            <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#ffffff"/>
-            <circle cx="310" cy="250" r="5" fill="#444444"/>
-            <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#aaaaaa" stroke-width="20" stroke-linecap="round"/>
-            <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#aaaaaa" stroke-width="12" stroke-linecap="round"/>
-          </svg>
-        </div>
-        <div>
-          <div class="install-modal-appname">Fishing Log for NZ Waters</div>
-          <div class="install-modal-appurl">Works offline · No account needed</div>
-        </div>
-      </div>
-      <div class="install-modal-features">
-        <div class="install-modal-feat"><span class="install-modal-feat-icon">📍</span>Log catches with GPS, photos &amp; tide data</div>
-        <div class="install-modal-feat"><span class="install-modal-feat-icon">🌊</span>Live tides, moon phases &amp; solunar times</div>
-        <div class="install-modal-feat"><span class="install-modal-feat-icon">⛅</span>Real-time weather &amp; barometer</div>
-        <div class="install-modal-feat"><span class="install-modal-feat-icon">📶</span>Fully works without an internet connection</div>
-      </div>
-      <div class="install-modal-divider"></div>
-    </div>
-    <div class="install-modal-actions">
-      <button class="install-modal-cancel" onclick="closeInstallModal()">Not now</button>
-      <button class="install-modal-install" onclick="doInstall()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v10M7 15l5 5 5-5"/><path d="M5 20h14"/></svg>
-        Install App
-      </button>
-    </div>
-  </div>
-</div>
-
 <!-- ══ DELETE CONFIRM MODAL ══ -->
 <div class="del-modal-wrap" id="delModal">
   <div class="del-modal">
@@ -704,6 +641,8 @@ input[type=file]{display:none;}
           <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
           <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         </div>
+        <div class="sec" style="margin-bottom:10px;">
+          <div class="stitle">🐟 Catch Details</div>
           <label>Fish species</label>
           <select id="efish">
             <option value="">Select species...</option>
@@ -825,79 +764,15 @@ function idbGetAll() {
 // ─────────────────────────────────────────────
 // PWA INSTALL
 // ─────────────────────────────────────────────
-let deferredPrompt = null;
-
-// Show install modal when the browser signals the app is installable
+let deferredPrompt;
 window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredPrompt = e;
-  // Small delay so the user can see the page first
-  setTimeout(() => openInstallModal(), 1800);
+  e.preventDefault(); deferredPrompt = e;
+  document.getElementById('ibar').style.display = 'flex';
 });
-
-function openInstallModal() {
-  document.getElementById('installModal').classList.add('open');
+function doInstall() {
+  if(deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt=null; document.getElementById('ibar').style.display='none'; }); }
 }
-function closeInstallModal() {
-  document.getElementById('installModal').classList.remove('open');
-}
-
-async function doInstall() {
-  if (!deferredPrompt) return;
-  closeInstallModal();
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  deferredPrompt = null;
-  if (outcome === 'accepted') {
-    // Flag checked on first standalone launch to show the completion notification
-    try { localStorage.setItem('pendingInstallNotif', '1'); } catch(e) {}
-  }
-}
-
-// Fires in the browser tab immediately after the OS installs the app
-window.addEventListener('appinstalled', () => {
-  closeInstallModal();
-  document.getElementById('ibar').style.display = 'none';
-  try { localStorage.setItem('pendingInstallNotif', '1'); } catch(e) {}
-  showToast('🎉 Fishing Log installed! Open it from your home screen.', 'success');
-  // Also send a system notification if permission already granted
-  if (Notification?.permission === 'granted') {
-    sendInstallNotification();
-  }
-});
-
-function sendInstallNotification() {
-  try {
-    const n = new Notification('Installation Complete 🎣', {
-      body: 'Fishing Log for NZ Waters is ready on your home screen.',
-      icon: 'icon-192.png',
-      badge: 'icon-192.png',
-      tag: 'fl-install'
-    });
-    setTimeout(() => n.close(), 6000);
-  } catch(e) {}
-}
-
-// On first standalone launch, show the completion notification + toast
-(function checkPostInstall() {
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches
-    || window.navigator.standalone === true;
-  if (!isStandalone) return;
-  try {
-    if (localStorage.getItem('pendingInstallNotif') !== '1') return;
-    localStorage.removeItem('pendingInstallNotif');
-  } catch(e) { return; }
-
-  // Show the in-app toast immediately
-  setTimeout(() => showToast('🎉 Installation complete! Welcome to Fishing Log.', 'success'), 600);
-
-  // Request notification permission then send a system notification
-  if ('Notification' in window) {
-    Notification.requestPermission().then(perm => {
-      if (perm === 'granted') sendInstallNotification();
-    });
-  }
-})()
+window.addEventListener('appinstalled', () => { document.getElementById('ibar').style.display='none'; });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 
 // ─────────────────────────────────────────────
@@ -1038,149 +913,195 @@ function go(p) {
 }
 
 // ─────────────────────────────────────────────
-// IMAGE COMPRESSION
 // ─────────────────────────────────────────────
-function compressImage(file, maxPx, quality) {
-  return new Promise((resolve, reject) => {
+// IMAGE COMPRESSION
+// Target size: PHOTO_TARGET_BYTES — adjust the constant below to change it.
+// Approach:
+//   1. Decode + resize the image into a canvas ONCE (memory-efficient).
+//   2. Binary-search JPEG quality (8 iterations, ~0.3% accuracy) to hit the target.
+//      Searching quality on an already-decoded canvas is just toDataURL calls — fast,
+//      no re-decoding, no extra memory allocation per iteration.
+//   3. If min quality still exceeds the target, save at min quality anyway.
+//   4. If decoding itself OOMs, retry at 60% pixel limit before giving up.
+// ─────────────────────────────────────────────
+const PHOTO_TARGET_BYTES = 250 * 1024; // 250 KB — change this to adjust target
+const PHOTO_MAX_PX       = 1200;       // max dimension (width or height) in pixels
+const PHOTO_MIN_QUALITY  = 0.30;       // quality floor — saves anyway if target unreachable
+const PHOTO_MAX_QUALITY  = 0.88;       // quality ceiling — diminishing returns above this
 
-    function drawAndCompress(img) {
-      // Use naturalWidth/Height — the authoritative pixel dimensions for off-screen images.
-      const sw = img.naturalWidth  || img.width;
-      const sh = img.naturalHeight || img.height;
-      // Final safety guard: if both paths fail, reject cleanly.
-      if (!sw || !sh) {
+// ── Step 1: decode file → canvas ──────────────────────────────────────────────
+// Tries three paths in memory-efficiency order.
+async function _decodeToCanvas(file, maxPx) {
+  // Path A: createImageBitmap with resize options — GPU-assisted, lowest peak memory.
+  // Resizes during decode so the full-res image never fully lands in JS heap.
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const probe = await createImageBitmap(file);
+      const sw = probe.width, sh = probe.height; probe.close();
+      const ratio = Math.min(maxPx / sw, maxPx / sh, 1);
+      const w = Math.round(sw * ratio), h = Math.round(sh * ratio);
+      const bmp = await createImageBitmap(file, { resizeWidth: w, resizeHeight: h, resizeQuality: 'medium' });
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(bmp, 0, 0);
+      bmp.close(); // release GPU texture immediately
+      return canvas;
+    } catch(e) { /* fall through to Path B */ }
+  }
+
+  // Path B: Object URL → Image — needed for Samsung Gallery content:// URIs.
+  let objectUrl;
+  try { objectUrl = URL.createObjectURL(file); } catch(e) { objectUrl = null; }
+  if (objectUrl) {
+    try {
+      const canvas = await _imgSrcToCanvas(objectUrl, maxPx);
+      URL.revokeObjectURL(objectUrl);
+      return canvas;
+    } catch(e) {
+      URL.revokeObjectURL(objectUrl);
+      if (e.message === 'zero-dimension') {
         showToast('Photo appears empty — it may still be downloading from Samsung Cloud. Wait a moment and try again.', 'error');
-        reject(new Error('Zero-dimension image'));
-        return;
+        throw e;
       }
-      let w = sw, h = sh;
-      if (w > maxPx || h > maxPx) {
-        const ratio = Math.min(maxPx / w, maxPx / h);
-        w = Math.round(w * ratio);
-        h = Math.round(h * ratio);
-      }
+      // HEIC / undecodable — fall through to Path C
+    }
+  }
+
+  // Path C: FileReader → base64 — universal fallback, most memory-hungry.
+  return new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try { res(await _imgSrcToCanvas(ev.target.result, maxPx)); } catch(e) { rej(e); }
+    };
+    reader.onerror = () => rej(new Error('FileReader failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+// Load an image from a src string into a canvas, scaled to maxPx.
+function _imgSrcToCanvas(src, maxPx) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth === 0 || img.naturalHeight === 0) { rej(new Error('zero-dimension')); return; }
+      const ratio = Math.min(maxPx / img.naturalWidth, maxPx / img.naturalHeight, 1);
+      const w = Math.round(img.naturalWidth * ratio), h = Math.round(img.naturalHeight * ratio);
       const canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const compressed = canvas.toDataURL('image/jpeg', quality);
-      const b64 = compressed.substring(compressed.indexOf(',') + 1);
-      resolve({ dataUrl: compressed, origSize: file.size, compSize: Math.round(b64.length * 0.75), w, h });
-    }
-
-    function tryFileReader() {
-      const reader = new FileReader();
-      reader.onload = ev => {
-        const img = new Image();
-        img.onload = () => drawAndCompress(img);
-        img.onerror = () => { showToast('Could not load image — try a different photo', 'error'); reject(new Error('img load failed')); };
-        img.src = ev.target.result;
-      };
-      reader.onerror = () => { showToast('Could not read image file', 'error'); reject(new Error('FileReader failed')); };
-      reader.readAsDataURL(file);
-    }
-
-    // Primary: URL.createObjectURL — efficient for large files
-    let objectUrl = null;
-    try { objectUrl = URL.createObjectURL(file); } catch(e) { objectUrl = null; }
-
-    if (objectUrl) {
-      const img = new Image();
-      img.onload = () => {
-        const w = img.naturalWidth, h = img.naturalHeight;
-        if (!w || !h) {
-          // Zero dimensions: Samsung Cloud photo not yet downloaded locally.
-          // Fall back to FileReader which may succeed once the data is available,
-          // instead of immediately showing an error.
-          try { URL.revokeObjectURL(objectUrl); } catch(e) {}
-          tryFileReader();
-          return;
-        }
-        drawAndCompress(img);
-        try { URL.revokeObjectURL(objectUrl); } catch(e) {}
-      };
-      img.onerror = () => {
-        // Unsupported format or Samsung content:// read error — fall back to FileReader
-        try { URL.revokeObjectURL(objectUrl); } catch(e) {}
-        tryFileReader();
-      };
-      img.src = objectUrl;
-    } else {
-      tryFileReader();
-    }
+      res(canvas);
+    };
+    img.onerror = () => rej(new Error('img load failed'));
+    img.src = src;
   });
+}
+
+// ── Step 2: binary-search quality on an already-decoded canvas ────────────────
+// toDataURL is just an encoding call — no image decoding, no extra heap allocation.
+// 8 iterations converges quality to within ~0.4% of optimal.
+function _binarySearchQuality(canvas, origSize) {
+  const w = canvas.width, h = canvas.height;
+
+  // Helper: estimate byte size from a data URL (avoids atob round-trip)
+  const sizeOf = url => Math.round((url.length - url.indexOf(',') - 1) * 0.75);
+
+  // Fast path: if max quality already fits, no need to search
+  const atMax = canvas.toDataURL('image/jpeg', PHOTO_MAX_QUALITY);
+  if (sizeOf(atMax) <= PHOTO_TARGET_BYTES) {
+    return { dataUrl: atMax, origSize, compSize: sizeOf(atMax), w, h, quality: PHOTO_MAX_QUALITY };
+  }
+
+  // Binary search: find the highest quality that still fits under the target
+  let lo = PHOTO_MIN_QUALITY, hi = PHOTO_MAX_QUALITY;
+  let bestUrl = null, bestBytes = Infinity, bestQ = PHOTO_MIN_QUALITY;
+
+  for (let i = 0; i < 8; i++) {
+    const mid = Math.round(((lo + hi) / 2) * 100) / 100; // round to 2dp
+    const url  = canvas.toDataURL('image/jpeg', mid);
+    const bytes = sizeOf(url);
+    if (bytes <= PHOTO_TARGET_BYTES) {
+      // Fits — record it and try higher quality
+      lo = mid;
+      bestUrl = url; bestBytes = bytes; bestQ = mid;
+    } else {
+      // Too big — try lower quality
+      hi = mid;
+    }
+  }
+
+  // If no quality level hit the target, save at min quality anyway
+  if (!bestUrl) {
+    bestUrl   = canvas.toDataURL('image/jpeg', PHOTO_MIN_QUALITY);
+    bestBytes = sizeOf(bestUrl);
+    bestQ     = PHOTO_MIN_QUALITY;
+    const kb = Math.round(bestBytes / 1024);
+    showToast(`Photo saved at minimum quality (${kb} KB) — very detailed images may exceed the size target.`, 'success');
+  }
+
+  return { dataUrl: bestUrl, origSize, compSize: bestBytes, w, h, quality: bestQ };
+}
+
+// ── Public entry point ─────────────────────────────────────────────────────────
+async function compressImage(file) {
+  // HEIC early-exit — caller also guards, but belt-and-suspenders
+  const ftype = (file.type || '').toLowerCase(), fname = (file.name || '').toLowerCase();
+  if (ftype === 'image/heic' || ftype === 'image/heif' || fname.endsWith('.heic') || fname.endsWith('.heif')) {
+    throw new Error('heic-unsupported');
+  }
+
+  // Decode at full maxPx, fall back to 60% on OOM
+  let canvas;
+  try {
+    canvas = await _decodeToCanvas(file, PHOTO_MAX_PX);
+  } catch(e) {
+    if (e.message === 'zero-dimension') throw e; // already toasted
+    // OOM or unknown decode failure — retry at reduced resolution
+    try {
+      canvas = await _decodeToCanvas(file, Math.round(PHOTO_MAX_PX * 0.6));
+      showToast('Photo decoded at reduced resolution due to device memory.', 'success');
+    } catch(e2) {
+      showToast('Could not process photo — device memory too low. Try closing other apps and retrying.', 'error');
+      throw e2;
+    }
+  }
+
+  // Binary-search quality on the decoded canvas, then free it
+  const result = _binarySearchQuality(canvas, file.size);
+  canvas.width = 0; canvas.height = 0; // release canvas memory
+  return result;
 }
 
 async function handlePhoto(e) {
   const f = e.target.files[0]; if(!f) return;
 
-  // ── Detect HEIC/HEIF by MIME type or file extension ──
+  // Samsung Gallery can deliver HEIC/HEIF files that Chrome's canvas cannot decode.
+  // Detect early and give a clear, actionable message instead of a generic error.
   const ftype = (f.type || '').toLowerCase();
   const fname = (f.name || '').toLowerCase();
   if (ftype === 'image/heic' || ftype === 'image/heif' ||
       fname.endsWith('.heic') || fname.endsWith('.heif')) {
     showToast(
-      'HEIC photos aren\'t supported. In Samsung Gallery go to ⚙️ Settings → Pictures → Picture format and choose "High compatibility (JPEG)".',
+      'HEIC photos aren\'t supported. In Samsung Gallery go to ⚙️ Settings → Pictures → Picture format and choose "High efficiency (HEIF)" → switch to "High compatibility (JPEG)".',
       'error'
     );
     return;
   }
-
-  // ── Read file to ArrayBuffer once ──
-  // A single in-memory read is the most reliable approach for Samsung content:// URIs.
-  // Passing the same ArrayBuffer to exifr and compressImage avoids re-reading the URI,
-  // which can fail silently in Android WebView on subsequent reads.
-  let fileBuffer = null;
-  try { fileBuffer = await f.arrayBuffer(); } catch(err) { console.warn('arrayBuffer read failed:', err); }
-
-  // ── Detect HEIC by magic bytes when MIME type is empty ──
-  // Samsung camera sometimes returns type="" for HEIC files.
-  if (fileBuffer && !ftype) {
-    try {
-      const hdr = new Uint8Array(fileBuffer, 0, 12);
-      const ftyp = String.fromCharCode(hdr[4], hdr[5], hdr[6], hdr[7]);
-      if (ftyp === 'ftyp') {
-        const brand = String.fromCharCode(hdr[8], hdr[9], hdr[10], hdr[11]).toLowerCase().trim();
-        if (['heic','heis','hevc','hevx','mif1','msf1'].some(b => brand.startsWith(b))) {
-          showToast(
-            'HEIC photos aren\'t supported. In Samsung Camera ⚙️ Settings → Picture format, switch to "High compatibility (JPEG)".',
-            'error'
-          );
-          return;
-        }
-      }
-    } catch(err) {}
-  }
-
-  // ── Normalise empty MIME type (Samsung camera often returns type="") ──
-  // Without a MIME type, URL.createObjectURL may produce an unrecognised blob
-  // that the browser refuses to decode as an image.
-  let mimeType = ftype;
-  if (!mimeType && fileBuffer) {
-    const b = new Uint8Array(fileBuffer, 0, 4);
-    if      (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) mimeType = 'image/jpeg';
-    else if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E) mimeType = 'image/png';
-    else if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46) mimeType = 'image/webp';
-    else                                                         mimeType = 'image/jpeg'; // safe default
-  }
-
-  // Build a MIME-corrected Blob so URL.createObjectURL and FileReader both work reliably
-  const fileBlob = fileBuffer ? new Blob([fileBuffer], { type: mimeType }) : f;
 
   const exifEl  = document.getElementById('exifInfo');
   const infoEl  = document.getElementById('compressInfo');
   exifEl.style.display  = 'none';
   infoEl.style.display  = 'none';
 
-  // ── 1. Extract EXIF (GPS + datetime) from the pre-read ArrayBuffer ──
-  // Using the ArrayBuffer avoids multiple reads of the same Samsung content:// URI,
-  // which can silently fail in Android WebView.
-  // xmp:true is critical: Samsung Gallery stores GPS in XMP on many devices.
+  // ── 1. Extract EXIF (GPS + datetime) from original file ──
+  // Single comprehensive parse — avoids multiple reads of the same File object,
+  // which can silently fail on Samsung content:// URIs in Android WebView.
+  // xmp:true is critical: Samsung Gallery stores GPS in XMP on many devices,
+  // not in the standard EXIF GPS IFD that prior strategies were checking.
   let exifFilled = [];
   try {
-    const exifSrc = fileBuffer || f; // ArrayBuffer preferred; raw File as last resort
     let parsed = null;
     try {
-      parsed = await exifr.parse(exifSrc, {
+      parsed = await exifr.parse(f, {
         tiff: true, exif: true, gps: true,
         xmp:  true,   // ← Samsung & modern Android often store GPS here
         icc: false, iptc: false,
@@ -1209,10 +1130,10 @@ async function handlePhoto(e) {
         if (!isNaN(latD) && !isNaN(lngD)) { lat = latD; lng = lngD; }
       }
     }
-    // Path C: dedicated gps() helper — passes same in-memory buffer, no extra file read
+    // Path C: dedicated gps() helper as final fallback (reads file once more, but only if needed)
     if (lat == null) {
       try {
-        const g = await exifr.gps(exifSrc);
+        const g = await exifr.gps(f);
         if (g?.latitude != null && !isNaN(g.latitude)) { lat = g.latitude; lng = g.longitude; }
       } catch(err) { console.warn('exifr.gps() fallback failed:', err); }
     }
@@ -1252,17 +1173,16 @@ async function handlePhoto(e) {
   }
 
   // ── 2. Compress and display ──
-  // Pass the MIME-corrected Blob so compressImage loads reliably on Samsung
   let result;
-  try { result = await compressImage(fileBlob, 1200, 0.78); } catch(e) { return; } // error already toasted
+  try { result = await compressImage(f); } catch(e) { return; } // error already toasted
   photo = result.dataUrl;
   document.getElementById('puInner').style.display = 'none';
   const existing = document.querySelector('#puEl img'); if(existing) existing.remove();
   const img = document.createElement('img'); img.src = photo;
   document.getElementById('puEl').appendChild(img);
-  const origKB = Math.round(f.size/1024), compKB = Math.round(result.compSize/1024);
+  const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
   infoEl.style.display = 'block';
-  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB (${result.w}×${result.h}px)`;
+  infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB (${result.w}×${result.h}px · q${Math.round(result.quality*100)}%)`;
 }
 
 // ─────────────────────────────────────────────
@@ -1889,7 +1809,7 @@ function weatherConditionOM(code, wspeed) {
   return '🟡 Fair conditions — check tide and solunar times for best bite windows.';
 }
 
-async function autoWeather() {
+function autoWeather() {
   document.getElementById('wxBadge').className='api-badge offline-badge';
   document.getElementById('wxBadge').textContent='⏳ Loading...';
   document.getElementById('wxl').textContent='Detecting location...';
@@ -2110,7 +2030,7 @@ async function saveCatch() {
   document.getElementById('cnum').textContent=catches.length;
   const b=document.getElementById('sban');b.style.display='none';
   // Clear catch-specific fields but keep location so multi-catch sessions don't need GPS re-entry
-  ['ftype','fcust','flen','fwt','method','platform','fly','flycol','notes'].forEach(id=>document.getElementById(id).value='');
+  ['ftype','fcust','flen','fwt','method','platform','fly','flycol','notes'].forEach(fieldId=>document.getElementById(fieldId).value='');
   // Reset date/time back to now so the next catch doesn't inherit an old EXIF date
   const resetNow = new Date();
   document.getElementById('cdate').value = resetNow.toISOString().split('T')[0];
@@ -2401,7 +2321,7 @@ function closeEdit() {
 async function handleEditPhoto(e) {
   const f = e.target.files[0]; if(!f) return;
 
-  // ── Detect HEIC/HEIF by MIME type or extension ──
+  // Same HEIC guard as the main log form — Samsung Gallery can deliver HEIC.
   const ftype = (f.type || '').toLowerCase();
   const fname = (f.name || '').toLowerCase();
   if (ftype === 'image/heic' || ftype === 'image/heif' ||
@@ -2412,51 +2332,16 @@ async function handleEditPhoto(e) {
     );
     return;
   }
-
-  // ── Read to ArrayBuffer once for reliable Samsung content:// URI support ──
-  let fileBuffer = null;
-  try { fileBuffer = await f.arrayBuffer(); } catch(err) { console.warn('arrayBuffer read failed:', err); }
-
-  // ── Detect HEIC by magic bytes when type="" (Samsung camera capture) ──
-  if (fileBuffer && !ftype) {
-    try {
-      const hdr = new Uint8Array(fileBuffer, 0, 12);
-      const ftyp = String.fromCharCode(hdr[4], hdr[5], hdr[6], hdr[7]);
-      if (ftyp === 'ftyp') {
-        const brand = String.fromCharCode(hdr[8], hdr[9], hdr[10], hdr[11]).toLowerCase().trim();
-        if (['heic','heis','hevc','hevx','mif1','msf1'].some(b => brand.startsWith(b))) {
-          showToast(
-            'HEIC photos aren\'t supported. In Samsung Camera ⚙️ Settings → Picture format, switch to "High compatibility (JPEG)".',
-            'error'
-          );
-          return;
-        }
-      }
-    } catch(err) {}
-  }
-
-  // ── Normalise empty MIME type ──
-  let mimeType = ftype;
-  if (!mimeType && fileBuffer) {
-    const b = new Uint8Array(fileBuffer, 0, 4);
-    if      (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) mimeType = 'image/jpeg';
-    else if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E) mimeType = 'image/png';
-    else if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46) mimeType = 'image/webp';
-    else                                                         mimeType = 'image/jpeg';
-  }
-
-  const fileBlob = fileBuffer ? new Blob([fileBuffer], { type: mimeType }) : f;
-
   const infoEl = document.getElementById('editPhotoInfo');
   let result;
-  try { result = await compressImage(fileBlob, 1200, 0.78); } catch(err) { return; }
+  try { result = await compressImage(f); } catch(e) { return; }
   editPhoto = result.dataUrl;
   const epuEl = document.getElementById('epuEl');
   const existing = epuEl.querySelector('img'); if(existing) existing.remove();
   document.getElementById('epuInner').style.display = 'none';
   const img = document.createElement('img'); img.src = editPhoto;
   epuEl.appendChild(img);
-  const origKB = Math.round(f.size/1024), compKB = Math.round(result.compSize/1024);
+  const origKB = Math.round(result.origSize/1024), compKB = Math.round(result.compSize/1024);
   infoEl.style.display = 'block';
   infoEl.textContent = `📸 ${origKB}KB → ${compKB}KB`;
 }
@@ -2521,6 +2406,7 @@ function saveEdit() {
   updateHeader();
   closeEdit();
   renderList();
+  renderStats();
   showToast('Catch updated! ✏️', 'success');
   vibrate([30,15,30]);
 }
