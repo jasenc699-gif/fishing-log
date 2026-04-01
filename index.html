@@ -1724,7 +1724,7 @@ function _tideHeightFromCache(ms) {
   if (ser && ser.length > 1) {
     // Binary search for surrounding pair
     let lo = 0, hi = ser.length - 1;
-    while (lo < hi - 1) { const mid = (lo + hi) >> 1; (ser[mid].ms <= ms ? lo : hi = mid); }
+    while (lo < hi - 1) { const mid = (lo + hi) >> 1; (ser[mid].ms <= ms ? lo = mid : hi = mid); }
     if (ms <= ser[0].ms)  return ser[0].h;
     if (ms >= ser[hi].ms) return ser[hi].h;
     const t = (ms - ser[lo].ms) / (ser[hi].ms - ser[lo].ms);
