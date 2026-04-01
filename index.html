@@ -141,7 +141,6 @@ input[type=file]{display:none;}
 .ix{background:none!important;color:rgba(255,255,255,0.4)!important;font-size:18px!important;padding:0!important;}
 .spin{display:inline-block;width:10px;height:10px;border:1.5px solid var(--teal);border-top-color:transparent;border-radius:50%;animation:sp 0.6s linear infinite;vertical-align:middle;}
 @keyframes sp{to{transform:rotate(360deg);}}
-.sban{background:var(--teal);color:#fff;text-align:center;padding:11px;font-size:14px;font-weight:500;border-radius:10px;margin-bottom:10px;display:none;}
 /* TOAST NOTIFICATION */
 #toast{position:fixed;top:0;left:50%;transform:translateX(-50%) translateY(-110%);z-index:9999;max-width:390px;width:calc(100% - 24px);transition:transform 0.32s cubic-bezier(0.34,1.56,0.64,1),opacity 0.25s;opacity:0;pointer-events:none;}
 #toast.show{transform:translateX(-50%) translateY(12px);opacity:1;}
@@ -158,10 +157,6 @@ input[type=file]{display:none;}
 .main-map-controls{display:flex;gap:8px;margin-bottom:8px;}
 .map-ctrl-btn{flex:1;padding:8px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;}
 .map-ctrl-btn.active{background:var(--dark);color:#fff;border-color:var(--dark);}
-/* QUICK-SELECT CHIPS */
-.qs-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px;}
-.qs-chip{padding:5px 11px;border:0.5px solid var(--border);border-radius:20px;background:var(--surf);font-size:12px;color:var(--muted);cursor:pointer;font-family:inherit;transition:background 0.12s,color 0.12s,border-color 0.12s;}
-.qs-chip:active{background:var(--teal);color:#fff;border-color:var(--teal);}
 /* EDIT MODAL */
 .edit-modal-wrap{display:none;position:fixed;inset:0;z-index:8500;background:rgba(0,0,0,0.62);overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .edit-modal-wrap.open{display:block;}
@@ -240,9 +235,7 @@ input[type=file]{display:none;}
 
     <!-- ══ LOG ══ -->
     <div class="pg show" id="pg-log">
-      <div id="sban" class="sban">✓ Catch #<span id="cnum">1</span> saved!</div>
-
-      <div class="sec">
+<div class="sec">
         <div class="stitle">📸 Photo</div>
         <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
@@ -259,11 +252,9 @@ input[type=file]{display:none;}
             <span style="font-size:12px;color:#aaa;margin-top:4px;">Add a photo of your catch</span>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+        <div style="margin-top:8px;">
+          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
         </div>
-        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)">
         <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
@@ -530,7 +521,7 @@ input[type=file]{display:none;}
         </div>
       </div>
       <div class="sec" style="margin-top:0;"><div class="stitle">⚡ Fishing Conditions</div><div id="wxcond" style="font-size:14px;color:var(--text);line-height:1.7;">—</div></div>
-      <button class="sbtn teal-btn" style="margin-top:4px;margin-bottom:10px;" onclick="autoWeather()">🔄 Refresh Weather</button>
+      <button class="sbtn teal-btn" style="margin-top:4px;margin-bottom:10px;" onclick="autoWeather(true)">🔄 Refresh Weather</button>
     </div>
 
     <!-- ══ MAP ══ -->
@@ -618,7 +609,7 @@ input[type=file]{display:none;}
       <div class="edit-modal-body">
         <div class="sec" style="margin-bottom:10px;">
           <div class="stitle">📸 Photo</div>
-          <div class="pu" id="epuEl" style="min-height:140px;">
+          <div class="pu" id="epuEl" style="min-height:140px;cursor:pointer;" onclick="const i=document.getElementById('efiLib');i.value='';i.click();">
             <div class="pu-inner" id="epuInner">
               <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
                 <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
@@ -633,11 +624,9 @@ input[type=file]{display:none;}
               <span style="font-size:11px;color:#aaa;margin-top:4px;">No photo — tap to add</span>
             </div>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
-            <button class="gpsbtn" onclick="const i=document.getElementById('efiCam');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Take Photo</button>
-            <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+          <div style="margin-top:8px;">
+            <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
           </div>
-          <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditPhoto(event)">
           <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
           <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         </div>
@@ -718,16 +707,17 @@ input[type=file]{display:none;}
 // is never burdened with large base64 strings.
 // ─────────────────────────────────────────────
 const IDB_NAME = 'fishinglog-photos', IDB_STORE = 'photos', IDB_VER = 1;
-let _idb = null;
+let _idbPromise = null; // cache the promise to prevent concurrent open races
 
 function idbOpen() {
-  if (_idb) return Promise.resolve(_idb);
-  return new Promise((res, rej) => {
+  if (_idbPromise) return _idbPromise;
+  _idbPromise = new Promise((res, rej) => {
     const req = indexedDB.open(IDB_NAME, IDB_VER);
     req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
-    req.onsuccess  = e => { _idb = e.target.result; res(_idb); };
-    req.onerror    = e => rej(e.target.error);
+    req.onsuccess  = e => res(e.target.result);
+    req.onerror    = e => { _idbPromise = null; rej(e.target.error); };
   });
+  return _idbPromise;
 }
 function idbPut(id, dataUrl) {
   return idbOpen().then(db => new Promise((res, rej) => {
@@ -849,6 +839,7 @@ async function initStorage() {
     for (const c of catches) {
       if (c.photo) {
         await idbPut(c.id, c.photo);
+        delete c.photo; // strip from in-memory object so persist() writes a clean copy
         migrated = true;
       }
     }
@@ -903,7 +894,7 @@ function go(p) {
   document.getElementById('pg-'+p).classList.add('show');
   document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.dataset.tab === p));
   if(p==='log') setTimeout(initLogMap, 100);
-  if(p==='tide') { calcTide(); drawCurve(); }
+  if(p==='tide') { calcTide(); }
   if(p==='moon') calcMoon();
   if(p==='bite') calcBite();
   if(p==='wx') autoWeather();
@@ -1076,14 +1067,20 @@ async function handlePhoto(e) {
 
   // Samsung Gallery can deliver HEIC/HEIF files that Chrome's canvas cannot decode.
   // Detect early and give a clear, actionable message instead of a generic error.
+  // NOTE: Samsung sometimes reports HEIC as type='' with a .heic/.heif name.
   const ftype = (f.type || '').toLowerCase();
   const fname = (f.name || '').toLowerCase();
   if (ftype === 'image/heic' || ftype === 'image/heif' ||
       fname.endsWith('.heic') || fname.endsWith('.heif')) {
     showToast(
-      'HEIC photos aren\'t supported. In Samsung Gallery go to ⚙️ Settings → Pictures → Picture format and choose "High efficiency (HEIF)" → switch to "High compatibility (JPEG)".',
+      'HEIC photos aren\'t supported. In Samsung Gallery go to ⚙️ Settings → Pictures → Picture format and switch to "High compatibility (JPEG)".',
       'error'
     );
+    return;
+  }
+  // Samsung Cloud: stub file (size 0) means the photo hasn't downloaded yet.
+  if (f.size === 0) {
+    showToast('Photo is not ready — it may still be downloading from Samsung Cloud. Wait a moment and try again.', 'error');
     return;
   }
 
@@ -1690,7 +1687,11 @@ function calcMoon() {
 // ─────────────────────────────────────────────
 // MARINE DATA — Open-Meteo (wave height for tide tab)
 // ─────────────────────────────────────────────
+let _marineLastFetch = 0;
 async function fetchMarineData() {
+  const now = Date.now();
+  if ((now - _marineLastFetch) < WX_COOLDOWN_MS) return; // reuse recent data
+  _marineLastFetch = now;
   const el = document.getElementById('tideWaveRow'); if(!el) return;
   try {
     const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${appLat}&longitude=${appLng}&current=wave_height,wave_direction,wave_period&forecast_days=1`);
@@ -1699,8 +1700,7 @@ async function fetchMarineData() {
     const wh = d.current?.wave_height;
     const wp = d.current?.wave_period;
     const wd = d.current?.wave_direction;
-    const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
-    const dirLabel = wd != null ? dirs[Math.round(wd/22.5)%16] : '—';
+    const dirLabel = wd != null ? windDir(wd) : '—';
     el.innerHTML = `
       <div style="display:flex;gap:9px;margin-top:9px;">
         <div class="wcard" style="flex:1;"><span class="wi">🌊</span><span class="wv">${wh!=null?wh.toFixed(1)+' m':'—'}</span><span class="wl">Wave height</span></div>
@@ -1809,7 +1809,13 @@ function weatherConditionOM(code, wspeed) {
   return '🟡 Fair conditions — check tide and solunar times for best bite windows.';
 }
 
-function autoWeather() {
+let _wxLastFetch = 0;
+const WX_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+
+function autoWeather(force) {
+  const now = Date.now();
+  if (!force && (now - _wxLastFetch) < WX_COOLDOWN_MS) return; // already fresh
+  _wxLastFetch = now;
   document.getElementById('wxBadge').className='api-badge offline-badge';
   document.getElementById('wxBadge').textContent='⏳ Loading...';
   document.getElementById('wxl').textContent='Detecting location...';
@@ -2027,8 +2033,6 @@ async function saveCatch() {
   updateHeader();
   vibrate([40,20,40]);
   showToast('Your catch has been logged! 🎣', 'success');
-  document.getElementById('cnum').textContent=catches.length;
-  const b=document.getElementById('sban');b.style.display='none';
   // Clear catch-specific fields but keep location so multi-catch sessions don't need GPS re-entry
   ['ftype','fcust','flen','fwt','method','platform','fly','flycol','notes'].forEach(fieldId=>document.getElementById(fieldId).value='');
   // Reset date/time back to now so the next catch doesn't inherit an old EXIF date
@@ -2245,22 +2249,6 @@ function renderList() {
 }
 
 // ─────────────────────────────────────────────
-// QUICK-SELECT FLY / BAIT
-// ─────────────────────────────────────────────
-function qsFly(val) {
-  document.getElementById('fly').value = val;
-  // Brief visual feedback on tapped chip
-  document.querySelectorAll('.qs-chip').forEach(el => {
-    if(el.textContent.includes(val)) {
-      el.style.background = 'var(--teal)';
-      el.style.color = '#fff';
-      el.style.borderColor = 'var(--teal)';
-      setTimeout(() => { el.style.background=''; el.style.color=''; el.style.borderColor=''; }, 500);
-    }
-  });
-}
-
-// ─────────────────────────────────────────────
 // EDIT CATCH
 // ─────────────────────────────────────────────
 let editId = null, editPhoto = undefined; // undefined = no change, null = cleared, string = new photo
@@ -2330,6 +2318,11 @@ async function handleEditPhoto(e) {
       'HEIC photos aren\'t supported. In Samsung Gallery go to ⚙️ Settings → Pictures → Picture format and switch to "High compatibility (JPEG)".',
       'error'
     );
+    return;
+  }
+  // Samsung Cloud: stub file (size 0) means not yet downloaded.
+  if (f.size === 0) {
+    showToast('Photo is not ready — it may still be downloading from Samsung Cloud. Wait a moment and try again.', 'error');
     return;
   }
   const infoEl = document.getElementById('editPhotoInfo');
@@ -2613,7 +2606,7 @@ function renderStats() {
 // ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
-calcTide(); drawCurve(); calcMoon(); calcBite();
+calcTide(); calcMoon(); calcBite();
 setTimeout(initLogMap, 400);
 setTimeout(autoWeather, 800);
 initStorage(); // async: migrates legacy photos + hydrates IDB photos into memory
