@@ -1655,9 +1655,13 @@ let _tideCache = null; // in-memory; also persisted to localStorage
 function _loadTideCache() {
   try {
     const raw = JSON.parse(localStorage.getItem('_tc_cache') || 'null');
-    // Invalidate any cache saved with MSL datum (heights can be negative) —
-    // we now use LAT datum so all heights are positive like NZ tide tables.
+    // Invalidate old cache formats so a fresh fetch picks up the new fields.
+    // v1: MSL datum produced negative heights — bust it.
+    // v2: missing dailyConditions field — bust it so Today/Tomorrow cards populate.
     if (raw && raw.series && raw.series.some(p => p.h < 0)) {
+      _tideCache = null;
+      localStorage.removeItem('_tc_cache');
+    } else if (raw && !Array.isArray(raw.dailyConditions)) {
       _tideCache = null;
       localStorage.removeItem('_tc_cache');
     } else {
