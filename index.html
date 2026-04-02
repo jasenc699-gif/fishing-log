@@ -1819,6 +1819,9 @@ function findTideEvents(fromDate, count, port) {
 // Entry point called from tab switch and GPS updates.
 // Fires a background API fetch then renders with whatever data is available.
 function calcTide() {
+  // If the cached data is stale or for a different location, discard it now
+  // so the first render falls back to harmonics rather than showing old "Live" data.
+  if (!_cacheValid(appLat, appLng)) _tideCache = null;
   _renderTideUI();                          // instant render (harmonic or cached API)
   fetchTidesFromAPI(appLat, appLng).then(ok => {
     if (ok) _renderTideUI();               // re-render with fresh API data
@@ -1948,13 +1951,18 @@ function _drawTideCurve(cd) {
 
   // Tide curve — prefer API time series, fall back to harmonic
   const hasSeries = _tideCache?.series?.length > 1;
+  // Use API-derived bounds when live data is available so the curve scale
+  // matches the live height readout. Fall back to harmonic port bounds offline.
+  if (hasSeries) {
+    const hs = _tideCache.series.map(p => p.h);
+    bounds = { lo: Math.min(...hs) - 0.05, hi: Math.max(...hs) + 0.05 };
+  }
   ctx.beginPath(); ctx.strokeStyle = '#4fc3a1'; ctx.lineWidth = 2;
   let first = true;
   for (let i = 0; i < W; i++) {
     const ms = s0 + (i / W) * (e0 - s0);
     let h = hasSeries ? _tideHeightFromCache(ms) : null;
     if (h == null) h = tideHeightAt(new Date(ms), activePort);
-    // Normalize to canvas using harmonic bounds (stable reference)
     const y = H - 10 - ((h - bounds.lo) / (bounds.hi - bounds.lo)) * (H - 20);
     if (first) { ctx.moveTo(i, y); first = false; } else ctx.lineTo(i, y);
   }
@@ -2318,7 +2326,12 @@ async function saveCatch() {
   let ti='—',mi='—',bi='—';
   if(d&&t){
     const dt=new Date(d+'T'+t);
-    const hNow=tideHeightAt(dt,activePort), hNext=tideHeightAt(new Date(dt.getTime()+300000),activePort);
+    const dtMs = dt.getTime();
+    // Use API series data if available and covers this timestamp; else harmonic model
+    let hNow = _tideHeightFromCache(dtMs);
+    let hNext = _tideHeightFromCache(dtMs + 300000);
+    if (hNow == null)  hNow  = tideHeightAt(dt, activePort);
+    if (hNext == null) hNext = tideHeightAt(new Date(dtMs + 300000), activePort);
     const rising=hNext>hNow;
     const bounds=portBounds(activePort), mid=bounds.lo+(bounds.hi-bounds.lo)*0.5, qtr=(bounds.hi-bounds.lo)*0.22;
     const tl=hNow>mid+qtr?'High Tide':hNow<mid-qtr?'Low Tide':(rising?'Mid — Rising':'Mid — Falling');
@@ -2681,7 +2694,12 @@ function saveEdit() {
   let ti = catches[idx].tide, mi = catches[idx].moon, bi = catches[idx].bite;
   if(newDate && newTime) {
     const dt = new Date(newDate + 'T' + newTime);
-    const hNow = tideHeightAt(dt, activePort), hNext = tideHeightAt(new Date(dt.getTime()+300000), activePort);
+    const dtMs = dt.getTime();
+    // Use API series data if available; else harmonic model
+    let hNow = _tideHeightFromCache(dtMs);
+    let hNext = _tideHeightFromCache(dtMs + 300000);
+    if (hNow == null)  hNow  = tideHeightAt(dt, activePort);
+    if (hNext == null) hNext = tideHeightAt(new Date(dtMs + 300000), activePort);
     const rising = hNext > hNow;
     const bounds = portBounds(activePort), mid = bounds.lo + (bounds.hi - bounds.lo)*0.5, qtr = (bounds.hi - bounds.lo)*0.22;
     const tl = hNow > mid+qtr ? 'High Tide' : hNow < mid-qtr ? 'Low Tide' : (rising ? 'Mid — Rising' : 'Mid — Falling');
