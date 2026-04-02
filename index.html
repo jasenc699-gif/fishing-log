@@ -1651,17 +1651,13 @@ function nearestPort(lat, lng) {
 const TIDECHECK_API_KEY = 'tc_live_7cdd3523d192d9f1e67214fbf9fcb7d7'; // ← replace once with your free key
 
 let _tideCache = null; // in-memory; also persisted to localStorage
+const _TIDE_CACHE_V = 4; // bump this whenever cache format changes to auto-clear old data
 
 function _loadTideCache() {
   try {
     const raw = JSON.parse(localStorage.getItem('_tc_cache') || 'null');
-    // Invalidate old cache formats so a fresh fetch picks up the new fields.
-    // v1: MSL datum produced negative heights — bust it.
-    // v2: missing dailyConditions field — bust it so Today/Tomorrow cards populate.
-    if (raw && raw.series && raw.series.some(p => p.h < 0)) {
-      _tideCache = null;
-      localStorage.removeItem('_tc_cache');
-    } else if (raw && !Array.isArray(raw.dailyConditions)) {
+    // Invalidate old cache formats — version field missing or outdated.
+    if (!raw || raw.v !== _TIDE_CACHE_V) {
       _tideCache = null;
       localStorage.removeItem('_tc_cache');
     } else {
@@ -1710,16 +1706,23 @@ async function fetchTidesFromAPI(lat, lng) {
 
     // Store compact cache — convert ISO strings to ms timestamps
     _saveTideCache({
+      v: _TIDE_CACHE_V,
       lat, lng,
       fetched: Date.now(),
       stationName: st.name,
       timezone: td.station?.timezone || 'Pacific/Auckland',
       // Extremes: [{ms, type:'high'|'low', h, localDate}]
-      extremes: (td.extremes || []).map(e => ({
-        ms: new Date(e.time).getTime(), type: e.type, h: e.height, localDate: e.localDate
-      })),
+      // toUtc: some APIs omit the Z suffix; without it, browsers parse as local
+      // time instead of UTC, shifting every displayed tide by the browser's UTC offset.
+      extremes: (td.extremes || []).map(e => {
+        const toUtc = s => (s && !s.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) ? s + 'Z' : (s||'');
+        return { ms: new Date(toUtc(e.time)).getTime(), type: e.type, h: e.height, localDate: e.localDate };
+      }),
       // Time series: [{ms, h}] at 15-min intervals
-      series: (td.timeSeries || []).map(p => ({ ms: new Date(p.time).getTime(), h: p.height })),
+      series: (td.timeSeries || []).map(p => {
+        const toUtc = s => (s && !s.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) ? s + 'Z' : (s||'');
+        return { ms: new Date(toUtc(p.time)).getTime(), h: p.height };
+      }),
       // Daily conditions: sunrise, sunset, moon, spring/neap, solunar per day
       dailyConditions: (td.dailyConditions || []).map(d => ({
         date: d.date,
@@ -1800,8 +1803,9 @@ function tideHeightAt(date, port) {
   const t   = (jd - jd0) * 24;               // hours from 0h UTC
   const r   = Math.PI / 180;
 
-  // Nodal amplitude factors (f) — modulate each constituent's amplitude
-  // based on the moon's ascending node N. Omitting these causes up to +-15% height errors.
+  // Nodal amplitude factors (f) and phase corrections (u) — both vary with
+  // the moon's ascending node N over an 18.6-year cycle. Omitting f causes
+  // up to +-15% height errors; omitting u causes up to a few minutes timing error.
   const Nn  = ((125.0445 - 0.05295377 * (jd0 - 2451545.0)) % 360 + 360) % 360;
   const Nnr = Nn * r;
   const f   = {
@@ -1812,11 +1816,14 @@ function tideHeightAt(date, port) {
     O1: 1.009 + 0.187 * Math.cos(Nnr) - 0.015 * Math.cos(2 * Nnr),
     K2: 1.024 + 0.286 * Math.cos(Nnr) - 0.008 * Math.cos(2 * Nnr),
   };
+  // Additional nodal phase corrections not included in tideV0u0
+  const uM2 = -2.14 * Math.sin(Nnr); // degrees — same for N2
+  const u   = { M2: uM2, S2: 0, N2: uM2, K1: 0, O1: 0, K2: 0 };
 
   return (port.z0 || 0) + TIDE_NAMES.reduce((sum, n) => {
     if (!port[n]) return sum;
     const [H, g] = port[n];
-    return sum + f[n] * H * Math.cos((TIDE_SPEEDS[n] * t + V[n] - g) * r);
+    return sum + f[n] * H * Math.cos((TIDE_SPEEDS[n] * t + V[n] + u[n] - g) * r);
   }, 0);
 }
 
@@ -1987,9 +1994,13 @@ function renderTideSchedule() {
       addExtreme(dk, e.type === 'high' ? 'High' : 'Low', e.ms, e.h);
     });
   } else {
-    // Harmonic fallback — scan enough events to cover today + tomorrow
-    const startOfToday = new Date(todayStr + 'T00:00:00');
-    findTideEvents(startOfToday, 12, activePort).forEach(e => {
+    // Harmonic fallback — scan enough events to cover today + tomorrow.
+    // Start 16 hours before now so we always include NZ midnight regardless
+    // of the browser's local timezone (NZ is UTC+12/+13, so 16 h before now
+    // always predates NZ midnight). The localDateStr grouping below correctly
+    // buckets each event into today/tomorrow in Pacific/Auckland time.
+    const scanStart = new Date(nowMs - 16 * 3600000);
+    findTideEvents(scanStart, 16, activePort).forEach(e => {
       addExtreme(localDateStr(e.time.getTime()), e.type, e.time.getTime(), e.h);
     });
   }
