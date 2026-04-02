@@ -58,10 +58,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .stitle{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 
 /* PHOTO */
-.pu{width:100%;min-height:200px;max-height:65vh;border:1.5px dashed #ccc;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:var(--surf);overflow:hidden;position:relative;}
+.pu{width:100%;min-height:200px;max-height:65vh;border:none;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#2c2c2c;overflow:hidden;position:relative;}
 .pu img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0;background:#1a1a1a;}
-.pu-inner{display:flex;flex-direction:column;align-items:center;gap:5px;z-index:1;}
-.pu-default-svg{width:60px;height:60px;opacity:0.5;}
+.pu-inner{display:flex;flex-direction:column;align-items:center;gap:12px;z-index:1;padding:28px 20px;}
+.pu-logo{width:90px;height:90px;border-radius:20px;object-fit:cover;opacity:0.92;flex-shrink:0;}
+.pu-add-text{font-size:14px;font-weight:600;color:#ffffff;letter-spacing:0.1px;}
+.pu-add-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-top:-6px;}
+.pu-tap-ring{display:flex;align-items:center;justify-content:center;width:90px;height:90px;border-radius:20px;border:2px dashed rgba(79,195,161,0.55);background:rgba(79,195,161,0.06);flex-shrink:0;}
 
 /* FORMS */
 label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:10px;font-weight:500;}
@@ -96,7 +99,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* CATCH CARDS */
 .ccard{background:var(--white);border-radius:12px;border:0.5px solid var(--border);margin-bottom:10px;overflow:hidden;}
 .ctop{display:flex;}
-.ciph{width:80px;height:80px;background:#e0e0dc;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ciph{width:80px;height:80px;background:#2c2c2c;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
 .cimgel{width:80px;height:80px;object-fit:cover;flex-shrink:0;}
 .cbody{padding:10px 11px;flex:1;min-width:0;}
 .cfish{font-size:14px;font-weight:600;color:var(--text);}
@@ -260,17 +263,11 @@ input[type=file]{display:none;}
         <div class="stitle">📸 Photo</div>
         <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
-            <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-              <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
-              <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#bbbbbb"/>
-              <path d="M210 260 L165 225 L165 295 Z" fill="#bbbbbb"/>
-              <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#bbbbbb"/>
-              <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#bbbbbb"/>
-              <circle cx="310" cy="250" r="5" fill="#ebebea"/>
-              <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#cccccc" stroke-width="20" stroke-linecap="round"/>
-              <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#cccccc" stroke-width="12" stroke-linecap="round"/>
-            </svg>
-            <span style="font-size:12px;color:#aaa;margin-top:4px;">Add a photo of your catch</span>
+            <div class="pu-tap-ring">
+              <img src="icon-192.png" class="pu-logo" alt="fishing log">
+            </div>
+            <div class="pu-add-text">Add a photo of your catch</div>
+            <div class="pu-add-sub">Tap to choose from your camera roll</div>
           </div>
         </div>
         <div style="margin-top:8px;">
@@ -622,17 +619,10 @@ input[type=file]{display:none;}
           <div class="stitle">📸 Photo</div>
           <div class="pu" id="epuEl" style="min-height:140px;cursor:pointer;" onclick="const i=document.getElementById('efiLib');i.value='';i.click();">
             <div class="pu-inner" id="epuInner">
-              <svg class="pu-default-svg" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-                <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#bbbbbb" stroke-width="18" stroke-linecap="round"/>
-                <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#bbbbbb"/>
-                <path d="M210 260 L165 225 L165 295 Z" fill="#bbbbbb"/>
-                <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#bbbbbb"/>
-                <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#bbbbbb"/>
-                <circle cx="310" cy="250" r="5" fill="#ebebea"/>
-                <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#cccccc" stroke-width="20" stroke-linecap="round"/>
-                <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#cccccc" stroke-width="12" stroke-linecap="round"/>
-              </svg>
-              <span style="font-size:11px;color:#aaa;margin-top:4px;">No photo — tap to add</span>
+              <div class="pu-tap-ring" style="width:70px;height:70px;border-radius:16px;">
+                <img src="icon-192.png" style="width:70px;height:70px;border-radius:16px;object-fit:cover;opacity:0.92;" alt="fishing log">
+              </div>
+              <div class="pu-add-text" style="font-size:13px;">No photo — tap to add</div>
             </div>
           </div>
           <div style="margin-top:8px;">
@@ -2834,19 +2824,12 @@ function updateHeader() {
 }
 
 // ─────────────────────────────────────────────
-// DEFAULT LOGO SVG
+// DEFAULT CATCH PHOTO PLACEHOLDER
 // ─────────────────────────────────────────────
 const DEFAULT_SVG_HTML = `
-  <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="width:52px;height:52px;opacity:0.45;">
-    <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#aaa" stroke-width="18" stroke-linecap="round"/>
-    <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#bbb"/>
-    <path d="M210 260 L165 225 L165 295 Z" fill="#bbb"/>
-    <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#bbb"/>
-    <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#bbb"/>
-    <circle cx="310" cy="250" r="5" fill="#e0e0dc"/>
-    <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#ccc" stroke-width="20" stroke-linecap="round"/>
-    <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#ccc" stroke-width="12" stroke-linecap="round"/>
-  </svg>`;
+  <div style="width:80px;height:80px;background:#2c2c2c;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    <img src="icon-192.png" style="width:56px;height:56px;border-radius:12px;opacity:0.75;" alt="">
+  </div>`;
 
 function renderList() {
   // FIX: destroy stale Leaflet instances before rebuilding to prevent memory leaks
@@ -3201,7 +3184,7 @@ function renderStats() {
     const labelY = chartH - bottomPad - totalBarH - 3;
     svgBars += `<text x="${x+barW/2}" y="${labelY}" text-anchor="middle"
       font-size="8" font-weight="${mi===bestMonthIdx?'700':'400'}"
-      fill="${mi===bestMonthIdx?'#fff':'rgba(0,0,0,0.45)'}"
+      fill="${mi===bestMonthIdx?'#fff':'rgba(255,255,255,0.65)'}"
       font-family="system-ui,sans-serif">${total}</text>`;
   });
   // Month labels + best month highlight
@@ -3211,7 +3194,7 @@ function renderStats() {
     const isBest = mi === bestMonthIdx;
     svgLabels += `<text x="${x}" y="${chartH - bottomPad + 12}" text-anchor="middle"
       font-size="${isBest?8.5:7.5}" font-weight="${isBest?'700':'400'}"
-      fill="${isBest?'#1a6b52':'rgba(0,0,0,0.45)'}"
+      fill="${isBest?'#4fc3a1':'rgba(255,255,255,0.55)'}"
       font-family="system-ui,sans-serif">${lbl}</text>`;
     if(isBest) {
       svgLabels += `<rect x="${startX + mi*(barW+gap)-1}" y="${chartH-bottomPad+14}" width="${barW+2}" height="2.5" rx="1.5" fill="#4fc3a1"/>`;
@@ -3223,9 +3206,9 @@ function renderStats() {
     const y = chartH - bottomPad - Math.round(frac * usableH);
     const val = Math.round(frac * maxMonth);
     svgGrid += `<line x1="${leftPad}" y1="${y}" x2="${chartW-4}" y2="${y}"
-      stroke="rgba(0,0,0,0.07)" stroke-width="0.5"/>
+      stroke="rgba(255,255,255,0.1)" stroke-width="0.5"/>
       <text x="${leftPad-2}" y="${y+3}" text-anchor="end" font-size="7"
-      fill="rgba(0,0,0,0.3)" font-family="system-ui,sans-serif">${val}</text>`;
+      fill="rgba(255,255,255,0.4)" font-family="system-ui,sans-serif">${val}</text>`;
   });
   // Legend
   const legendSpecies = orderedSpecies.slice(0, 6);
@@ -3233,7 +3216,7 @@ function renderStats() {
   legendSpecies.forEach((sp, li) => {
     const lx = 4 + li * Math.floor((chartW-8) / Math.min(legendSpecies.length, 6));
     svgLegend += `<rect x="${lx}" y="${chartH+2}" width="8" height="8" rx="2" fill="${spColor(sp)}"/>
-      <text x="${lx+10}" y="${chartH+9}" font-size="7.5" fill="rgba(0,0,0,0.55)"
+      <text x="${lx+10}" y="${chartH+9}" font-size="7.5" fill="rgba(255,255,255,0.7)"
       font-family="system-ui,sans-serif">${sp.length>8?sp.slice(0,7)+'…':sp}</text>`;
   });
   const legendH = legendSpecies.length ? 14 : 0;
