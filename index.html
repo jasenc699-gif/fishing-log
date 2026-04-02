@@ -385,7 +385,10 @@ input[type=file]{display:none;}
         <div id="tideWaveRow"></div>
       </div>
 
-      <div id="tideDays"></div>
+      <div class="sec">
+        <div class="stitle">📅 Today's Tide Times</div>
+        <div id="tideSchedule" style="padding:2px 0;"></div>
+      </div>
 
       <div class="sec">
         <div class="stitle">📊 24-Hour Tide Curve</div>
@@ -1651,13 +1654,13 @@ function nearestPort(lat, lng) {
 const TIDECHECK_API_KEY = 'tc_live_7cdd3523d192d9f1e67214fbf9fcb7d7'; // ← replace once with your free key
 
 let _tideCache = null; // in-memory; also persisted to localStorage
-const _TIDE_CACHE_V = 4; // bump this whenever cache format changes to auto-clear old data
 
 function _loadTideCache() {
   try {
     const raw = JSON.parse(localStorage.getItem('_tc_cache') || 'null');
-    // Invalidate old cache formats — version field missing or outdated.
-    if (!raw || raw.v !== _TIDE_CACHE_V) {
+    // Invalidate any cache saved with MSL datum (heights can be negative) —
+    // we now use LAT datum so all heights are positive like NZ tide tables.
+    if (raw && raw.series && raw.series.some(p => p.h < 0)) {
       _tideCache = null;
       localStorage.removeItem('_tc_cache');
     } else {
@@ -1706,33 +1709,14 @@ async function fetchTidesFromAPI(lat, lng) {
 
     // Store compact cache — convert ISO strings to ms timestamps
     _saveTideCache({
-      v: _TIDE_CACHE_V,
       lat, lng,
       fetched: Date.now(),
       stationName: st.name,
       timezone: td.station?.timezone || 'Pacific/Auckland',
-      // Extremes: [{ms, type:'high'|'low', h, localDate}]
-      // toUtc: some APIs omit the Z suffix; without it, browsers parse as local
-      // time instead of UTC, shifting every displayed tide by the browser's UTC offset.
-      extremes: (td.extremes || []).map(e => {
-        const toUtc = s => (s && !s.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) ? s + 'Z' : (s||'');
-        return { ms: new Date(toUtc(e.time)).getTime(), type: e.type, h: e.height, localDate: e.localDate };
-      }),
+      // Extremes: [{ms, type:'high'|'low', h}]
+      extremes: (td.extremes || []).map(e => ({ ms: new Date(e.time).getTime(), type: e.type, h: e.height })),
       // Time series: [{ms, h}] at 15-min intervals
-      series: (td.timeSeries || []).map(p => {
-        const toUtc = s => (s && !s.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(s)) ? s + 'Z' : (s||'');
-        return { ms: new Date(toUtc(p.time)).getTime(), h: p.height };
-      }),
-      // Daily conditions: sunrise, sunset, moon, spring/neap, solunar per day
-      dailyConditions: (td.dailyConditions || []).map(d => ({
-        date: d.date,
-        sunrise: d.sunrise,
-        sunset: d.sunset,
-        moonPhase: d.moonPhase,
-        moonIllumination: d.moonIllumination,
-        springNeap: d.springNeap,
-        solunarRating: d.solunarRating
-      }))
+      series: (td.timeSeries || []).map(p => ({ ms: new Date(p.time).getTime(), h: p.height }))
     });
     return true;
   } catch(e) {
@@ -1789,9 +1773,9 @@ function tideV0u0(jd0) {
     M2: dg(2*h - 2*s),
     S2: 0,
     N2: dg(2*h - 3*s + p),
-    K1: dg(h + 90 - 8.86 * Math.sin(Nr)),
+    K1: dg(h + 90 - 8.86 * Math.cos(Nr)),
     O1: dg(h - 2*s - 90 + 10.80 * Math.sin(Nr)),
-    K2: dg(2*h - 17.74 * Math.sin(Nr))
+    K2: dg(2*h - 17.74 * Math.cos(Nr))
   };
 }
 
@@ -1802,28 +1786,10 @@ function tideHeightAt(date, port) {
   const V   = tideV0u0(jd0);
   const t   = (jd - jd0) * 24;               // hours from 0h UTC
   const r   = Math.PI / 180;
-
-  // Nodal amplitude factors (f) and phase corrections (u) — both vary with
-  // the moon's ascending node N over an 18.6-year cycle. Omitting f causes
-  // up to +-15% height errors; omitting u causes up to a few minutes timing error.
-  const Nn  = ((125.0445 - 0.05295377 * (jd0 - 2451545.0)) % 360 + 360) % 360;
-  const Nnr = Nn * r;
-  const f   = {
-    M2: 1.000 - 0.037 * Math.cos(Nnr),
-    S2: 1.000,
-    N2: 1.000 - 0.037 * Math.cos(Nnr),
-    K1: 1.006 + 0.115 * Math.cos(Nnr) - 0.009 * Math.cos(2 * Nnr),
-    O1: 1.009 + 0.187 * Math.cos(Nnr) - 0.015 * Math.cos(2 * Nnr),
-    K2: 1.024 + 0.286 * Math.cos(Nnr) - 0.008 * Math.cos(2 * Nnr),
-  };
-  // Additional nodal phase corrections not included in tideV0u0
-  const uM2 = -2.14 * Math.sin(Nnr); // degrees — same for N2
-  const u   = { M2: uM2, S2: 0, N2: uM2, K1: 0, O1: 0, K2: 0 };
-
   return (port.z0 || 0) + TIDE_NAMES.reduce((sum, n) => {
     if (!port[n]) return sum;
     const [H, g] = port[n];
-    return sum + f[n] * H * Math.cos((TIDE_SPEEDS[n] * t + V[n] + u[n] - g) * r);
+    return sum + H * Math.cos((TIDE_SPEEDS[n] * t + V[n] - g) * r);
   }, 0);
 }
 
@@ -1853,9 +1819,6 @@ function findTideEvents(fromDate, count, port) {
 // Entry point called from tab switch and GPS updates.
 // Fires a background API fetch then renders with whatever data is available.
 function calcTide() {
-  // If the cached data is stale or for a different location, discard it now
-  // so the first render falls back to harmonics rather than showing old "Live" data.
-  if (!_cacheValid(appLat, appLng)) _tideCache = null;
   _renderTideUI();                          // instant render (harmonic or cached API)
   fetchTidesFromAPI(appLat, appLng).then(ok => {
     if (ok) _renderTideUI();               // re-render with fresh API data
@@ -1897,7 +1860,7 @@ function _renderTideUI() {
 
   document.getElementById('temoji').textContent = em;
   document.getElementById('tlbl').textContent   = label;
-  document.getElementById('tsub').textContent   = (usingAPI ? 'Height: ' : 'Est. height (MSL): ') + h.toFixed(2) + ' m';
+  document.getElementById('tsub').textContent   = 'Height: ' + h.toFixed(2) + ' m';
   document.getElementById('tarrow').textContent = rising ? '↑' : '↓';
   document.getElementById('tdir').textContent   = rising ? 'Incoming (Flood)' : 'Outgoing (Ebb)';
 
@@ -1921,180 +1884,40 @@ function _renderTideUI() {
   fetchMarineData();
 }
 
-// ─────────────────────────────────────────────
-// SUN TIMES — NOAA algorithm (~1 min accuracy)
-// Returns { rise: Date, set: Date } in UTC, or null for polar day/night
-// ─────────────────────────────────────────────
-function _calcSunTimes(dateUTC, lat, lng) {
-  const rad = Math.PI / 180;
-  const jd = dateUTC.getTime() / 86400000 + 2440587.5;
-  const n  = Math.floor(jd - 2451545.0 + 0.0008);
-  const Js = n - lng / 360;
-  const M  = ((357.5291 + 0.98560028 * Js) % 360 + 360) % 360;
-  const C  = 1.9148 * Math.sin(M*rad) + 0.02  * Math.sin(2*M*rad) + 0.0003 * Math.sin(3*M*rad);
-  const L  = ((M + C + 180 + 102.9372) % 360 + 360) % 360;
-  const Jt = 2451545.0 + Js + 0.0053 * Math.sin(M*rad) - 0.0069 * Math.sin(2*L*rad);
-  const sinDec = Math.sin(L*rad) * Math.sin(23.4397*rad);
-  const cosHa  = (Math.sin(-0.8333*rad) - Math.sin(lat*rad)*sinDec) /
-                 (Math.cos(lat*rad) * Math.cos(Math.asin(sinDec)));
-  if (Math.abs(cosHa) > 1) return null;
-  const w = Math.acos(cosHa) * 180/Math.PI;
-  const toMs = jd2 => (jd2 - 2440587.5) * 86400000;
-  return { rise: new Date(toMs(Jt - w/360)), set: new Date(toMs(Jt + w/360)) };
-}
-
-// ─────────────────────────────────────────────
-// TIDE SCHEDULE — today + tomorrow rich cards
-// ─────────────────────────────────────────────
 function renderTideSchedule() {
-  const tz    = _tideCache?.timezone || 'Pacific/Auckland';
-  const now   = new Date();
-  const nowMs = now.getTime();
+  const now    = Date.now();
+  const apiEvt = _tideEventsFromCache(now, 4);
+  const events = apiEvt
+    ? apiEvt.map(e => ({ type: e.type === 'high' ? 'High' : 'Low', time: new Date(e.ms), h: e.h }))
+    : findTideEvents(new Date(), 4, activePort);
 
-  // Format a UTC timestamp as local time string (e.g. "8:16 am")
-  const fmtTime = ms => {
+  // Always format times in the station's NZ timezone (from API cache), not device timezone.
+  // Prevents times being offset when the user's device is not set to NZ time.
+  const stationTz = (_tideCache?.timezone) || 'Pacific/Auckland';
+  const fmt = d => {
     try {
       return new Intl.DateTimeFormat('en-NZ', {
-        hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz
-      }).format(new Date(ms)).toLowerCase().replace(/\s+/g, '');
-    } catch(_) {
-      const d = new Date(ms), h = d.getHours(), m = d.getMinutes();
-      return (h%12||12) + ':' + (m<10?'0':'') + m + (h<12?'am':'pm');
+        hour: 'numeric', minute: '2-digit', hour12: true, timeZone: stationTz
+      }).format(d).toLowerCase().replace(/\s+/g, '');
+    } catch(e) {
+      // Fallback if timezone string is unrecognised
+      const h = d.getHours(), m = d.getMinutes();
+      return (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m + (h < 12 ? 'am' : 'pm');
     }
   };
-
-  // Get YYYY-MM-DD in station timezone
-  const localDateStr = ms => {
-    try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(ms)); }
-    catch(_) { return new Date(ms).toISOString().slice(0,10); }
-  };
-
-  // Format date as "Thu, 2 Apr 2026"
-  const fmtDateHdr = dateStr => {
-    try {
-      return new Intl.DateTimeFormat('en-NZ', {
-        weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone: tz
-      }).format(new Date(dateStr + 'T12:00:00Z'));
-    } catch(_) { return dateStr; }
-  };
-
-  const todayStr    = localDateStr(nowMs);
-  const tomorrowStr = localDateStr(nowMs + 86400000);
-
-  // Build a map of dateStr → [{type, time:Date, h}]
-  const dayMap = {};
-  const addExtreme = (dateKey, type, timeMs, h) => {
-    if (!dayMap[dateKey]) dayMap[dateKey] = [];
-    dayMap[dateKey].push({ type, time: new Date(timeMs), h });
-  };
-
-  if (_tideCache?.extremes?.length) {
-    _tideCache.extremes.forEach(e => {
-      const dk = e.localDate || localDateStr(e.ms);
-      addExtreme(dk, e.type === 'high' ? 'High' : 'Low', e.ms, e.h);
-    });
-  } else {
-    // Harmonic fallback — scan enough events to cover today + tomorrow.
-    // Start 16 hours before now so we always include NZ midnight regardless
-    // of the browser's local timezone (NZ is UTC+12/+13, so 16 h before now
-    // always predates NZ midnight). The localDateStr grouping below correctly
-    // buckets each event into today/tomorrow in Pacific/Auckland time.
-    const scanStart = new Date(nowMs - 16 * 3600000);
-    findTideEvents(scanStart, 16, activePort).forEach(e => {
-      addExtreme(localDateStr(e.time.getTime()), e.type, e.time.getTime(), e.h);
-    });
-  }
-
-  // Fetch daily conditions from cache or compute locally
-  const getCond = dateStr => {
-    const cached = (_tideCache?.dailyConditions || []).find(d => d.date === dateStr);
-    if (cached) return cached;
-    // Harmonic fallback: compute from local moon + solunar + sun calc
-    const dt = new Date(dateStr + 'T12:00:00');
-    const m  = moonAt(dt);
-    const s  = solunarAt(dt, appLng);
-    const sun = _calcSunTimes(dt, appLat, appLng);
-    const rating = s.q === 'Excellent' ? 5 : s.q === 'Good' ? 4 : 3;
-    return {
-      date: dateStr,
-      sunrise: sun?.rise?.toISOString() || null,
-      sunset:  sun?.set?.toISOString()  || null,
-      moonPhase: m.n,
-      moonIllumination: m.il,
-      springNeap: null,
-      solunarRating: rating
-    };
-  };
-
-  // Moon emoji from phase name
-  const moonEmoji = p => {
-    if (!p) return '🌙';
-    if (p.includes('New'))              return '🌑';
-    if (p.includes('Full'))             return '🌕';
-    if (p.includes('Waxing Gibbous'))   return '🌔';
-    if (p.includes('Waning Gibbous'))   return '🌖';
-    if (p.includes('Waxing Crescent'))  return '🌒';
-    if (p.includes('Waning Crescent'))  return '🌘';
-    if (p.includes('First'))            return '🌓';
-    if (p.includes('Last'))             return '🌗';
-    return '🌙';
-  };
-
-  // Render one day card
-  const mPerFt = 3.28084;
-  const renderDay = (dateStr, isToday) => {
-    const tides = dayMap[dateStr];
-    if (!tides || !tides.length) return '';
-    const cond  = getCond(dateStr);
-    const label = isToday ? 'Today' : 'Tomorrow';
-
-    const sunStr = (cond.sunrise && cond.sunset)
-      ? `<span style="font-size:12px;color:var(--muted);">☀️ ${fmtTime(new Date(cond.sunrise).getTime())} – ${fmtTime(new Date(cond.sunset).getTime())}</span>`
-      : '';
-
-    const springBadge = cond.springNeap
-      ? `<span style="background:${cond.springNeap==='Spring'?'rgba(79,195,161,0.15)':'rgba(239,159,39,0.1)'};color:${cond.springNeap==='Spring'?'#0a5c43':'#6b3e08'};border:0.5px solid ${cond.springNeap==='Spring'?'rgba(79,195,161,0.35)':'rgba(239,159,39,0.35)'};border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;">${cond.springNeap==='Spring'?'🌊 Spring':'🌤 Neap'}</span>`
-      : '';
-
-    const rating = Math.max(0, Math.min(5, cond.solunarRating || 0));
-    const stars  = '<span style="color:#e6a817;">★</span>'.repeat(rating) +
-                   '<span style="color:var(--border);">★</span>'.repeat(5 - rating);
-
-    const tidesHtml = tides.map(e => {
-      const isHigh = e.type === 'High';
-      const ft = (e.h * mPerFt).toFixed(1);
-      return `
-        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:0.5px solid var(--border);">
-          <div style="font-size:20px;width:26px;text-align:center;flex-shrink:0;">${isHigh ? '🌊' : '🏖'}</div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;color:var(--text);">${isHigh ? 'High Tide' : 'Low Tide'}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <div style="font-size:15px;font-weight:700;color:${isHigh ? 'var(--teal)' : 'var(--text)'};">${fmtTime(e.time.getTime())}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:1px;">${e.h.toFixed(2)}m (${ft}ft) LAT</div>
-          </div>
-        </div>`;
-    }).join('');
-
-    return `
-      <div class="sec" style="margin-bottom:10px;padding:13px;">
-        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;">
-          <div style="font-size:14px;font-weight:700;color:var(--text);">📅 ${label} — ${fmtDateHdr(dateStr)}</div>
-          ${isToday ? `<div style="font-size:12px;font-weight:600;color:var(--teal);">🕐 ${fmtTime(nowMs)}</div>` : ''}
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;">
-          ${sunStr}${springBadge}
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:4px;">
-          <span style="font-size:12px;color:var(--muted);">${moonEmoji(cond.moonPhase)} ${cond.moonPhase||'—'}${cond.moonIllumination!=null?' '+cond.moonIllumination+'%':''}</span>
-          <span style="font-size:13px;letter-spacing:1px;" title="Solunar fishing rating">${stars}</span>
-        </div>
-        ${tidesHtml}
-      </div>`;
-  };
-
-  const container = document.getElementById('tideDays');
-  if (container) container.innerHTML = renderDay(todayStr, true) + renderDay(tomorrowStr, false);
+  const labels = ['Next', 'Then', 'Then', 'Then'];
+  document.getElementById('tideSchedule').innerHTML = events.map((e, i) => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < 3 ? 'border-bottom:0.5px solid var(--border);' : ''}">
+      <div style="font-size:26px;width:32px;text-align:center;">${e.type === 'High' ? '🌊' : '🏖'}</div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;color:${i === 0 ? 'var(--teal)' : 'var(--text)'};">${e.type === 'High' ? 'High Tide' : 'Low Tide'}</div>
+        <div style="font-size:11px;color:var(--hint);margin-top:2px;">${labels[i]}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:16px;font-weight:700;color:${i === 0 ? 'var(--teal)' : 'var(--text)'};">${fmt(e.time)}</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:2px;">${e.h.toFixed(2)} m</div>
+      </div>
+    </div>`).join('');
 }
 
 function drawWave(p) {
@@ -2125,18 +1948,13 @@ function _drawTideCurve(cd) {
 
   // Tide curve — prefer API time series, fall back to harmonic
   const hasSeries = _tideCache?.series?.length > 1;
-  // Use API-derived bounds when live data is available so the curve scale
-  // matches the live height readout. Fall back to harmonic port bounds offline.
-  if (hasSeries) {
-    const hs = _tideCache.series.map(p => p.h);
-    bounds = { lo: Math.min(...hs) - 0.05, hi: Math.max(...hs) + 0.05 };
-  }
   ctx.beginPath(); ctx.strokeStyle = '#4fc3a1'; ctx.lineWidth = 2;
   let first = true;
   for (let i = 0; i < W; i++) {
     const ms = s0 + (i / W) * (e0 - s0);
     let h = hasSeries ? _tideHeightFromCache(ms) : null;
     if (h == null) h = tideHeightAt(new Date(ms), activePort);
+    // Normalize to canvas using harmonic bounds (stable reference)
     const y = H - 10 - ((h - bounds.lo) / (bounds.hi - bounds.lo)) * (H - 20);
     if (first) { ctx.moveTo(i, y); first = false; } else ctx.lineTo(i, y);
   }
@@ -2500,12 +2318,7 @@ async function saveCatch() {
   let ti='—',mi='—',bi='—';
   if(d&&t){
     const dt=new Date(d+'T'+t);
-    const dtMs = dt.getTime();
-    // Use API series data if available and covers this timestamp; else harmonic model
-    let hNow = _tideHeightFromCache(dtMs);
-    let hNext = _tideHeightFromCache(dtMs + 300000);
-    if (hNow == null)  hNow  = tideHeightAt(dt, activePort);
-    if (hNext == null) hNext = tideHeightAt(new Date(dtMs + 300000), activePort);
+    const hNow=tideHeightAt(dt,activePort), hNext=tideHeightAt(new Date(dt.getTime()+300000),activePort);
     const rising=hNext>hNow;
     const bounds=portBounds(activePort), mid=bounds.lo+(bounds.hi-bounds.lo)*0.5, qtr=(bounds.hi-bounds.lo)*0.22;
     const tl=hNow>mid+qtr?'High Tide':hNow<mid-qtr?'Low Tide':(rising?'Mid — Rising':'Mid — Falling');
@@ -2868,12 +2681,7 @@ function saveEdit() {
   let ti = catches[idx].tide, mi = catches[idx].moon, bi = catches[idx].bite;
   if(newDate && newTime) {
     const dt = new Date(newDate + 'T' + newTime);
-    const dtMs = dt.getTime();
-    // Use API series data if available; else harmonic model
-    let hNow = _tideHeightFromCache(dtMs);
-    let hNext = _tideHeightFromCache(dtMs + 300000);
-    if (hNow == null)  hNow  = tideHeightAt(dt, activePort);
-    if (hNext == null) hNext = tideHeightAt(new Date(dtMs + 300000), activePort);
+    const hNow = tideHeightAt(dt, activePort), hNext = tideHeightAt(new Date(dt.getTime()+300000), activePort);
     const rising = hNext > hNow;
     const bounds = portBounds(activePort), mid = bounds.lo + (bounds.hi - bounds.lo)*0.5, qtr = (bounds.hi - bounds.lo)*0.22;
     const tl = hNow > mid+qtr ? 'High Tide' : hNow < mid-qtr ? 'Low Tide' : (rising ? 'Mid — Rising' : 'Mid — Falling');
