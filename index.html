@@ -1681,7 +1681,8 @@ function _loadTideCache() {
     const raw = JSON.parse(localStorage.getItem('_tc_cache') || 'null');
     // Invalidate any cache saved with MSL datum (heights can be negative) —
     // we now use LAT datum so all heights are positive like NZ tide tables.
-    if (raw && raw.series && raw.series.some(p => p.h < 0)) {
+    // Only invalidate if heights are very negative (< -0.5m) — slight negatives are valid near LWS
+    if (raw && raw.series && raw.series.some(p => p.h < -0.5)) {
       _tideCache = null;
       localStorage.removeItem('_tc_cache');
     } else {
@@ -1729,15 +1730,26 @@ async function fetchTidesFromAPI(lat, lng) {
     const td = await tRes.json();
 
     // Store compact cache — convert ISO strings to ms timestamps
+    // TideCheck may return times without TZ suffix (station local time).
+    // We parse them as NZ time by appending the correct NZ UTC offset.
+    // NZDT (UTC+13) applies Oct–Apr; NZST (UTC+12) applies May–Sep.
+    const nowDate = new Date();
+    const nzMon = parseInt(new Intl.DateTimeFormat('en-US',{month:'numeric',timeZone:'Pacific/Auckland'}).format(nowDate));
+    const nzOff = (nzMon >= 10 || nzMon <= 4) ? '+13:00' : '+12:00';
+    const parseApiTime = s => {
+      if (!s) return 0;
+      // Already has TZ info (Z or ±HH:MM) — parse directly
+      if (/Z$|[+-]\d{2}:?\d{2}$/.test(s)) return +new Date(s);
+      // No TZ: treat as NZ local time
+      return +new Date(s + nzOff);
+    };
     _saveTideCache({
       lat, lng,
       fetched: Date.now(),
       stationName: st.name,
       timezone: td.station?.timezone || 'Pacific/Auckland',
-      // Extremes: [{ms, type:'high'|'low', h}]
-      extremes: (td.extremes || []).map(e => ({ ms: new Date(e.time).getTime(), type: e.type, h: e.height })),
-      // Time series: [{ms, h}] at 15-min intervals
-      series: (td.timeSeries || []).map(p => ({ ms: new Date(p.time).getTime(), h: p.height }))
+      extremes: (td.extremes || []).map(e => ({ ms: parseApiTime(e.time), type: e.type, h: e.height })),
+      series: (td.timeSeries || []).map(p => ({ ms: parseApiTime(p.time), h: p.height }))
     });
     return true;
   } catch(e) {
@@ -1837,11 +1849,28 @@ function findTideEvents(fromDate, count, port) {
   return events.slice(0, count);
 }
 
-// ── Tide time formatter ──────────────────────────────────────────────────────
-function _fmtTideTime(date, tz) {
+// ── Robust NZ date string (YYYY-MM-DD) using Pacific/Auckland ────────────────
+// Uses formatToParts + en-US (universally supported) instead of en-CA locale.
+function _nzDateStr(ms) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Pacific/Auckland',
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(new Date(ms));
+    const y = parts.find(p=>p.type==='year')?.value;
+    const m = parts.find(p=>p.type==='month')?.value;
+    const d = parts.find(p=>p.type==='day')?.value;
+    if (y && m && d) return `${y}-${m}-${d}`;
+  } catch(e) {}
+  // Fallback: NZDT is UTC+13
+  return new Date(ms + 13*3600000).toISOString().slice(0,10);
+}
+
+// ── Tide time formatter — always Pacific/Auckland ────────────────────────────
+function _fmtTideTime(date, _tz) {
   try {
     return new Intl.DateTimeFormat('en-NZ', {
-      hour:'numeric', minute:'2-digit', hour12:true, timeZone: tz || 'Pacific/Auckland'
+      hour:'numeric', minute:'2-digit', hour12:true, timeZone:'Pacific/Auckland'
     }).format(date).toLowerCase().replace(/\s+/g,'');
   } catch(e) {
     const h=date.getHours(), m=date.getMinutes();
@@ -1854,35 +1883,43 @@ function _normType(t) { return (t==='high'||t==='High') ? 'High' : 'Low'; }
 
 // ── Next N tide events from fromMs (API or harmonic) ────────────────────────
 function _getNextTideEvents(fromMs, count) {
-  const apiEvt = _tideEventsFromCache(fromMs, count);
-  if (apiEvt) return apiEvt.map(e => ({ type:_normType(e.type), ms:e.ms, h:e.h }));
-  return findTideEvents(new Date(fromMs), count, activePort)
-    .map(e => ({ type:e.type, ms:e.time.getTime(), h:e.h }));
+  try {
+    const apiEvt = _tideEventsFromCache(fromMs, count);
+    if (apiEvt) return apiEvt.map(e => ({ type:_normType(e.type), ms:e.ms, h:e.h }));
+    return findTideEvents(new Date(fromMs), count, activePort)
+      .map(e => ({ type:e.type, ms:e.time.getTime(), h:e.h }));
+  } catch(e) { return []; }
 }
 
 // ── Most recent past tide event ──────────────────────────────────────────────
 function _getLastTideEvent(beforeMs) {
-  if (_tideCache?.extremes) {
-    const prev = [..._tideCache.extremes].reverse().find(e => e.ms < beforeMs);
-    if (prev) return { type:_normType(prev.type), ms:prev.ms, h:prev.h };
-  }
-  const evts = findTideEvents(new Date(beforeMs - 36*3600000), 10, activePort);
-  const past = evts.filter(e => e.time.getTime() < beforeMs);
-  if (!past.length) return null;
-  const p = past[past.length-1];
-  return { type:p.type, ms:p.time.getTime(), h:p.h };
+  try {
+    if (_tideCache?.extremes) {
+      const prev = [..._tideCache.extremes].reverse().find(e => e.ms < beforeMs);
+      if (prev) return { type:_normType(prev.type), ms:prev.ms, h:prev.h };
+    }
+    const evts = findTideEvents(new Date(beforeMs - 36*3600000), 12, activePort);
+    const past = evts.filter(e => e.time.getTime() < beforeMs);
+    if (!past.length) return null;
+    const p = past[past.length-1];
+    return { type:p.type, ms:p.time.getTime(), h:p.h };
+  } catch(e) { return null; }
 }
 
-// ── All events in a ms window ────────────────────────────────────────────────
+// ── All events in a NZ-day window ───────────────────────────────────────────
+// fromMs/toMs are UTC milliseconds.
 function _getAllTideEventsWindow(fromMs, toMs) {
-  if (_tideCache?.extremes) {
-    return _tideCache.extremes
-      .filter(e => e.ms >= fromMs && e.ms <= toMs)
-      .map(e => ({ type:_normType(e.type), ms:e.ms, h:e.h }));
-  }
-  const evts = findTideEvents(new Date(fromMs), 14, activePort);
-  return evts.filter(e => e.time.getTime() <= toMs)
-    .map(e => ({ type:e.type, ms:e.time.getTime(), h:e.h }));
+  try {
+    if (_tideCache?.extremes) {
+      return _tideCache.extremes
+        .filter(e => e.ms >= fromMs && e.ms <= toMs)
+        .map(e => ({ type:_normType(e.type), ms:e.ms, h:e.h }));
+    }
+    const evts = findTideEvents(new Date(fromMs), 14, activePort);
+    return evts
+      .filter(e => e.time.getTime() >= fromMs && e.time.getTime() <= toMs)
+      .map(e => ({ type:e.type, ms:e.time.getTime(), h:e.h }));
+  } catch(e) { return []; }
 }
 
 // ── NZ season (Southern Hemisphere) ─────────────────────────────────────────
@@ -1895,73 +1932,60 @@ function _nzSeason(month) {
 
 // ── Solunar star rating from moon age fraction ───────────────────────────────
 function _solunarStars(ag) {
-  if (ag<0.05||ag>0.95) return 5;   // New Moon — big spring tides
-  if (ag>0.46&&ag<0.54) return 5;   // Full Moon
-  if ((ag>0.22&&ag<0.28)||(ag>0.72&&ag<0.78)) return 3; // Quarters
+  if (ag<0.05||ag>0.95||( ag>0.46&&ag<0.54)) return 5;
+  if ((ag>0.22&&ag<0.28)||(ag>0.72&&ag<0.78)) return 3;
   if (ag<0.13||ag>0.87||(ag>0.38&&ag<0.62)) return 4;
   return 3;
 }
 
 // ── Basic sunrise/sunset — NOAA simplified algorithm ────────────────────────
-// Accurate to ≈1 minute for NZ latitudes. Returns {rise, set} as hh:mmam/pm strings.
-function _sunriseSunset(date, lat, lng, tz) {
-  const R=Math.PI/180;
-  const jd=date.getTime()/86400000+2440587.5;
-  const n=jd-2451545.0;
-  const L=((280.46+0.9856474*n)%360+360)%360;
-  const g=((357.528+0.9856003*n)%360)*R;
-  const lam=(L+1.9148*Math.sin(g)+0.02*Math.sin(2*g))*R;
-  const eps=23.439*R;
-  const sinD=Math.sin(eps)*Math.sin(lam);
-  const delta=Math.asin(sinD);
-  const latR=lat*R;
-  const cosH=(Math.cos(90.833*R)-Math.sin(latR)*sinD)/(Math.cos(latR)*Math.cos(delta));
-  if(Math.abs(cosH)>1) return null; // polar day/night
-  const HA=Math.acos(cosH)/R;
-  const y=Math.tan(eps/2)**2;
-  const eqt=4*(y*Math.sin(2*L*R)-2*0.0167*Math.sin(g)+4*0.0167*y*Math.sin(g)*Math.cos(2*L*R)-0.5*y*y*Math.sin(4*L*R)-1.25*0.0167**2*Math.sin(2*g))*180/Math.PI;
-  const noon=720-4*lng-eqt; // minutes from midnight UTC
-  const dayStartMs=date.getTime()-(date.getTime()%86400000);
-  const fmt=mins=>{
-    const d=new Date(dayStartMs+mins*60000);
-    try {
-      return new Intl.DateTimeFormat('en-NZ',{hour:'numeric',minute:'2-digit',hour12:true,timeZone:tz||'Pacific/Auckland'}).format(d).toLowerCase().replace(/\s+/g,'');
-    } catch(e){return'—';}
-  };
-  return { rise:fmt(noon-4*HA), set:fmt(noon+4*HA) };
+function _sunriseSunset(date, lat, lng) {
+  try {
+    const R=Math.PI/180, jd=date.getTime()/86400000+2440587.5, n=jd-2451545.0;
+    const L=((280.46+0.9856474*n)%360+360)%360, g=((357.528+0.9856003*n)%360)*R;
+    const lam=(L+1.9148*Math.sin(g)+0.02*Math.sin(2*g))*R, eps=23.439*R;
+    const sinD=Math.sin(eps)*Math.sin(lam), delta=Math.asin(sinD), latR=lat*R;
+    const cosH=(Math.cos(90.833*R)-Math.sin(latR)*sinD)/(Math.cos(latR)*Math.cos(delta));
+    if(Math.abs(cosH)>1) return null;
+    const HA=Math.acos(cosH)/R;
+    const y2=Math.tan(eps/2)**2;
+    const eqt=4*(y2*Math.sin(2*L*R)-2*0.0167*Math.sin(g)+4*0.0167*y2*Math.sin(g)*Math.cos(2*L*R)-0.5*y2*y2*Math.sin(4*L*R)-1.25*0.0167**2*Math.sin(2*g))*180/Math.PI;
+    const noon=720-4*lng-eqt;
+    const dayMs=Math.floor(date.getTime()/86400000)*86400000;
+    const fmt=mins=>_fmtTideTime(new Date(dayMs+mins*60000));
+    return { rise:fmt(noon-4*HA), set:fmt(noon+4*HA) };
+  } catch(e) { return null; }
 }
 
 // ── Circular tide gauge SVG ──────────────────────────────────────────────────
-// Arc sweeps clockwise from 7-o'clock (SVG 120°) through 12-o'clock to 5-o'clock (SVG 60°)
-// 0% = LOW (needle at 7 o'clock), 50% = needle at 12 o'clock, 100% = HIGH (5 o'clock)
 function _tideGaugeSVG(pct) {
-  const cx=44,cy=46,R=30;
-  const toRad=d=>d*Math.PI/180;
-  const pt=deg=>({x:cx+R*Math.cos(toRad(deg)),y:cy+R*Math.sin(toRad(deg))});
-  const startDeg=120,sweep=300; // clockwise from 7 o'clock → 12 → 5 o'clock
-  const endDeg=startDeg+sweep;  // =420 → wraps to 60°
-  const s=pt(startDeg), e=pt(60); // 60° = SVG 5 o'clock
-  const clamp=Math.min(99.5,Math.max(0.5,pct));
-  const needleDeg=startDeg+(clamp/100)*sweep;
-  const n=pt(needleDeg);
-  const lf=(clamp/100*sweep>180)?1:0; // large-arc-flag
-  const ticks=Array.from({length:11},(_,i)=>{
-    const d=startDeg+i*(sweep/10),big=i%5===0;
-    const ri=R-(big?8:4);
-    const p1=pt(d),p2={x:cx+ri*Math.cos(toRad(d)),y:cy+ri*Math.sin(toRad(d))};
-    return `<line x1="${p2.x.toFixed(1)}" y1="${p2.y.toFixed(1)}" x2="${p1.x.toFixed(1)}" y2="${p1.y.toFixed(1)}" stroke="rgba(255,255,255,${big?.28:.13})" stroke-width="${big?1.2:.7}"/>`;
-  }).join('');
-  return `<svg width="88" height="88" viewBox="0 0 88 88" style="flex-shrink:0;">
-    <circle cx="${cx}" cy="${cy}" r="38" fill="rgba(0,0,0,0.32)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
-    <path d="M${s.x.toFixed(1)},${s.y.toFixed(1)} A${R},${R} 0 1,1 ${e.x.toFixed(1)},${e.y.toFixed(1)}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="5" stroke-linecap="round"/>
-    <path d="M${s.x.toFixed(1)},${s.y.toFixed(1)} A${R},${R} 0 ${lf},1 ${n.x.toFixed(1)},${n.y.toFixed(1)}" fill="none" stroke="#4fc3a1" stroke-width="5" stroke-linecap="round" opacity="0.82"/>
-    ${ticks}
-    <line x1="${cx}" y1="${cy}" x2="${n.x.toFixed(1)}" y2="${n.y.toFixed(1)}" stroke="#4fc3a1" stroke-width="2.5" stroke-linecap="round"/>
-    <circle cx="${cx}" cy="${cy}" r="4.5" fill="#4fc3a1"/>
-    <circle cx="${cx}" cy="${cy}" r="2" fill="#1a2a38"/>
-    <text x="${cx}" y="${cy-R-7}" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,.7)" font-weight="700" font-family="system-ui,sans-serif" letter-spacing=".5">HIGH</text>
-    <text x="${(cx+(R+4)*Math.cos(toRad(90))).toFixed(1)}" y="${(cy+(R+4)*Math.sin(toRad(90))+7).toFixed(1)}" text-anchor="middle" font-size="6.5" fill="rgba(255,255,255,.4)" font-family="system-ui">LOW</text>
-  </svg>`;
+  try {
+    if (!isFinite(pct)) pct = 50;
+    const cx=44,cy=46,R=30,toRad=d=>d*Math.PI/180;
+    const pt=deg=>({x:cx+R*Math.cos(toRad(deg)),y:cy+R*Math.sin(toRad(deg))});
+    const startDeg=120, sweep=300;
+    const s=pt(startDeg), eP=pt(60);
+    const clamp=Math.min(99.5,Math.max(0.5,pct));
+    const needleDeg=startDeg+(clamp/100)*sweep;
+    const n=pt(needleDeg);
+    const lf=(clamp/100*sweep>180)?1:0;
+    const ticks=Array.from({length:11},(_,i)=>{
+      const dd=startDeg+i*(sweep/10), big=i%5===0, ri=R-(big?8:4);
+      const p1=pt(dd), p2={x:cx+ri*Math.cos(toRad(dd)),y:cy+ri*Math.sin(toRad(dd))};
+      return `<line x1="${p2.x.toFixed(1)}" y1="${p2.y.toFixed(1)}" x2="${p1.x.toFixed(1)}" y2="${p1.y.toFixed(1)}" stroke="rgba(255,255,255,${big?.28:.13})" stroke-width="${big?1.2:.7}"/>`;
+    }).join('');
+    return `<svg width="88" height="88" viewBox="0 0 88 88" style="flex-shrink:0;">
+      <circle cx="${cx}" cy="${cy}" r="38" fill="rgba(0,0,0,0.32)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+      <path d="M${s.x.toFixed(1)},${s.y.toFixed(1)} A${R},${R} 0 1,1 ${eP.x.toFixed(1)},${eP.y.toFixed(1)}" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="5" stroke-linecap="round"/>
+      <path d="M${s.x.toFixed(1)},${s.y.toFixed(1)} A${R},${R} 0 ${lf},1 ${n.x.toFixed(1)},${n.y.toFixed(1)}" fill="none" stroke="#4fc3a1" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
+      ${ticks}
+      <line x1="${cx}" y1="${cy}" x2="${n.x.toFixed(1)}" y2="${n.y.toFixed(1)}" stroke="#4fc3a1" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="${cx}" cy="${cy}" r="4.5" fill="#4fc3a1"/>
+      <circle cx="${cx}" cy="${cy}" r="2" fill="#1a2a38"/>
+      <text x="${cx}" y="12" text-anchor="middle" font-size="7.5" fill="rgba(255,255,255,.75)" font-weight="700" font-family="system-ui,sans-serif" letter-spacing=".3">HIGH</text>
+      <text x="${cx}" y="84" text-anchor="middle" font-size="7" fill="rgba(255,255,255,.35)" font-family="system-ui,sans-serif">LOW</text>
+    </svg>`;
+  } catch(e) { return '<svg width="88" height="88" viewBox="0 0 88 88"></svg>'; }
 }
 
 // Entry point called from tab switch and GPS updates.
@@ -1974,191 +1998,210 @@ function calcTide() {
 }
 
 function _renderTideUI() {
-  const now  = new Date();
-  const ms   = now.getTime();
-  const usingAPI = !!_tideCache?.series?.length || !!_tideCache?.extremes?.length;
-  const tz = _tideCache?.timezone || 'Pacific/Auckland';
+  try {
+    const now = new Date();
+    const ms  = now.getTime();
+    const usingAPI = !!_tideCache?.series?.length || !!_tideCache?.extremes?.length;
 
-  // Current height + direction
-  let h  = _tideHeightFromCache(ms);
-  let h5 = _tideHeightFromCache(ms + 5*60000);
-  if (h  == null) h  = tideHeightAt(now, activePort);
-  if (h5 == null) h5 = tideHeightAt(new Date(ms + 5*60000), activePort);
-  const rising = h5 > h;
+    // Current height + direction
+    let h  = _tideHeightFromCache(ms);
+    let h5 = _tideHeightFromCache(ms + 5*60000);
+    if (h  == null) h  = tideHeightAt(now, activePort);
+    if (h5 == null) h5 = tideHeightAt(new Date(ms + 5*60000), activePort);
+    if (!isFinite(h))  h  = 0;
+    if (!isFinite(h5)) h5 = 0;
+    const rising = h5 > h;
 
-  // Gauge %  — LAT datum heights are always positive from API; harmonic uses z0 offset
-  let bounds;
-  if (usingAPI && _tideCache?.series?.length > 1) {
-    const hs = _tideCache.series.map(p => p.h);
-    bounds = { lo: Math.min(...hs)-0.05, hi: Math.max(...hs)+0.05 };
-  } else {
-    bounds = portBounds(activePort);
-  }
-  const pct = Math.max(0, Math.min(100, Math.round(((h-bounds.lo)/(bounds.hi-bounds.lo))*100)));
+    // Gauge %
+    let bounds;
+    if (usingAPI && _tideCache?.series?.length > 1) {
+      const hs = _tideCache.series.map(p => p.h).filter(isFinite);
+      bounds = hs.length ? { lo: Math.min(...hs)-0.05, hi: Math.max(...hs)+0.05 } : portBounds(activePort);
+    } else {
+      bounds = portBounds(activePort);
+    }
+    const range = bounds.hi - bounds.lo || 1;
+    const pct = Math.max(0, Math.min(100, Math.round(((h-bounds.lo)/range)*100)));
 
-  // Status label
-  const mid = bounds.lo + (bounds.hi-bounds.lo)*0.5;
-  const qtr = (bounds.hi-bounds.lo)*0.22;
-  let statusLabel;
-  if (h > mid+qtr)      statusLabel = 'High Tide';
-  else if (h < mid-qtr) statusLabel = 'Low Tide';
-  else if (rising)      statusLabel = 'Tide Rising';
-  else                  statusLabel = 'Tide Falling';
+    // Status label
+    const mid = bounds.lo + range*0.5, qtr = range*0.22;
+    let statusLabel;
+    if (h > mid+qtr)      statusLabel = 'High Tide';
+    else if (h < mid-qtr) statusLabel = 'Low Tide';
+    else if (rising)      statusLabel = 'Tide Rising';
+    else                  statusLabel = 'Tide Falling';
 
-  // Next events + last event for progress bar
-  const nextEvts = _getNextTideEvents(ms, 4);
-  const next = nextEvts[0];
-  const last = _getLastTideEvent(ms);
+    // Next events + last event
+    const nextEvts = _getNextTideEvents(ms, 4);
+    const next = nextEvts[0];
+    const last = _getLastTideEvent(ms);
 
-  // Countdown
-  let countdownStr = '—', nextParenStr = '';
-  if (next) {
-    const minsLeft = Math.max(0, Math.round((next.ms - ms) / 60000));
-    const hr = Math.floor(minsLeft/60), mn = minsLeft%60;
-    countdownStr = `Next ${next.type} in ${hr}h ${mn}m`;
-    nextParenStr = `(${_fmtTideTime(new Date(next.ms), tz)})`;
-  }
+    // Countdown
+    let countdownStr = '—', nextParenStr = '';
+    if (next) {
+      const minsLeft = Math.max(0, Math.round((next.ms - ms)/60000));
+      const hr = Math.floor(minsLeft/60), mn = minsLeft%60;
+      countdownStr = `Next ${next.type} in ${hr}h ${mn}m`;
+      nextParenStr = `(${_fmtTideTime(new Date(next.ms))})`;
+    }
 
-  // Progress % between last event and next event
-  let progPct = Math.round(pct); // fallback: use tide height %
-  if (last && next) progPct = Math.max(0, Math.min(100, Math.round((ms-last.ms)/(next.ms-last.ms)*100)));
+    // Progress bar
+    let progPct = pct;
+    if (last && next && next.ms > last.ms)
+      progPct = Math.max(0, Math.min(100, Math.round((ms-last.ms)/(next.ms-last.ms)*100)));
 
-  // Next HIGH and next LOW for the HL summary row
-  const nextHigh = nextEvts.find(e => e.type==='High');
-  const nextLow  = nextEvts.find(e => e.type==='Low');
+    // Next HIGH and next LOW
+    const nextHigh = nextEvts.find(e => e.type==='High');
+    const nextLow  = nextEvts.find(e => e.type==='Low');
 
-  // ── Render hero ─────────────────────────────────────────────────────────
-  const heroEl = document.getElementById('tideHero');
-  if (heroEl) {
-    heroEl.innerHTML = `
-    <div class="tide-hero">
-      <div class="tide-hero-row">
-        ${_tideGaugeSVG(pct)}
-        <div style="flex:1;min-width:0;">
-          <div class="tide-now-pill">NOW &nbsp;${rising?'↑':'↓'}&nbsp; ${statusLabel}</div>
-          <div class="tide-next-txt">${countdownStr}<br><span style="color:rgba(255,255,255,0.35);">${nextParenStr}</span></div>
+    // Render hero
+    const heroEl = document.getElementById('tideHero');
+    if (heroEl) {
+      heroEl.innerHTML = `
+      <div class="tide-hero">
+        <div class="tide-hero-row">
+          ${_tideGaugeSVG(pct)}
+          <div style="flex:1;min-width:0;">
+            <div class="tide-now-pill">NOW &nbsp;${rising?'↑':'↓'}&nbsp; ${statusLabel}</div>
+            <div class="tide-next-txt">${countdownStr}<br><span style="color:rgba(255,255,255,0.35);">${nextParenStr}</span></div>
+          </div>
         </div>
-      </div>
-      <div class="tide-sep"></div>
-      <div class="tide-hl-row">
-        ${nextHigh?`<div class="tide-hl-item">
-          <div class="tide-hl-label">⬆ NEXT HIGH</div>
-          <div class="tide-hl-time">${_fmtTideTime(new Date(nextHigh.ms),tz)}</div>
-          <div class="tide-hl-ht">${nextHigh.h.toFixed(2)}m</div>
-        </div>`:''}
-        ${nextLow?`<div class="tide-hl-item">
-          <div class="tide-hl-label">⬇ NEXT LOW</div>
-          <div class="tide-hl-time">${_fmtTideTime(new Date(nextLow.ms),tz)}</div>
-          <div class="tide-hl-ht">${nextLow.h.toFixed(2)}m</div>
-        </div>`:''}
-        <div class="tide-hl-item" style="text-align:right;">
-          <div class="tide-hl-label">NOW</div>
-          <div class="tide-hl-time">${h.toFixed(2)}m</div>
-          <div class="tide-hl-ht">${(h*3.28084).toFixed(1)}ft</div>
+        <div class="tide-sep"></div>
+        <div class="tide-hl-row">
+          ${nextHigh?`<div class="tide-hl-item">
+            <div class="tide-hl-label">⬆ NEXT HIGH</div>
+            <div class="tide-hl-time">${_fmtTideTime(new Date(nextHigh.ms))}</div>
+            <div class="tide-hl-ht">${nextHigh.h.toFixed(2)}m</div>
+          </div>`:''}
+          ${nextLow?`<div class="tide-hl-item">
+            <div class="tide-hl-label">⬇ NEXT LOW</div>
+            <div class="tide-hl-time">${_fmtTideTime(new Date(nextLow.ms))}</div>
+            <div class="tide-hl-ht">${nextLow.h.toFixed(2)}m</div>
+          </div>`:''}
+          <div class="tide-hl-item" style="text-align:right;">
+            <div class="tide-hl-label">NOW</div>
+            <div class="tide-hl-time">${h.toFixed(2)}m</div>
+            <div class="tide-hl-ht">${(h*3.28084).toFixed(1)}ft</div>
+          </div>
         </div>
-      </div>
-      <div class="tide-prog-track"><div class="tide-prog-fill" style="width:${progPct}%"></div></div>
-    </div>`;
-  }
+        <div class="tide-prog-track"><div class="tide-prog-fill" style="width:${progPct}%"></div></div>
+      </div>`;
+    }
 
-  // ── TZ note ──────────────────────────────────────────────────────────────
-  const tzEl = document.getElementById('tideTzNote');
-  if (tzEl) {
-    try {
-      const nowStr = new Intl.DateTimeFormat('en-NZ',{hour:'numeric',minute:'2-digit',second:'2-digit',hour12:false,timeZone:tz}).format(now);
-      const offset = new Intl.DateTimeFormat('en-NZ',{timeZoneName:'shortOffset',timeZone:tz}).formatToParts(now).find(p=>p.type==='timeZoneName')?.value || '';
-      tzEl.textContent = `All times in local station time: ${offset} ${nowStr} (New Zealand Time)`;
-    } catch(e) { tzEl.textContent = ''; }
-  }
+    // TZ note — use 'short' (not 'shortOffset' which needs Chrome 95+)
+    const tzEl = document.getElementById('tideTzNote');
+    if (tzEl) {
+      try {
+        const nowStr = new Intl.DateTimeFormat('en-NZ',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false,timeZone:'Pacific/Auckland'}).format(now);
+        const tzParts = new Intl.DateTimeFormat('en-NZ',{timeZoneName:'short',timeZone:'Pacific/Auckland'}).formatToParts(now);
+        const tzName = tzParts.find(p=>p.type==='timeZoneName')?.value || 'NZDT';
+        tzEl.textContent = `All times shown in local station time: ${tzName} (${nowStr} New Zealand Time)`;
+      } catch(e) { tzEl.textContent = 'All times shown in New Zealand Time'; }
+    }
 
-  // ── Location label + badge ────────────────────────────────────────────────
-  const locName = usingAPI && _tideCache?.stationName
-    ? _tideCache.stationName + ' (live)'
-    : activePort.name + ' (estimated)';
-  const locEl = document.getElementById('tideLocLabel');
-  if (locEl) locEl.textContent = '📍 ' + locName;
-  const badge = document.getElementById('tideBadge');
-  if (badge) {
-    badge.textContent  = usingAPI ? '⚡ Live' : '📐 Estimated';
-    badge.className    = 'api-badge ' + (usingAPI ? 'live-badge' : 'offline-badge');
-  }
+    // Location label + badge
+    const locName = usingAPI && _tideCache?.stationName
+      ? _tideCache.stationName + ' (live)'
+      : activePort.name + ' (estimated)';
+    const locEl = document.getElementById('tideLocLabel');
+    if (locEl) locEl.textContent = '📍 ' + locName;
+    const badge = document.getElementById('tideBadge');
+    if (badge) {
+      badge.textContent = usingAPI ? '⚡ Live' : '📐 Estimated';
+      badge.className   = 'api-badge ' + (usingAPI ? 'live-badge' : 'offline-badge');
+    }
 
-  _drawTideCurve(now);
-  renderTideSchedule();
-  fetchMarineData();
+    _drawTideCurve(now);
+    renderTideSchedule();
+    fetchMarineData();
+
+  } catch(err) {
+    console.error('_renderTideUI error:', err);
+    // Show a safe fallback so the tab doesn't go blank
+    const heroEl = document.getElementById('tideHero');
+    if (heroEl) heroEl.innerHTML = '<div style="padding:16px;color:rgba(255,255,255,0.5);font-size:13px;">Loading tide data…</div>';
+  }
 }
 
 function renderTideSchedule() {
-  const tz = _tideCache?.timezone || 'Pacific/Auckland';
-  const now = new Date();
-
-  // Date strings in NZ timezone for today and tomorrow
-  const fmt = d => new Intl.DateTimeFormat('en-CA',{timeZone:tz,year:'numeric',month:'2-digit',day:'2-digit'}).format(d);
-  const todayStr = fmt(now);
-  const tmrStr   = fmt(new Date(now.getTime()+24*3600000));
-
-  // Events window: from 14h ago to 56h from now (covers both days safely)
-  const allEvts = _getAllTideEventsWindow(now.getTime()-14*3600000, now.getTime()+56*3600000);
-  const dateOf  = ms => fmt(new Date(ms));
-
   const el = document.getElementById('tideSchedule');
   if (!el) return;
-  el.innerHTML =
-    _renderDayCard(todayStr, allEvts.filter(e=>dateOf(e.ms)===todayStr), true, tz) +
-    _renderDayCard(tmrStr,   allEvts.filter(e=>dateOf(e.ms)===tmrStr),  false, tz);
+  try {
+    const now = new Date();
+    // Always use Pacific/Auckland — _nzDateStr handles DST automatically
+    const todayStr = _nzDateStr(now.getTime());
+    const tmrStr   = _nzDateStr(now.getTime() + 25*3600000); // +25h guarantees crossing midnight
+
+    // Collect events spanning today+tomorrow: go back 18h (catches early-AM tides already past)
+    // and forward 54h (covers full two-day window comfortably)
+    const allEvts = _getAllTideEventsWindow(now.getTime()-18*3600000, now.getTime()+54*3600000);
+    const dateOf  = ms => _nzDateStr(ms);
+
+    el.innerHTML =
+      _renderDayCard(todayStr, allEvts.filter(e=>dateOf(e.ms)===todayStr), true) +
+      _renderDayCard(tmrStr,   allEvts.filter(e=>dateOf(e.ms)===tmrStr),  false);
+  } catch(e) {
+    console.error('renderTideSchedule error:', e);
+    el.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--hint);">Unable to load schedule</div>';
+  }
 }
 
-function _renderDayCard(dateStr, events, isToday, tz) {
-  const [y,m,d] = dateStr.split('-').map(Number);
-  // Noon UTC on that date — safe reference point for formatting in any timezone
-  const noon = new Date(Date.UTC(y,m-1,d,12,0,0));
-  const dayName = new Intl.DateTimeFormat('en-NZ',{weekday:'short',timeZone:tz}).format(noon).toUpperCase();
-  const monStr  = new Intl.DateTimeFormat('en-NZ',{month:'short',timeZone:tz}).format(noon).toUpperCase();
+function _renderDayCard(dateStr, events, isToday) {
+  try {
+    // Parse dateStr (YYYY-MM-DD in NZ timezone) into y/m/d numbers
+    const parts = dateStr.split('-');
+    const y=+parts[0], m=+parts[1], d=+parts[2];
 
-  // Moon phase
-  const moon = moonAt(noon);
+    // Reference point: noon NZ time on this day
+    // We approximate by taking midnight UTC of the NZ date and adding 12h offset
+    // Since NZ is UTC+12 or +13, noon NZ = midnight UTC - 1h or 0h (UTC previous day)
+    // Safer: use a timestamp known to fall on this NZ calendar day
+    const nzNoon = new Date(`${dateStr}T12:00:00+13:00`); // noon NZ NZDT (safe for any NZ date)
 
-  // Season
-  const season = _nzSeason(m);
+    const dayName = new Intl.DateTimeFormat('en-NZ',{weekday:'short',timeZone:'Pacific/Auckland'}).format(nzNoon).toUpperCase();
+    const monStr  = new Intl.DateTimeFormat('en-NZ',{month:'short',timeZone:'Pacific/Auckland'}).format(nzNoon).toUpperCase();
 
-  // Solunar star rating
-  const stars = _solunarStars(moon.ag);
-  const starsHtml = `<span style="color:#e8b84b;">${'★'.repeat(stars)}</span><span style="color:rgba(255,255,255,0.2);">${'★'.repeat(5-stars)}</span>`;
+    const moon  = moonAt(nzNoon);
+    const season = _nzSeason(m);
+    const stars = _solunarStars(moon.ag);
+    const starsHtml = `<span style="color:#e8b84b;">${'★'.repeat(stars)}</span><span style="color:rgba(255,255,255,0.18);">${'★'.repeat(5-stars)}</span>`;
 
-  // Sunrise / sunset
-  const sun = _sunriseSunset(noon, appLat, appLng, tz);
-  const sunStr = sun ? `🌅 ${sun.rise} – ${sun.set}` : '';
+    const sun = _sunriseSunset(nzNoon, appLat, appLng);
+    const sunStr = sun ? `🌅 ${sun.rise} – ${sun.set}` : '';
 
-  // Tide event rows
-  const rows = events.length
-    ? events.map(e => {
-        const isH = e.type==='High';
-        const t   = _fmtTideTime(new Date(e.ms), tz);
-        const hm  = e.h.toFixed(2);
-        const hft = (e.h*3.28084).toFixed(1);
-        return `<div class="tide-event-row">
-          <span class="tide-event-badge ${isH?'high':'low'}">${isH?'HIGH TIDE':'LOW TIDE'}</span>
-          <div style="flex:1;min-width:0;">
-            <div class="tide-event-time">${t}</div>
-            <div class="tide-event-ht">${hm}m (${hft}ft)<span class="tide-lat-badge">LAT</span></div>
-          </div>
-        </div>`;
-      }).join('')
-    : `<div style="padding:12px 10px;font-size:11px;color:var(--hint);text-align:center;">No data</div>`;
+    const rows = events.length
+      ? events.map(e => {
+          const isH = e.type==='High';
+          const t   = _fmtTideTime(new Date(e.ms));
+          const hm  = isFinite(e.h) ? e.h.toFixed(2) : '—';
+          const hft = isFinite(e.h) ? (e.h*3.28084).toFixed(1) : '—';
+          return `<div class="tide-event-row">
+            <span class="tide-event-badge ${isH?'high':'low'}">${isH?'HIGH TIDE':'LOW TIDE'}</span>
+            <div style="flex:1;min-width:0;">
+              <div class="tide-event-time">${t}</div>
+              <div class="tide-event-ht">${hm}m (${hft}ft)<span class="tide-lat-badge">LAT</span></div>
+            </div>
+          </div>`;
+        }).join('')
+      : `<div style="padding:12px 10px;font-size:11px;color:var(--hint);text-align:center;">No data</div>`;
 
-  return `<div class="tide-day-card">
-    <div class="tide-day-head">
-      ${isToday?`<div class="tide-today-dot">● TODAY</div>`:''}
-      <div class="tide-day-datestr">${dayName}, ${d} ${monStr} ${y}</div>
-      <div class="tide-day-meta">
-        ${sunStr?`<div class="tide-day-meta-row">${sunStr}</div>`:''}
-        <div class="tide-day-meta-row">${moon.e} ${moon.n} ${moon.il}%</div>
-        <div class="tide-day-meta-row">${season}</div>
-        <div class="tide-stars-row">${starsHtml}</div>
+    return `<div class="tide-day-card">
+      <div class="tide-day-head">
+        ${isToday?`<div class="tide-today-dot">● TODAY</div>`:''}
+        <div class="tide-day-datestr">${dayName}, ${d} ${monStr} ${y}</div>
+        <div class="tide-day-meta">
+          ${sunStr?`<div class="tide-day-meta-row">${sunStr}</div>`:''}
+          <div class="tide-day-meta-row">${moon.e} ${moon.n} ${moon.il}%</div>
+          <div class="tide-day-meta-row">${season} &nbsp;·&nbsp; Spring tides</div>
+          <div class="tide-stars-row">${starsHtml}</div>
+        </div>
       </div>
-    </div>
-    <div>${rows}</div>
-  </div>`;
+      <div>${rows}</div>
+    </div>`;
+  } catch(e) {
+    console.error('_renderDayCard error:', e, dateStr);
+    return `<div class="tide-day-card"><div style="padding:14px;font-size:12px;color:var(--hint);">Error loading day</div></div>`;
+  }
 }
 
 function drawWave(p) {
