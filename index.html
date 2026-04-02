@@ -245,17 +245,7 @@ input[type=file]{display:none;}
 
   <!-- HEADER -->
   <div class="header">
-    <svg width="38" height="38" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-      <rect x="0" y="0" width="512" height="512" rx="110" fill="#444444"/>
-      <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#cccccc" stroke-width="18" stroke-linecap="round"/>
-      <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#ffffff"/>
-      <path d="M210 260 L165 225 L165 295 Z" fill="#ffffff"/>
-      <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#ffffff"/>
-      <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#ffffff"/>
-      <circle cx="310" cy="250" r="5" fill="#444444"/>
-      <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#aaaaaa" stroke-width="20" stroke-linecap="round"/>
-      <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#aaaaaa" stroke-width="12" stroke-linecap="round"/>
-    </svg>
+    <img src="icon-192.png" width="38" height="38" style="border-radius:9px;flex-shrink:0;" alt="Fishing Log icon">
     <div>
       <div class="htitle">Fishing Log for NZ Waters</div>
       <div class="hsub" id="hcount">0 catches logged</div>
@@ -954,10 +944,10 @@ function go(p) {
 //   6. Reduce binary-search iterations from 8 to 6.
 //   7. Slightly larger target (300 KB vs 250 KB) — reduces compression work.
 // ─────────────────────────────────────────────
-const PHOTO_TARGET_BYTES = 300 * 1024; // 300 KB target — raised from 250 to ease memory pressure
-const PHOTO_MAX_PX       = 1280;       // max dimension in pixels
-const PHOTO_MIN_QUALITY  = 0.35;       // quality floor
-const PHOTO_MAX_QUALITY  = 0.85;       // quality ceiling
+const PHOTO_TARGET_BYTES = 150 * 1024; // 150 KB — optimised for storage efficiency
+const PHOTO_MAX_PX       = 960;        // max dimension in pixels (reduced from 1280)
+const PHOTO_MIN_QUALITY  = 0.30;       // quality floor
+const PHOTO_MAX_QUALITY  = 0.80;       // quality ceiling
 
 // ── Probe image dimensions using a small createImageBitmap ────────────────────
 // Returns { w, h } at the probed size. We use this ratio to compute the final
@@ -2625,6 +2615,33 @@ function updateBarometer(hpa, history) {
 // ─────────────────────────────────────────────
 // SAVE CATCH
 // ─────────────────────────────────────────────
+
+// ── Tide label helper used by saveCatch + saveEdit ───────────────────────────
+// Uses API cache heights if available (more accurate), falls back to harmonic.
+function _calcTideLabelForCatch(dt) {
+  try {
+    const ms = dt.getTime();
+    let h  = _tideHeightFromCache(ms);
+    let h5 = _tideHeightFromCache(ms + 5 * 60000);
+    if (h  == null) h  = tideHeightAt(dt, activePort);
+    if (h5 == null) h5 = tideHeightAt(new Date(ms + 5 * 60000), activePort);
+    if (!isFinite(h))  h  = 0;
+    if (!isFinite(h5)) h5 = 0;
+    const rising = h5 > h;
+    // Use API series bounds if available for tighter high/low thresholds
+    let bounds;
+    if (_tideCache?.series?.length > 1) {
+      const hs = _tideCache.series.map(p => p.h).filter(isFinite);
+      bounds = hs.length ? { lo: Math.min(...hs) - 0.05, hi: Math.max(...hs) + 0.05 } : portBounds(activePort);
+    } else {
+      bounds = portBounds(activePort);
+    }
+    const range = bounds.hi - bounds.lo || 1;
+    const mid = bounds.lo + range * 0.5, qtr = range * 0.22;
+    const tl = h > mid + qtr ? 'High Tide' : h < mid - qtr ? 'Low Tide' : (rising ? 'Mid — Rising' : 'Mid — Falling');
+    return tl + (rising ? ' · Incoming' : ' · Outgoing');
+  } catch(e) { return '—'; }
+}
 async function saveCatch() {
   const fish=document.getElementById('ftype').value==='Other'?document.getElementById('fcust').value:document.getElementById('ftype').value;
   if(!fish){showToast('Please select a fish species.','error');vibrate(60);return;}
@@ -2636,15 +2653,16 @@ async function saveCatch() {
     // FIX: parse catch date/time in NZ local time, not device local time,
     // so the tide/moon snapshot is correct regardless of device timezone setting.
     const dt=new Date(`${d}T${t}:00${_nzISOOffset()}`);
-    const hNow=tideHeightAt(dt,activePort), hNext=tideHeightAt(new Date(dt.getTime()+300000),activePort);
-    const rising=hNext>hNow;
-    const bounds=portBounds(activePort), mid=bounds.lo+(bounds.hi-bounds.lo)*0.5, qtr=(bounds.hi-bounds.lo)*0.22;
-    const tl=hNow>mid+qtr?'High Tide':hNow<mid-qtr?'Low Tide':(rising?'Mid — Rising':'Mid — Falling');
-    ti=tl+(rising?' · Incoming':' · Outgoing');
+    // FIX: use cache-aware tide calculation so API data is reflected in saved catches
+    ti = _calcTideLabelForCatch(dt);
     const mo=moonAt(dt); mi=mo.e+' '+mo.n+' ('+mo.il+'%)';
-    const so=solunarAt(dt,appLng),h=dt.getHours()+dt.getMinutes()/60;
+    const so=solunarAt(dt,appLng),h=dt.getUTCHours()+dt.getUTCMinutes()/60+(_nzISOOffset()==='+13:00'?13:12);
+    const hn=((h%24)+24)%24;
     const solDiff=(a,b)=>Math.min(Math.abs(a-b),24-Math.abs(a-b));
-    bi=(solDiff(h,so.m1)<1||solDiff(h,so.m2)<1)?'🟢 Major period':(solDiff(h,so.n1)<0.5||solDiff(h,so.n2)<0.5)?'🟡 Minor period':'Between periods';
+    // Only record meaningful solunar windows — omit "Between periods"
+    if(solDiff(hn,so.m1)<1||solDiff(hn,so.m2)<1) bi='🟢 Major period';
+    else if(solDiff(hn,so.n1)<0.5||solDiff(hn,so.n2)<0.5) bi='🟡 Minor period';
+    else bi='';
   }
   const id='c'+Date.now();
   const catchPhoto = photo; // capture before reset
@@ -2880,9 +2898,8 @@ function renderList() {
           ${c.notes?`<div class="cmeta" style="font-size:11px;font-style:italic;color:var(--hint);">"${c.notes.slice(0,60)}${c.notes.length>60?'…':''}"</div>`:''}
           <div class="ctags">
             <span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':c.tide||'—'}</span>
-            <span class="tag tp">${c.moon}</span>
-            <span class="tag ta">${c.bite}</span>
-            <span class="tag tb">${c.weather}</span>
+            <span class="tag tp">${c.moon||'—'}</span>
+            ${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${c.bite}</span>`:''}
           </div>
         </div>
       </div>
@@ -3000,17 +3017,17 @@ function saveEdit() {
   if(newDate && newTime) {
     // FIX: use NZ local time for tide/moon recalculation, not device local time.
     const dt = new Date(`${newDate}T${newTime}:00${_nzISOOffset()}`);
-    const hNow = tideHeightAt(dt, activePort), hNext = tideHeightAt(new Date(dt.getTime()+300000), activePort);
-    const rising = hNext > hNow;
-    const bounds = portBounds(activePort), mid = bounds.lo + (bounds.hi - bounds.lo)*0.5, qtr = (bounds.hi - bounds.lo)*0.22;
-    const tl = hNow > mid+qtr ? 'High Tide' : hNow < mid-qtr ? 'Low Tide' : (rising ? 'Mid — Rising' : 'Mid — Falling');
-    ti = tl + (rising ? ' · Incoming' : ' · Outgoing');
+    // FIX: use cache-aware tide calculation so edits reflect API data
+    ti = _calcTideLabelForCatch(dt);
     const mo = moonAt(dt); mi = mo.e + ' ' + mo.n + ' (' + mo.il + '%)';
-    const so = solunarAt(dt, appLng), h = dt.getHours() + dt.getMinutes()/60;
+    const so = solunarAt(dt, appLng);
+    const h = dt.getUTCHours() + dt.getUTCMinutes()/60 + (_nzISOOffset()==='+13:00'?13:12);
+    const hn = ((h%24)+24)%24;
     const solDiff = (a, b) => Math.min(Math.abs(a-b), 24-Math.abs(a-b));
-    bi = (solDiff(h,so.m1)<1 || solDiff(h,so.m2)<1) ? '🟢 Major period'
-       : (solDiff(h,so.n1)<0.5 || solDiff(h,so.n2)<0.5) ? '🟡 Minor period'
-       : 'Between periods';
+    // Only record meaningful solunar windows — omit "Between periods"
+    if(solDiff(hn,so.m1)<1 || solDiff(hn,so.m2)<1) bi = '🟢 Major period';
+    else if(solDiff(hn,so.n1)<0.5 || solDiff(hn,so.n2)<0.5) bi = '🟡 Minor period';
+    else bi = '';
   }
 
   // Resolve photo: undefined = keep existing, string = new photo
@@ -3127,17 +3144,105 @@ function renderStats() {
   // ── Best bite window ──
   // (removed — replaced by Best Month)
 
-  // ── Best month ──
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  const monthCount = {};
+  // ── Best month — full 12-month data with species breakdown ──
+  const MONTHS     = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const MON_SHORT  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // monthSpecies[monthIndex] = { speciesName: count, ... }
+  const monthSpecies = Array.from({length:12}, () => ({}));
   catches.forEach(c => {
     if(!c.date) return;
     const parts = c.date.split('-');
     if(parts.length < 2) return;
-    const m = parseInt(parts[1], 10);
-    if(m >= 1 && m <= 12) monthCount[MONTHS[m-1]] = (monthCount[MONTHS[m-1]]||0) + 1;
+    const mIdx = parseInt(parts[1], 10) - 1;
+    if(mIdx < 0 || mIdx > 11) return;
+    const sp = c.fish || 'Other';
+    monthSpecies[mIdx][sp] = (monthSpecies[mIdx][sp] || 0) + 1;
   });
-  const topMonths = Object.entries(monthCount).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  const monthTotals = monthSpecies.map(s => Object.values(s).reduce((a,b)=>a+b,0));
+  const maxMonth = Math.max(...monthTotals, 1);
+
+  // Build ordered species list (by total catches) for consistent colour assignment
+  const allSpeciesSet = {};
+  catches.forEach(c => { if(c.fish) allSpeciesSet[c.fish]=(allSpeciesSet[c.fish]||0)+1; });
+  const orderedSpecies = Object.entries(allSpeciesSet).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+
+  // Species colour palette — matches SPECIES_COLORS map used on the map
+  const SP_CHART_COLORS = {
+    'Snapper':'#FF2424','Kingfish':'#FFAA00','Kahawai':'#00C244','Gurnard':'#BB00EE',
+    'John Dory':'#00AAFF','Blue Cod':'#0033CC','Trevally':'#FF6600','Tarakihi':'#FF0088',
+    'Moki':'#00CCAA','Hapuka':'#AADD00','Crayfish':'#6644BB'
+  };
+  function spColor(sp) { return SP_CHART_COLORS[sp] || '#4fc3a1'; }
+
+  // Build SVG bar chart
+  const bestMonthIdx = monthTotals.indexOf(Math.max(...monthTotals));
+  const chartW=360, chartH=130, barW=22, gap=6, leftPad=24, topPad=8, bottomPad=28;
+  const usableH = chartH - topPad - bottomPad;
+  const totalWidth = 12*(barW+gap)-gap;
+  const startX = (chartW - totalWidth) / 2;
+
+  let svgBars = '';
+  monthTotals.forEach((total, mi) => {
+    if(total === 0) return;
+    const x = startX + mi*(barW+gap);
+    const totalBarH = Math.round((total/maxMonth) * usableH);
+    let stackY = chartH - bottomPad;
+    // Stack species segments bottom-up in species order
+    orderedSpecies.forEach(sp => {
+      const cnt = monthSpecies[mi][sp] || 0;
+      if(!cnt) return;
+      const segH = Math.round((cnt/maxMonth) * usableH);
+      stackY -= segH;
+      const isHighlight = mi === bestMonthIdx;
+      svgBars += `<rect x="${x}" y="${stackY}" width="${barW}" height="${segH}"
+        fill="${spColor(sp)}" opacity="${isHighlight?1:0.72}" rx="2"/>`;
+    });
+    // Total label above bar
+    const labelY = chartH - bottomPad - totalBarH - 3;
+    svgBars += `<text x="${x+barW/2}" y="${labelY}" text-anchor="middle"
+      font-size="8" font-weight="${mi===bestMonthIdx?'700':'400'}"
+      fill="${mi===bestMonthIdx?'#fff':'rgba(0,0,0,0.45)'}"
+      font-family="system-ui,sans-serif">${total}</text>`;
+  });
+  // Month labels + best month highlight
+  let svgLabels = '';
+  MON_SHORT.forEach((lbl, mi) => {
+    const x = startX + mi*(barW+gap) + barW/2;
+    const isBest = mi === bestMonthIdx;
+    svgLabels += `<text x="${x}" y="${chartH - bottomPad + 12}" text-anchor="middle"
+      font-size="${isBest?8.5:7.5}" font-weight="${isBest?'700':'400'}"
+      fill="${isBest?'#1a6b52':'rgba(0,0,0,0.45)'}"
+      font-family="system-ui,sans-serif">${lbl}</text>`;
+    if(isBest) {
+      svgLabels += `<rect x="${startX + mi*(barW+gap)-1}" y="${chartH-bottomPad+14}" width="${barW+2}" height="2.5" rx="1.5" fill="#4fc3a1"/>`;
+    }
+  });
+  // Y-axis gridlines (2 lines)
+  let svgGrid = '';
+  [0.5, 1].forEach(frac => {
+    const y = chartH - bottomPad - Math.round(frac * usableH);
+    const val = Math.round(frac * maxMonth);
+    svgGrid += `<line x1="${leftPad}" y1="${y}" x2="${chartW-4}" y2="${y}"
+      stroke="rgba(0,0,0,0.07)" stroke-width="0.5"/>
+      <text x="${leftPad-2}" y="${y+3}" text-anchor="end" font-size="7"
+      fill="rgba(0,0,0,0.3)" font-family="system-ui,sans-serif">${val}</text>`;
+  });
+  // Legend
+  const legendSpecies = orderedSpecies.slice(0, 6);
+  let svgLegend = '';
+  legendSpecies.forEach((sp, li) => {
+    const lx = 4 + li * Math.floor((chartW-8) / Math.min(legendSpecies.length, 6));
+    svgLegend += `<rect x="${lx}" y="${chartH+2}" width="8" height="8" rx="2" fill="${spColor(sp)}"/>
+      <text x="${lx+10}" y="${chartH+9}" font-size="7.5" fill="rgba(0,0,0,0.55)"
+      font-family="system-ui,sans-serif">${sp.length>8?sp.slice(0,7)+'…':sp}</text>`;
+  });
+  const legendH = legendSpecies.length ? 14 : 0;
+  const svgHeight = chartH + legendH + 4;
+
+  const monthChartSVG = `<svg viewBox="0 0 ${chartW} ${svgHeight}" xmlns="http://www.w3.org/2000/svg"
+    style="width:100%;display:block;overflow:visible;">${svgGrid}${svgBars}${svgLabels}${svgLegend}</svg>`;
+
+  const topMonths = MONTHS.map((name,i)=>({name,total:monthTotals[i]})).filter(m=>m.total>0).sort((a,b)=>b.total-a.total).slice(0,3);
 
   // ── Best weight ──
   const withWeight = catches.filter(c=>c.weight).sort((a,b)=>parseFloat(b.weight)-parseFloat(a.weight));
@@ -3210,19 +3315,18 @@ function renderStats() {
         </div>
       </div>`:''}
       ${topMonths.length?`
-      <div class="insight-item" style="align-items:flex-start;">
-        <div class="insight-icon">📅</div>
-        <div class="insight-text">
-          <div class="insight-title">Best Months (Top 3)</div>
-          ${topMonths.map(([m,cnt],i)=>`
-            <div style="display:flex;align-items:center;gap:8px;margin-top:${i===0?4:6}px;">
-              <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.35);width:14px;">${i+1}</div>
-              <div style="flex:1;">
-                <div style="font-size:14px;font-weight:600;color:#fff;">${m}</div>
-                <div style="font-size:11px;color:rgba(255,255,255,0.4);">${cnt} catch${cnt!==1?'es':''} recorded</div>
-              </div>
-              <div style="display:flex;gap:2px;">${'⭐'.repeat(3-i)}</div>
-            </div>`).join('')}
+      <div class="insight-item" style="align-items:flex-start;flex-direction:column;gap:0;">
+        <div style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:10px;">
+          <div class="insight-icon">📅</div>
+          <div class="insight-text">
+            <div class="insight-title">Catches by Month</div>
+            <div class="insight-val" style="font-size:13px;">${topMonths[0].name} is your best month
+              <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.45);"> — ${topMonths[0].total} catch${topMonths[0].total!==1?'es':''}</span>
+            </div>
+          </div>
+        </div>
+        <div style="width:100%;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 6px 4px;">
+          ${monthChartSVG}
         </div>
       </div>`:''}
     </div>
