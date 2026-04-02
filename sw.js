@@ -1,4 +1,4 @@
-const CACHE = 'fishinglog-v2';
+const CACHE = 'fishinglog-v3';
 const CORE = ['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(CORE.map(a => c.add(a).catch(()=>{})))));

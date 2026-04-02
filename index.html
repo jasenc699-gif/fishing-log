@@ -1671,6 +1671,11 @@ function nearestPort(lat, lng) {
 // Paste your key below once — end users never touch anything.
 // If the key is missing or the request fails the harmonic model
 // takes over silently, so offline use always works.
+//
+// ⚠️ SECURITY NOTE: This key is visible in client-side HTML source.
+// For a public/shared deployment, proxy requests through a serverless
+// function (e.g. Cloudflare Worker, Netlify Function) so the key is
+// never exposed. For personal/private use this is fine.
 // ─────────────────────────────────────────────────────────────────────────────
 const TIDECHECK_API_KEY = 'tc_live_7cdd3523d192d9f1e67214fbf9fcb7d7'; // ← replace once with your free key
 
@@ -1704,6 +1709,9 @@ function _cacheValid(lat, lng) {
   if (Date.now() - _tideCache.fetched > AGE_MS) return false;
   // Accept cache if we're within ~15 km of the cached location
   if (Math.hypot(_tideCache.lat - lat, _tideCache.lng - lng) > 0.15) return false;
+  // FIX: reject cache that has no usable data — a previous failed/partial fetch
+  // could have stored an empty object, causing the API to be skipped for 8 hours.
+  if (!_tideCache.extremes?.length) return false;
   return true;
 }
 
@@ -1718,6 +1726,12 @@ async function fetchTidesFromAPI(lat, lng) {
   try {
     // 1. Find nearest station (counts as 1 API call)
     const nRes = await fetch(`${BASE}/api/stations/nearest?lat=${lat}&lng=${lng}`, { headers: H });
+    if (nRes.status === 429) {
+      console.warn('TideCheck: daily rate limit reached — using harmonic fallback');
+      const badge = document.getElementById('tideBadge');
+      if (badge) { badge.textContent = '⚠️ API limit'; badge.className = 'api-badge offline-badge'; }
+      return false;
+    }
     if (!nRes.ok) return false;
     const stations = await nRes.json();
     const st = Array.isArray(stations) ? stations[0] : stations?.stations?.[0];
@@ -1726,6 +1740,10 @@ async function fetchTidesFromAPI(lat, lng) {
     // 2. Fetch 3 days of tide data with 15-min time series (1 API call)
     // Use LAT datum — matches NZ tide tables (heights always positive, relative to chart datum)
     const tRes = await fetch(`${BASE}/api/station/${st.id}/tides?days=3&datum=LAT`, { headers: H });
+    if (tRes.status === 429) {
+      console.warn('TideCheck: daily rate limit reached on tides fetch — using harmonic fallback');
+      return false;
+    }
     if (!tRes.ok) return false;
     const td = await tRes.json();
 
@@ -1862,8 +1880,24 @@ function _nzDateStr(ms) {
     const d = parts.find(p=>p.type==='day')?.value;
     if (y && m && d) return `${y}-${m}-${d}`;
   } catch(e) {}
-  // Fallback: NZDT is UTC+13
-  return new Date(ms + 13*3600000).toISOString().slice(0,10);
+  // Fallback: use DST-aware NZ offset
+  const nzOffsetHrs = _nzISOOffset() === '+13:00' ? 13 : 12;
+  return new Date(ms + nzOffsetHrs*3600000).toISOString().slice(0,10);
+}
+
+// ── DST-aware NZ UTC offset: '+13:00' (NZDT, Oct–Apr) or '+12:00' (NZST, May–Sep) ──
+// Used anywhere we need to construct an ISO string in NZ local time, or as a fallback
+// when Intl.DateTimeFormat is unavailable.
+function _nzISOOffset() {
+  try {
+    const mon = parseInt(new Intl.DateTimeFormat('en-US', {
+      month: 'numeric', timeZone: 'Pacific/Auckland'
+    }).format(new Date()));
+    return (mon >= 10 || mon <= 4) ? '+13:00' : '+12:00';
+  } catch(e) {
+    // Ultimate fallback: check current UTC offset from NZ's standard offset
+    return '+12:00';
+  }
 }
 
 // ── Tide time formatter — always Pacific/Auckland ────────────────────────────
@@ -1873,7 +1907,12 @@ function _fmtTideTime(date, _tz) {
       hour:'numeric', minute:'2-digit', hour12:true, timeZone:'Pacific/Auckland'
     }).format(date).toLowerCase().replace(/\s+/g,'');
   } catch(e) {
-    const h=date.getHours(), m=date.getMinutes();
+    // FIX: fallback must use NZ time, not device local time.
+    // Manually shift the UTC timestamp by the NZ offset before reading UTC parts.
+    const nzOffsetHrs = _nzISOOffset() === '+13:00' ? 13 : 12;
+    const nzMs = date.getTime() + nzOffsetHrs * 3600000;
+    const d2 = new Date(nzMs);
+    const h = d2.getUTCHours(), m = d2.getUTCMinutes();
     return (h%12||12)+':'+(m<10?'0':'')+m+(h<12?'am':'pm');
   }
 }
@@ -2156,7 +2195,7 @@ function _renderDayCard(dateStr, events, isToday) {
     // We approximate by taking midnight UTC of the NZ date and adding 12h offset
     // Since NZ is UTC+12 or +13, noon NZ = midnight UTC - 1h or 0h (UTC previous day)
     // Safer: use a timestamp known to fall on this NZ calendar day
-    const nzNoon = new Date(`${dateStr}T12:00:00+13:00`); // noon NZ NZDT (safe for any NZ date)
+    const nzNoon = new Date(`${dateStr}T12:00:00${_nzISOOffset()}`); // noon NZ time — DST-aware (NZDT +13 or NZST +12)
 
     const dayName = new Intl.DateTimeFormat('en-NZ',{weekday:'short',timeZone:'Pacific/Auckland'}).format(nzNoon).toUpperCase();
     const monStr  = new Intl.DateTimeFormat('en-NZ',{month:'short',timeZone:'Pacific/Auckland'}).format(nzNoon).toUpperCase();
@@ -2204,13 +2243,9 @@ function _renderDayCard(dateStr, events, isToday) {
   }
 }
 
-function drawWave(p) {
-  const c=document.getElementById('wcanv'); if(!c) return;
-  const x=c.getContext('2d'),W=c.width,H=c.height; x.clearRect(0,0,W,H);
-  const y=H-(p/100)*H*0.82-3;
-  x.beginPath();x.moveTo(0,y);for(let i=0;i<W;i++)x.lineTo(i,y+Math.sin(i*0.09)*3.5);x.lineTo(W,H);x.lineTo(0,H);x.closePath();x.fillStyle='rgba(79,195,161,0.2)';x.fill();
-  x.beginPath();x.moveTo(0,y);for(let i=0;i<W;i++)x.lineTo(i,y+Math.sin(i*0.09)*3.5);x.strokeStyle='#4fc3a1';x.lineWidth=1.5;x.stroke();
-}
+// NOTE: drawWave() was removed — it referenced a <canvas id="wcanv"> element
+// that does not exist in the HTML. Wave height is now shown via the marine data
+// strip (tideWaveRow) fetched from Open-Meteo in fetchMarineData().
 
 function drawCurve(cd) { _drawTideCurve(cd); } // keep old call-site working
 
@@ -2598,7 +2633,9 @@ async function saveCatch() {
   if(!t){showToast('Please enter the time of your catch.','error');vibrate(60);return;}
   let ti='—',mi='—',bi='—';
   if(d&&t){
-    const dt=new Date(d+'T'+t);
+    // FIX: parse catch date/time in NZ local time, not device local time,
+    // so the tide/moon snapshot is correct regardless of device timezone setting.
+    const dt=new Date(`${d}T${t}:00${_nzISOOffset()}`);
     const hNow=tideHeightAt(dt,activePort), hNext=tideHeightAt(new Date(dt.getTime()+300000),activePort);
     const rising=hNext>hNow;
     const bounds=portBounds(activePort), mid=bounds.lo+(bounds.hi-bounds.lo)*0.5, qtr=(bounds.hi-bounds.lo)*0.22;
@@ -2961,7 +2998,8 @@ function saveEdit() {
   // Recalculate tide, moon, bite from new date/time
   let ti = catches[idx].tide, mi = catches[idx].moon, bi = catches[idx].bite;
   if(newDate && newTime) {
-    const dt = new Date(newDate + 'T' + newTime);
+    // FIX: use NZ local time for tide/moon recalculation, not device local time.
+    const dt = new Date(`${newDate}T${newTime}:00${_nzISOOffset()}`);
     const hNow = tideHeightAt(dt, activePort), hNext = tideHeightAt(new Date(dt.getTime()+300000), activePort);
     const rising = hNext > hNow;
     const bounds = portBounds(activePort), mid = bounds.lo + (bounds.hi - bounds.lo)*0.5, qtr = (bounds.hi - bounds.lo)*0.22;
