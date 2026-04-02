@@ -1656,7 +1656,17 @@ const TIDECHECK_API_KEY = 'tc_live_7cdd3523d192d9f1e67214fbf9fcb7d7'; // ← rep
 let _tideCache = null; // in-memory; also persisted to localStorage
 
 function _loadTideCache() {
-  try { _tideCache = JSON.parse(localStorage.getItem('_tc_cache') || 'null'); } catch(e) { _tideCache = null; }
+  try {
+    const raw = JSON.parse(localStorage.getItem('_tc_cache') || 'null');
+    // Invalidate any cache saved with MSL datum (heights can be negative) —
+    // we now use LAT datum so all heights are positive like NZ tide tables.
+    if (raw && raw.series && raw.series.some(p => p.h < 0)) {
+      _tideCache = null;
+      localStorage.removeItem('_tc_cache');
+    } else {
+      _tideCache = raw;
+    }
+  } catch(e) { _tideCache = null; }
 }
 _loadTideCache();
 
@@ -1692,7 +1702,8 @@ async function fetchTidesFromAPI(lat, lng) {
     if (!st?.id) return false;
 
     // 2. Fetch 3 days of tide data with 15-min time series (1 API call)
-    const tRes = await fetch(`${BASE}/api/station/${st.id}/tides?days=3&datum=MSL`, { headers: H });
+    // Use LAT datum — matches NZ tide tables (heights always positive, relative to chart datum)
+    const tRes = await fetch(`${BASE}/api/station/${st.id}/tides?days=3&datum=LAT`, { headers: H });
     if (!tRes.ok) return false;
     const td = await tRes.json();
 
@@ -1827,9 +1838,16 @@ function _renderTideUI() {
 
   const rising = h5 > h;
 
-  // For the % fill bar, derive bounds from the nearest harmonic port
-  // (API heights are MSL-relative; just use amplitude for proportion)
-  const bounds = portBounds(activePort);
+  // For the % fill bar: if we have API series use its actual min/max for correct scaling.
+  // LAT datum heights are always positive and directly comparable to harmonic bounds.
+  // Fall back to harmonic port bounds when offline.
+  let bounds;
+  if (usingAPI && _tideCache?.series?.length > 1) {
+    const hs = _tideCache.series.map(p => p.h);
+    bounds = { lo: Math.min(...hs) - 0.05, hi: Math.max(...hs) + 0.05 };
+  } else {
+    bounds = portBounds(activePort);
+  }
   const pct = Math.round(((h - bounds.lo) / (bounds.hi - bounds.lo)) * 100);
   const mid = bounds.lo + (bounds.hi - bounds.lo) * 0.5;
   const qtr = (bounds.hi - bounds.lo) * 0.22;
