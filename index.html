@@ -1786,9 +1786,9 @@ function tideV0u0(jd0) {
     M2: dg(2*h - 2*s),
     S2: 0,
     N2: dg(2*h - 3*s + p),
-    K1: dg(h + 90 - 8.86 * Math.cos(Nr)),
+    K1: dg(h + 90 - 8.86 * Math.sin(Nr)),
     O1: dg(h - 2*s - 90 + 10.80 * Math.sin(Nr)),
-    K2: dg(2*h - 17.74 * Math.cos(Nr))
+    K2: dg(2*h - 17.74 * Math.sin(Nr))
   };
 }
 
@@ -1799,10 +1799,24 @@ function tideHeightAt(date, port) {
   const V   = tideV0u0(jd0);
   const t   = (jd - jd0) * 24;               // hours from 0h UTC
   const r   = Math.PI / 180;
+
+  // Nodal amplitude factors (f) — modulate each constituent's amplitude
+  // based on the moon's ascending node N. Omitting these causes up to +-15% height errors.
+  const Nn  = ((125.0445 - 0.05295377 * (jd0 - 2451545.0)) % 360 + 360) % 360;
+  const Nnr = Nn * r;
+  const f   = {
+    M2: 1.000 - 0.037 * Math.cos(Nnr),
+    S2: 1.000,
+    N2: 1.000 - 0.037 * Math.cos(Nnr),
+    K1: 1.006 + 0.115 * Math.cos(Nnr) - 0.009 * Math.cos(2 * Nnr),
+    O1: 1.009 + 0.187 * Math.cos(Nnr) - 0.015 * Math.cos(2 * Nnr),
+    K2: 1.024 + 0.286 * Math.cos(Nnr) - 0.008 * Math.cos(2 * Nnr),
+  };
+
   return (port.z0 || 0) + TIDE_NAMES.reduce((sum, n) => {
     if (!port[n]) return sum;
     const [H, g] = port[n];
-    return sum + H * Math.cos((TIDE_SPEEDS[n] * t + V[n] - g) * r);
+    return sum + f[n] * H * Math.cos((TIDE_SPEEDS[n] * t + V[n] - g) * r);
   }, 0);
 }
 
@@ -1876,7 +1890,7 @@ function _renderTideUI() {
 
   document.getElementById('temoji').textContent = em;
   document.getElementById('tlbl').textContent   = label;
-  document.getElementById('tsub').textContent   = 'Height: ' + h.toFixed(2) + ' m';
+  document.getElementById('tsub').textContent   = (usingAPI ? 'Height: ' : 'Est. height (MSL): ') + h.toFixed(2) + ' m';
   document.getElementById('tarrow').textContent = rising ? '↑' : '↓';
   document.getElementById('tdir').textContent   = rising ? 'Incoming (Flood)' : 'Outgoing (Ebb)';
 
