@@ -385,10 +385,7 @@ input[type=file]{display:none;}
         <div id="tideWaveRow"></div>
       </div>
 
-      <div class="sec">
-        <div class="stitle">📅 Today's Tide Times</div>
-        <div id="tideSchedule" style="padding:2px 0;"></div>
-      </div>
+      <div id="tideDays"></div>
 
       <div class="sec">
         <div class="stitle">📊 24-Hour Tide Curve</div>
@@ -1713,10 +1710,22 @@ async function fetchTidesFromAPI(lat, lng) {
       fetched: Date.now(),
       stationName: st.name,
       timezone: td.station?.timezone || 'Pacific/Auckland',
-      // Extremes: [{ms, type:'high'|'low', h}]
-      extremes: (td.extremes || []).map(e => ({ ms: new Date(e.time).getTime(), type: e.type, h: e.height })),
+      // Extremes: [{ms, type:'high'|'low', h, localDate}]
+      extremes: (td.extremes || []).map(e => ({
+        ms: new Date(e.time).getTime(), type: e.type, h: e.height, localDate: e.localDate
+      })),
       // Time series: [{ms, h}] at 15-min intervals
-      series: (td.timeSeries || []).map(p => ({ ms: new Date(p.time).getTime(), h: p.height }))
+      series: (td.timeSeries || []).map(p => ({ ms: new Date(p.time).getTime(), h: p.height })),
+      // Daily conditions: sunrise, sunset, moon, spring/neap, solunar per day
+      dailyConditions: (td.dailyConditions || []).map(d => ({
+        date: d.date,
+        sunrise: d.sunrise,
+        sunset: d.sunset,
+        moonPhase: d.moonPhase,
+        moonIllumination: d.moonIllumination,
+        springNeap: d.springNeap,
+        solunarRating: d.solunarRating
+      }))
     });
     return true;
   } catch(e) {
@@ -1887,40 +1896,176 @@ function _renderTideUI() {
   fetchMarineData();
 }
 
-function renderTideSchedule() {
-  const now    = Date.now();
-  const apiEvt = _tideEventsFromCache(now, 4);
-  const events = apiEvt
-    ? apiEvt.map(e => ({ type: e.type === 'high' ? 'High' : 'Low', time: new Date(e.ms), h: e.h }))
-    : findTideEvents(new Date(), 4, activePort);
+// ─────────────────────────────────────────────
+// SUN TIMES — NOAA algorithm (~1 min accuracy)
+// Returns { rise: Date, set: Date } in UTC, or null for polar day/night
+// ─────────────────────────────────────────────
+function _calcSunTimes(dateUTC, lat, lng) {
+  const rad = Math.PI / 180;
+  const jd = dateUTC.getTime() / 86400000 + 2440587.5;
+  const n  = Math.floor(jd - 2451545.0 + 0.0008);
+  const Js = n - lng / 360;
+  const M  = ((357.5291 + 0.98560028 * Js) % 360 + 360) % 360;
+  const C  = 1.9148 * Math.sin(M*rad) + 0.02  * Math.sin(2*M*rad) + 0.0003 * Math.sin(3*M*rad);
+  const L  = ((M + C + 180 + 102.9372) % 360 + 360) % 360;
+  const Jt = 2451545.0 + Js + 0.0053 * Math.sin(M*rad) - 0.0069 * Math.sin(2*L*rad);
+  const sinDec = Math.sin(L*rad) * Math.sin(23.4397*rad);
+  const cosHa  = (Math.sin(-0.8333*rad) - Math.sin(lat*rad)*sinDec) /
+                 (Math.cos(lat*rad) * Math.cos(Math.asin(sinDec)));
+  if (Math.abs(cosHa) > 1) return null;
+  const w = Math.acos(cosHa) * 180/Math.PI;
+  const toMs = jd2 => (jd2 - 2440587.5) * 86400000;
+  return { rise: new Date(toMs(Jt - w/360)), set: new Date(toMs(Jt + w/360)) };
+}
 
-  // Always format times in the station's NZ timezone (from API cache), not device timezone.
-  // Prevents times being offset when the user's device is not set to NZ time.
-  const stationTz = (_tideCache?.timezone) || 'Pacific/Auckland';
-  const fmt = d => {
+// ─────────────────────────────────────────────
+// TIDE SCHEDULE — today + tomorrow rich cards
+// ─────────────────────────────────────────────
+function renderTideSchedule() {
+  const tz    = _tideCache?.timezone || 'Pacific/Auckland';
+  const now   = new Date();
+  const nowMs = now.getTime();
+
+  // Format a UTC timestamp as local time string (e.g. "8:16 am")
+  const fmtTime = ms => {
     try {
       return new Intl.DateTimeFormat('en-NZ', {
-        hour: 'numeric', minute: '2-digit', hour12: true, timeZone: stationTz
-      }).format(d).toLowerCase().replace(/\s+/g, '');
-    } catch(e) {
-      // Fallback if timezone string is unrecognised
-      const h = d.getHours(), m = d.getMinutes();
-      return (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m + (h < 12 ? 'am' : 'pm');
+        hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz
+      }).format(new Date(ms)).toLowerCase().replace(/\s+/g, '');
+    } catch(_) {
+      const d = new Date(ms), h = d.getHours(), m = d.getMinutes();
+      return (h%12||12) + ':' + (m<10?'0':'') + m + (h<12?'am':'pm');
     }
   };
-  const labels = ['Next', 'Then', 'Then', 'Then'];
-  document.getElementById('tideSchedule').innerHTML = events.map((e, i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${i < 3 ? 'border-bottom:0.5px solid var(--border);' : ''}">
-      <div style="font-size:26px;width:32px;text-align:center;">${e.type === 'High' ? '🌊' : '🏖'}</div>
-      <div style="flex:1;">
-        <div style="font-size:14px;font-weight:600;color:${i === 0 ? 'var(--teal)' : 'var(--text)'};">${e.type === 'High' ? 'High Tide' : 'Low Tide'}</div>
-        <div style="font-size:11px;color:var(--hint);margin-top:2px;">${labels[i]}</div>
-      </div>
-      <div style="text-align:right;">
-        <div style="font-size:16px;font-weight:700;color:${i === 0 ? 'var(--teal)' : 'var(--text)'};">${fmt(e.time)}</div>
-        <div style="font-size:13px;color:var(--muted);margin-top:2px;">${e.h.toFixed(2)} m</div>
-      </div>
-    </div>`).join('');
+
+  // Get YYYY-MM-DD in station timezone
+  const localDateStr = ms => {
+    try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date(ms)); }
+    catch(_) { return new Date(ms).toISOString().slice(0,10); }
+  };
+
+  // Format date as "Thu, 2 Apr 2026"
+  const fmtDateHdr = dateStr => {
+    try {
+      return new Intl.DateTimeFormat('en-NZ', {
+        weekday:'short', day:'numeric', month:'short', year:'numeric', timeZone: tz
+      }).format(new Date(dateStr + 'T12:00:00Z'));
+    } catch(_) { return dateStr; }
+  };
+
+  const todayStr    = localDateStr(nowMs);
+  const tomorrowStr = localDateStr(nowMs + 86400000);
+
+  // Build a map of dateStr → [{type, time:Date, h}]
+  const dayMap = {};
+  const addExtreme = (dateKey, type, timeMs, h) => {
+    if (!dayMap[dateKey]) dayMap[dateKey] = [];
+    dayMap[dateKey].push({ type, time: new Date(timeMs), h });
+  };
+
+  if (_tideCache?.extremes?.length) {
+    _tideCache.extremes.forEach(e => {
+      const dk = e.localDate || localDateStr(e.ms);
+      addExtreme(dk, e.type === 'high' ? 'High' : 'Low', e.ms, e.h);
+    });
+  } else {
+    // Harmonic fallback — scan enough events to cover today + tomorrow
+    const startOfToday = new Date(todayStr + 'T00:00:00');
+    findTideEvents(startOfToday, 12, activePort).forEach(e => {
+      addExtreme(localDateStr(e.time.getTime()), e.type, e.time.getTime(), e.h);
+    });
+  }
+
+  // Fetch daily conditions from cache or compute locally
+  const getCond = dateStr => {
+    const cached = (_tideCache?.dailyConditions || []).find(d => d.date === dateStr);
+    if (cached) return cached;
+    // Harmonic fallback: compute from local moon + solunar + sun calc
+    const dt = new Date(dateStr + 'T12:00:00');
+    const m  = moonAt(dt);
+    const s  = solunarAt(dt, appLng);
+    const sun = _calcSunTimes(dt, appLat, appLng);
+    const rating = s.q === 'Excellent' ? 5 : s.q === 'Good' ? 4 : 3;
+    return {
+      date: dateStr,
+      sunrise: sun?.rise?.toISOString() || null,
+      sunset:  sun?.set?.toISOString()  || null,
+      moonPhase: m.n,
+      moonIllumination: m.il,
+      springNeap: null,
+      solunarRating: rating
+    };
+  };
+
+  // Moon emoji from phase name
+  const moonEmoji = p => {
+    if (!p) return '🌙';
+    if (p.includes('New'))              return '🌑';
+    if (p.includes('Full'))             return '🌕';
+    if (p.includes('Waxing Gibbous'))   return '🌔';
+    if (p.includes('Waning Gibbous'))   return '🌖';
+    if (p.includes('Waxing Crescent'))  return '🌒';
+    if (p.includes('Waning Crescent'))  return '🌘';
+    if (p.includes('First'))            return '🌓';
+    if (p.includes('Last'))             return '🌗';
+    return '🌙';
+  };
+
+  // Render one day card
+  const mPerFt = 3.28084;
+  const renderDay = (dateStr, isToday) => {
+    const tides = dayMap[dateStr];
+    if (!tides || !tides.length) return '';
+    const cond  = getCond(dateStr);
+    const label = isToday ? 'Today' : 'Tomorrow';
+
+    const sunStr = (cond.sunrise && cond.sunset)
+      ? `<span style="font-size:12px;color:var(--muted);">☀️ ${fmtTime(new Date(cond.sunrise).getTime())} – ${fmtTime(new Date(cond.sunset).getTime())}</span>`
+      : '';
+
+    const springBadge = cond.springNeap
+      ? `<span style="background:${cond.springNeap==='Spring'?'rgba(79,195,161,0.15)':'rgba(239,159,39,0.1)'};color:${cond.springNeap==='Spring'?'#0a5c43':'#6b3e08'};border:0.5px solid ${cond.springNeap==='Spring'?'rgba(79,195,161,0.35)':'rgba(239,159,39,0.35)'};border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;">${cond.springNeap==='Spring'?'🌊 Spring':'🌤 Neap'}</span>`
+      : '';
+
+    const rating = Math.max(0, Math.min(5, cond.solunarRating || 0));
+    const stars  = '<span style="color:#e6a817;">★</span>'.repeat(rating) +
+                   '<span style="color:var(--border);">★</span>'.repeat(5 - rating);
+
+    const tidesHtml = tides.map(e => {
+      const isHigh = e.type === 'High';
+      const ft = (e.h * mPerFt).toFixed(1);
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:0.5px solid var(--border);">
+          <div style="font-size:20px;width:26px;text-align:center;flex-shrink:0;">${isHigh ? '🌊' : '🏖'}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">${isHigh ? 'High Tide' : 'Low Tide'}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:15px;font-weight:700;color:${isHigh ? 'var(--teal)' : 'var(--text)'};">${fmtTime(e.time.getTime())}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px;">${e.h.toFixed(2)}m (${ft}ft) LAT</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="sec" style="margin-bottom:10px;padding:13px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:9px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);">📅 ${label} — ${fmtDateHdr(dateStr)}</div>
+          ${isToday ? `<div style="font-size:12px;font-weight:600;color:var(--teal);">🕐 ${fmtTime(nowMs)}</div>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;">
+          ${sunStr}${springBadge}
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:4px;">
+          <span style="font-size:12px;color:var(--muted);">${moonEmoji(cond.moonPhase)} ${cond.moonPhase||'—'}${cond.moonIllumination!=null?' '+cond.moonIllumination+'%':''}</span>
+          <span style="font-size:13px;letter-spacing:1px;" title="Solunar fishing rating">${stars}</span>
+        </div>
+        ${tidesHtml}
+      </div>`;
+  };
+
+  const container = document.getElementById('tideDays');
+  if (container) container.innerHTML = renderDay(todayStr, true) + renderDay(tomorrowStr, false);
 }
 
 function drawWave(p) {
