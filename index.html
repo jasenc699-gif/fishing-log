@@ -1868,7 +1868,8 @@ function _renderTideUI() {
   const locName = usingAPI && _tideCache?.stationName
     ? _tideCache.stationName + ' (live)'
     : activePort.name + ' (estimated)';
-  document.getElementById('tideLocLabel').textContent = '📍 ' + locName;
+  const tzLabel = (_tideCache?.timezone || 'Pacific/Auckland').replace('Pacific/Auckland','NZ time');
+  document.getElementById('tideLocLabel').textContent = '📍 ' + locName + ' · ' + tzLabel;
 
   // Badge
   const badge = document.getElementById('tideBadge');
@@ -1890,9 +1891,19 @@ function renderTideSchedule() {
     ? apiEvt.map(e => ({ type: e.type === 'high' ? 'High' : 'Low', time: new Date(e.ms), h: e.h }))
     : findTideEvents(new Date(), 4, activePort);
 
+  // Always format times in the station's NZ timezone (from API cache), not device timezone.
+  // Prevents times being offset when the user's device is not set to NZ time.
+  const stationTz = (_tideCache?.timezone) || 'Pacific/Auckland';
   const fmt = d => {
-    const h = d.getHours(), m = d.getMinutes();
-    return (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m + (h < 12 ? 'am' : 'pm');
+    try {
+      return new Intl.DateTimeFormat('en-NZ', {
+        hour: 'numeric', minute: '2-digit', hour12: true, timeZone: stationTz
+      }).format(d).toLowerCase().replace(/\s+/g, '');
+    } catch(e) {
+      // Fallback if timezone string is unrecognised
+      const h = d.getHours(), m = d.getMinutes();
+      return (h % 12 || 12) + ':' + (m < 10 ? '0' : '') + m + (h < 12 ? 'am' : 'pm');
+    }
   };
   const labels = ['Next', 'Then', 'Then', 'Then'];
   document.getElementById('tideSchedule').innerHTML = events.map((e, i) => `
