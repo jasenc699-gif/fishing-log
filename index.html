@@ -61,7 +61,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pu{width:100%;min-height:200px;max-height:65vh;border:none;border-radius:12px;display:flex;align-items:stretch;justify-content:center;cursor:pointer;background:#2c2c2c;overflow:hidden;position:relative;}
 .pu img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0;background:#1a1a1a;}
 .pu-inner{position:absolute;inset:0;display:flex;flex-direction:column;z-index:1;}
-.pu-fish-cover{flex:1;background:url('icon-192.png') center/cover no-repeat;opacity:0.88;}
+.pu-fish-cover{flex:1;background:url('icon-512.png') center/contain no-repeat;}
 .pu-text-block{padding:12px 16px 16px;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,0.68));}
 .pu-add-text{font-size:14px;font-weight:600;color:#ffffff;letter-spacing:0.1px;}
 .pu-add-sub{font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px;}
@@ -185,7 +185,11 @@ input[type=file]{display:none;}
 .del-cancel:active{background:var(--surf);}
 .del-confirm{color:#e03c3c;}
 .del-confirm:active{background:#fff0f0;}
-/* BAROMETER */
+/* PHOTO LIGHTBOX */
+.lightbox-wrap{display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,0.92);align-items:center;justify-content:center;padding:16px;}
+.lightbox-wrap.open{display:flex;}
+.lightbox-img{max-width:100%;max-height:calc(100vh - 80px);border-radius:10px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,0.6);}
+.lightbox-close{position:absolute;top:max(env(safe-area-inset-top),14px);right:16px;background:rgba(255,255,255,0.12);border:none;border-radius:50%;width:36px;height:36px;font-size:18px;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .baro-wrap{background:var(--white);border-radius:12px;border:0.5px solid var(--border);padding:14px;margin-bottom:10px;}
 .baro-gauge{position:relative;width:160px;height:84px;margin:10px auto 4px;}
 .baro-needle{position:absolute;bottom:0;left:50%;transform-origin:bottom center;transition:transform 0.8s cubic-bezier(0.34,1.3,0.64,1);}
@@ -595,6 +599,12 @@ input[type=file]{display:none;}
 
 </div><!-- /app -->
 
+<!-- ══ PHOTO LIGHTBOX ══ -->
+<div class="lightbox-wrap" id="photoLightbox" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img class="lightbox-img" id="lightboxImg" src="" alt="Catch photo">
+</div>
+
 <!-- ══ DELETE CONFIRM MODAL ══ -->
 <div class="del-modal-wrap" id="delModal">
   <div class="del-modal">
@@ -871,6 +881,23 @@ async function initStorage() {
 // ─────────────────────────────────────────────
 function vibrate(ms) {
   if(navigator.vibrate) navigator.vibrate(ms);
+}
+
+function openLightbox(src) {
+  const lb = document.getElementById('photoLightbox');
+  const img = document.getElementById('lightboxImg');
+  if (!lb || !img || !src) return;
+  img.src = src;
+  lb.classList.add('open');
+  // Prevent body scroll while open
+  document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+  const lb = document.getElementById('photoLightbox');
+  if (lb) lb.classList.remove('open');
+  document.body.style.overflow = '';
+  // Delay clearing src so fade-out doesn't flash blank
+  setTimeout(() => { const img = document.getElementById('lightboxImg'); if(img) img.src=''; }, 300);
 }
 
 let _toastTimer = null;
@@ -1307,7 +1334,15 @@ async function handlePhoto(e) {
 
   // ── 2. Compress and display ──
   let result;
-  try { result = await compressImage(f); } catch(e) { return; } // error already toasted
+  try {
+    result = await compressImage(f);
+  } catch(e) {
+    // Compression failed — re-open the file picker so the user can try another photo
+    // without losing their form progress.
+    const inp = document.getElementById('fiLib');
+    if(inp) { inp.value = ''; inp.click(); }
+    return;
+  }
   photo = result.dataUrl;
   document.getElementById('puInner').style.display = 'none';
   const existing = document.querySelector('#puEl img'); if(existing) existing.remove();
@@ -1493,7 +1528,7 @@ function refreshMainMap() {
   catches.forEach(c => {
     if(!c.lat||!c.lng) return;
     const m=L.marker([c.lat,c.lng],{icon:leafIcon(20,speciesColor(c.fish))}).addTo(mainMap);
-    m.bindPopup(`<b>${c.fish}</b>${c.length?'<br>'+c.length+'cm':''}${c.weight?' · '+c.weight+'kg':''}${c.location?'<br>'+c.location:''}<br><small>${c.date} ${c.time}</small><br><small>Tide: ${c.tide} · ${c.weather}</small>`);
+    m.bindPopup(`<b>${c.fish}</b>${c.length?'<br>'+c.length+'cm':''}${c.weight?' · '+c.weight+'kg':''}${c.location?'<br>'+c.location:''}<br><small>${c.date} ${c.time}</small><br><small>Tide: ${c.tide}</small>${c.notes?'<br><small><i>'+c.notes.slice(0,80)+(c.notes.length>80?'…':'')+'</i></small>':''}`);
     mainPins.push(m);
   });
   if(mainPins.length) { const g=L.featureGroup(mainPins); mainMap.fitBounds(g.getBounds().pad(0.3)); }
@@ -2616,13 +2651,15 @@ function updateBarometer(hpa, history) {
 
 // ── Tide label helper used by saveCatch + saveEdit ───────────────────────────
 // Uses API cache heights if available (more accurate), falls back to harmonic.
-function _calcTideLabelForCatch(dt) {
+// portOverride lets saveEdit pass the nearest port to the edited coordinates.
+function _calcTideLabelForCatch(dt, portOverride) {
   try {
+    const port = portOverride || activePort;
     const ms = dt.getTime();
     let h  = _tideHeightFromCache(ms);
     let h5 = _tideHeightFromCache(ms + 5 * 60000);
-    if (h  == null) h  = tideHeightAt(dt, activePort);
-    if (h5 == null) h5 = tideHeightAt(new Date(ms + 5 * 60000), activePort);
+    if (h  == null) h  = tideHeightAt(dt, port);
+    if (h5 == null) h5 = tideHeightAt(new Date(ms + 5 * 60000), port);
     if (!isFinite(h))  h  = 0;
     if (!isFinite(h5)) h5 = 0;
     const rising = h5 > h;
@@ -2630,9 +2667,9 @@ function _calcTideLabelForCatch(dt) {
     let bounds;
     if (_tideCache?.series?.length > 1) {
       const hs = _tideCache.series.map(p => p.h).filter(isFinite);
-      bounds = hs.length ? { lo: Math.min(...hs) - 0.05, hi: Math.max(...hs) + 0.05 } : portBounds(activePort);
+      bounds = hs.length ? { lo: Math.min(...hs) - 0.05, hi: Math.max(...hs) + 0.05 } : portBounds(port);
     } else {
-      bounds = portBounds(activePort);
+      bounds = portBounds(port);
     }
     const range = bounds.hi - bounds.lo || 1;
     const mid = bounds.lo + range * 0.5, qtr = range * 0.22;
@@ -2852,17 +2889,7 @@ function renderList() {
   document.getElementById('tstats').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+(wts.length?' · Best: '+Math.max(...wts).toFixed(1)+'kg':'');
   if(!catches.length){
     document.getElementById('clist').innerHTML=`<div class="empty">
-      <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" style="width:80px;height:80px;opacity:0.3;margin-bottom:4px;">
-        <rect x="0" y="0" width="512" height="512" rx="110" fill="#444444"/>
-        <path d="M140 180 C220 110, 360 120, 390 200" fill="none" stroke="#cccccc" stroke-width="18" stroke-linecap="round"/>
-        <path d="M210 260 C240 215, 310 215, 340 260 C310 305, 240 305, 210 260 Z" fill="#ffffff"/>
-        <path d="M210 260 L165 225 L165 295 Z" fill="#ffffff"/>
-        <path d="M255 215 C270 190, 305 200, 290 225 Z" fill="#ffffff"/>
-        <path d="M255 305 C270 330, 305 320, 290 295 Z" fill="#ffffff"/>
-        <circle cx="310" cy="250" r="5" fill="#444444"/>
-        <path d="M140 320 C190 380, 330 380, 380 320" fill="none" stroke="#aaaaaa" stroke-width="20" stroke-linecap="round"/>
-        <path d="M190 320 C230 350, 290 350, 330 320" fill="none" stroke="#aaaaaa" stroke-width="12" stroke-linecap="round"/>
-      </svg>
+      <img src="icon-192.png" style="width:80px;height:80px;border-radius:18px;opacity:0.35;margin-bottom:4px;mix-blend-mode:normal;" alt="">
       <div style="font-size:15px;font-weight:600;color:var(--muted);">No catches yet</div>
       <div style="font-size:13px;color:var(--hint);margin-top:2px;">Let's Go Fishing! 🎣</div>
     </div>`;
@@ -2872,7 +2899,7 @@ function renderList() {
     <div class="ccard" id="card-${c.id}">
       <div class="ctop">
         ${c.photo
-          ? `<img src="${c.photo}" class="cimgel" alt="catch">`
+          ? `<img src="${c.photo}" class="cimgel" alt="catch" onclick="openLightbox('${c.photo}')" style="cursor:zoom-in;">`
           : `<div class="ciph">${DEFAULT_SVG_HTML}</div>`
         }
         <div class="cbody">
@@ -3030,15 +3057,18 @@ function saveEdit() {
   const newDate = document.getElementById('edate').value;
   const newTime = document.getElementById('etime').value;
 
-  // Recalculate tide, moon, bite from new date/time
+  // Recalculate tide, moon, bite from new date/time + potentially changed location
   let ti = catches[idx].tide, mi = catches[idx].moon, bi = catches[idx].bite;
   if(newDate && newTime) {
     // FIX: use NZ local time for tide/moon recalculation, not device local time.
     const dt = new Date(`${newDate}T${newTime}:00${_nzISOOffset()}`);
-    // FIX: use cache-aware tide calculation so edits reflect API data
-    ti = _calcTideLabelForCatch(dt);
+    // FIX: derive port from edited coordinates so a location change also updates the tide
+    const editedLat = parseFloat(document.getElementById('elat').value) || catches[idx].lat;
+    const editedLng = parseFloat(document.getElementById('elng').value) || catches[idx].lng;
+    const editedPort = (editedLat && editedLng) ? nearestPort(editedLat, editedLng) : activePort;
+    ti = _calcTideLabelForCatch(dt, editedPort);
     const mo = moonAt(dt); mi = mo.e + ' ' + mo.n + ' (' + mo.il + '%)';
-    const so = solunarAt(dt, appLng);
+    const so = solunarAt(dt, editedLng || appLng);
     const h = dt.getUTCHours() + dt.getUTCMinutes()/60 + (_nzISOOffset()==='+13:00'?13:12);
     const hn = ((h%24)+24)%24;
     const solDiff = (a, b) => Math.min(Math.abs(a-b), 24-Math.abs(a-b));
@@ -3192,8 +3222,10 @@ function renderStats() {
   };
   function spColor(sp) { return SP_CHART_COLORS[sp] || '#4fc3a1'; }
 
-  // Build SVG bar chart
-  const bestMonthIdx = monthTotals.indexOf(Math.max(...monthTotals));
+  // Build SVG bar chart — highlight all months tied for best
+  const maxMonthVal = Math.max(...monthTotals);
+  const bestMonthIdxSet = new Set(monthTotals.map((t,i) => t === maxMonthVal && t > 0 ? i : -1).filter(i => i >= 0));
+  const bestMonthIdx = [...bestMonthIdxSet][0]; // first one for label purposes
   const chartW=360, chartH=130, barW=22, gap=6, leftPad=24, topPad=8, bottomPad=28;
   const usableH = chartH - topPad - bottomPad;
   const totalWidth = 12*(barW+gap)-gap;
@@ -3211,7 +3243,7 @@ function renderStats() {
       if(!cnt) return;
       const segH = Math.round((cnt/maxMonth) * usableH);
       stackY -= segH;
-      const isHighlight = mi === bestMonthIdx;
+      const isHighlight = bestMonthIdxSet.has(mi);
       svgBars += `<rect x="${x}" y="${stackY}" width="${barW}" height="${segH}"
         fill="${spColor(sp)}" opacity="${isHighlight?1:0.72}" rx="2"/>`;
       // Show count inside segment only if tall enough to fit text legibly
@@ -3224,8 +3256,8 @@ function renderStats() {
     // Total label above bar
     const labelY = chartH - bottomPad - totalBarH - 3;
     svgBars += `<text x="${x+barW/2}" y="${labelY}" text-anchor="middle"
-      font-size="9.5" font-weight="${mi===bestMonthIdx?'700':'400'}"
-      fill="${mi===bestMonthIdx?'#fff':'rgba(255,255,255,0.65)'}"
+      font-size="9.5" font-weight="${bestMonthIdxSet.has(mi)?'700':'400'}"
+      fill="${bestMonthIdxSet.has(mi)?'#fff':'rgba(255,255,255,0.65)'}"
       font-family="system-ui,sans-serif">${total}</text>`;
   });
   // Month labels + best month highlight
