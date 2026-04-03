@@ -357,12 +357,12 @@ input[type=file]{display:none;}
 
       <div class="sec">
         <div class="stitle">📍 Location</div>
-        <label>Location Nickname <span style="font-weight:400;color:var(--hint);font-size:10px;">— your personal name for this spot</span></label>
-        <input type="text" id="cnickname" placeholder="e.g. The Ledge, Secret Snapper Spot" list="nicknameSuggestions" autocomplete="off">
-        <datalist id="nicknameSuggestions"></datalist>
         <label>Search location</label>
         <input type="text" id="locname" placeholder="e.g. Tauranga Harbour" oninput="onLocInput()" autocomplete="off">
         <div class="geo-status" id="gstat"></div>
+        <label>Location Nickname <span style="font-weight:400;color:var(--hint);font-size:10px;">— your personal name for this spot</span></label>
+        <input type="text" id="cnickname" placeholder="e.g. Blue Tongue" list="nicknameSuggestions" autocomplete="off">
+        <datalist id="nicknameSuggestions"></datalist>
         <div class="r2">
           <div><label>Latitude</label><input type="number" id="clat" step="0.0001" value="-37.6878" oninput="onCoordInput()" inputmode="decimal"></div>
           <div><label>Longitude</label><input type="number" id="clng" step="0.0001" value="176.1651" oninput="onCoordInput()" inputmode="decimal"></div>
@@ -1612,13 +1612,13 @@ function refreshMainMap() {
   }).join('');
 }
 
-function initCatchMap(id,lat,lng,lbl) {
+function initCatchMap(id, lat, lng, lbl, fish) {
   if(cmaps[id]) return;
   setTimeout(() => {
     const el=document.getElementById('cm-'+id); if(!el||cmaps[id]) return;
     const m=L.map('cm-'+id,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,tap:false}).setView([lat,lng],13);
     streetLayer().addTo(m);
-    L.marker([lat,lng],{icon:leafIcon(20,speciesColor(lbl))}).bindPopup(lbl).addTo(m);
+    L.marker([lat,lng],{icon:leafIcon(20,speciesColor(fish||lbl))}).bindPopup(lbl).addTo(m);
     cmaps[id]=m;
   },200);
 }
@@ -2983,7 +2983,7 @@ function renderList() {
       </div>
       <div class="cmap" id="cm-${c.id}"></div>
     </div>`).join('');
-  s.forEach(c=>{if(c.lat&&c.lng)initCatchMap(c.id,c.lat,c.lng,c.fish+(c.location?' — '+c.location:''));});
+  s.forEach(c=>{if(c.lat&&c.lng)initCatchMap(c.id,c.lat,c.lng,c.fish+(c.location?' — '+c.location:''),c.fish);});
 }
 
 // ─────────────────────────────────────────────
