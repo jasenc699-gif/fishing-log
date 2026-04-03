@@ -1332,16 +1332,27 @@ async function handlePhoto(e) {
     exifEl.textContent = 'ℹ️ No location or date found in photo — please enter manually below';
   }
 
-  // ── 2. Compress and display ──
+  // ── 2. Compress and display — retry once with same file before reopening gallery ──
   let result;
   try {
     result = await compressImage(f);
-  } catch(e) {
-    // Compression failed — re-open the file picker so the user can try another photo
-    // without losing their form progress.
-    const inp = document.getElementById('fiLib');
-    if(inp) { inp.value = ''; inp.click(); }
-    return;
+  } catch(firstErr) {
+    // First attempt failed — wait 800ms then retry the same file.
+    // Many failures are transient (memory pressure, GPU texture eviction) and
+    // resolve if we give the device a moment to free resources before trying again.
+    infoEl.style.display = 'block';
+    infoEl.textContent = '⏳ Retrying…';
+    await new Promise(r => setTimeout(r, 800));
+    try {
+      result = await compressImage(f);
+      infoEl.style.display = 'none'; // retry succeeded — clear the message
+    } catch(retryErr) {
+      // Both attempts failed — reopen the gallery so the user can pick a different photo
+      infoEl.style.display = 'none';
+      const inp = document.getElementById('fiLib');
+      if (inp) { inp.value = ''; inp.click(); }
+      return;
+    }
   }
   photo = result.dataUrl;
   document.getElementById('puInner').style.display = 'none';
