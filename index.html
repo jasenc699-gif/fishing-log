@@ -58,12 +58,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .stitle{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 
 /* PHOTO */
-.pu{width:100%;min-height:200px;max-height:65vh;border:none;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#2c2c2c;overflow:hidden;position:relative;}
+.pu{width:100%;min-height:200px;max-height:65vh;border:none;border-radius:12px;display:flex;align-items:stretch;justify-content:center;cursor:pointer;background:#2c2c2c;overflow:hidden;position:relative;}
 .pu img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0;background:#1a1a1a;}
-.pu-inner{display:flex;flex-direction:column;align-items:center;gap:10px;z-index:1;padding:24px 20px;}
+.pu-inner{position:absolute;inset:0;display:flex;flex-direction:column;z-index:1;}
+.pu-fish-cover{flex:1;background:url('icon-192.png') center/cover no-repeat;opacity:0.88;}
+.pu-text-block{padding:12px 16px 16px;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,0.68));}
+.pu-add-text{font-size:14px;font-weight:600;color:#ffffff;letter-spacing:0.1px;}
+.pu-add-sub{font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px;}
 .pu-logo{width:120px;height:120px;border-radius:0;object-fit:cover;flex-shrink:0;mix-blend-mode:screen;opacity:1;}
-.pu-add-text{font-size:14px;font-weight:600;color:#ffffff;letter-spacing:0.1px;text-align:center;}
-.pu-add-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-top:-4px;text-align:center;}
 .pu-tap-ring{display:flex;align-items:center;justify-content:center;width:90px;height:90px;border-radius:20px;border:2px dashed rgba(79,195,161,0.55);background:rgba(79,195,161,0.06);flex-shrink:0;}
 
 /* FORMS */
@@ -263,9 +265,11 @@ input[type=file]{display:none;}
         <div class="stitle">📸 Photo</div>
         <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
-            <img src="icon-192.png" class="pu-logo" alt="fishing log">
-            <div class="pu-add-text">Add a photo of your catch</div>
-            <div class="pu-add-sub">Tap to choose from your camera roll</div>
+            <div class="pu-fish-cover"></div>
+            <div class="pu-text-block">
+              <div class="pu-add-text">Add a photo of your catch</div>
+              <div class="pu-add-sub">Tap to choose from your camera roll</div>
+            </div>
           </div>
         </div>
         <div style="margin-top:8px;">
@@ -617,8 +621,10 @@ input[type=file]{display:none;}
           <div class="stitle">📸 Photo</div>
           <div class="pu" id="epuEl" style="min-height:140px;cursor:pointer;" onclick="const i=document.getElementById('efiLib');i.value='';i.click();">
             <div class="pu-inner" id="epuInner">
-              <img src="icon-192.png" style="width:70px;height:70px;border-radius:16px;object-fit:cover;opacity:0.92;" alt="fishing log">
-              <div class="pu-add-text" style="font-size:13px;">No photo — tap to add</div>
+              <div class="pu-fish-cover"></div>
+              <div class="pu-text-block" style="padding:8px 12px 12px;">
+                <div class="pu-add-text" style="font-size:13px;">No photo — tap to add</div>
+              </div>
             </div>
           </div>
           <div style="margin-top:8px;">
