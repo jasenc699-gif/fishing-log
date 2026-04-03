@@ -263,9 +263,7 @@ input[type=file]{display:none;}
         <div class="stitle">📸 Photo</div>
         <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
-            <div class="pu-tap-ring">
-              <img src="icon-192.png" class="pu-logo" alt="fishing log">
-            </div>
+            <img src="icon-192.png" class="pu-logo" alt="fishing log">
             <div class="pu-add-text">Add a photo of your catch</div>
             <div class="pu-add-sub">Tap to choose from your camera roll</div>
           </div>
@@ -619,9 +617,7 @@ input[type=file]{display:none;}
           <div class="stitle">📸 Photo</div>
           <div class="pu" id="epuEl" style="min-height:140px;cursor:pointer;" onclick="const i=document.getElementById('efiLib');i.value='';i.click();">
             <div class="pu-inner" id="epuInner">
-              <div class="pu-tap-ring" style="width:70px;height:70px;border-radius:16px;">
-                <img src="icon-192.png" style="width:70px;height:70px;border-radius:16px;object-fit:cover;opacity:0.92;" alt="fishing log">
-              </div>
+              <img src="icon-192.png" style="width:70px;height:70px;border-radius:16px;object-fit:cover;opacity:0.92;" alt="fishing log">
               <div class="pu-add-text" style="font-size:13px;">No photo — tap to add</div>
             </div>
           </div>
@@ -676,9 +672,10 @@ input[type=file]{display:none;}
         <div class="sec" style="margin-bottom:10px;">
           <div class="stitle">📅 Date &amp; Time</div>
           <div class="r2">
-            <div><label>Date</label><input type="date" id="edate"></div>
-            <div><label>Time</label><input type="time" id="etime"></div>
+            <div><label>Date</label><input type="date" id="edate" oninput="updateEditTidePreview()"></div>
+            <div><label>Time</label><input type="time" id="etime" oninput="updateEditTidePreview()"></div>
           </div>
+          <div id="editTidePreview" style="margin-top:8px;min-height:0;"></div>
         </div>
         <div class="sec" style="margin-bottom:14px;">
           <div class="stitle">📍 Location</div>
@@ -693,7 +690,10 @@ input[type=file]{display:none;}
             <button class="map-layer-btn" id="editMapLayerBtn" onclick="toggleEditMapLayer()">🛰 Satellite</button>
           </div>
         </div>
-        <button class="sbtn teal-btn" onclick="saveEdit()">💾 Save Changes</button>
+        <div style="display:grid;grid-template-columns:1fr 2fr;gap:10px;">
+          <button class="sbtn" onclick="closeEdit()" style="background:var(--dark3);">Cancel</button>
+          <button class="sbtn teal-btn" onclick="saveEdit()">💾 Save Changes</button>
+        </div>
         <div style="height:10px;"></div>
       </div>
     </div>
@@ -2318,18 +2318,20 @@ async function fetchMarineData() {
   _marineLastFetch = now;
   const el = document.getElementById('tideWaveRow'); if(!el) return;
   try {
-    const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${appLat}&longitude=${appLng}&current=wave_height,wave_direction,wave_period&forecast_days=1`);
+    const r = await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${appLat}&longitude=${appLng}&current=wave_height,wave_direction,wave_period,sea_surface_temperature&forecast_days=1`);
     if(!r.ok) throw new Error();
     const d = await r.json();
-    const wh = d.current?.wave_height;
-    const wp = d.current?.wave_period;
-    const wd = d.current?.wave_direction;
+    const wh  = d.current?.wave_height;
+    const wp  = d.current?.wave_period;
+    const wd  = d.current?.wave_direction;
+    const sst = d.current?.sea_surface_temperature;
     const dirLabel = wd != null ? windDir(wd) : '—';
     el.innerHTML = `
-      <div style="display:flex;gap:9px;margin-bottom:8px;">
-        <div class="wcard" style="flex:1;padding:9px 10px;"><span class="wi" style="font-size:16px;">🌊</span><span class="wv" style="font-size:15px;">${wh!=null?wh.toFixed(1)+' m':'—'}</span><span class="wl">Swell ht</span></div>
-        <div class="wcard" style="flex:1;padding:9px 10px;"><span class="wi" style="font-size:16px;">⏱</span><span class="wv" style="font-size:15px;">${wp!=null?Math.round(wp)+'s':'—'}</span><span class="wl">Period</span></div>
-        <div class="wcard" style="flex:1;padding:9px 10px;"><span class="wi" style="font-size:16px;">🧭</span><span class="wv" style="font-size:15px;">${dirLabel}</span><span class="wl">Direction</span></div>
+      <div style="display:flex;gap:9px;margin-bottom:8px;flex-wrap:wrap;">
+        <div class="wcard" style="flex:1;min-width:60px;padding:9px 10px;"><span class="wi" style="font-size:16px;">🌊</span><span class="wv" style="font-size:15px;">${wh!=null?wh.toFixed(1)+' m':'—'}</span><span class="wl">Swell ht</span></div>
+        <div class="wcard" style="flex:1;min-width:60px;padding:9px 10px;"><span class="wi" style="font-size:16px;">⏱</span><span class="wv" style="font-size:15px;">${wp!=null?Math.round(wp)+'s':'—'}</span><span class="wl">Period</span></div>
+        <div class="wcard" style="flex:1;min-width:60px;padding:9px 10px;"><span class="wi" style="font-size:16px;">🧭</span><span class="wv" style="font-size:15px;">${dirLabel}</span><span class="wl">Direction</span></div>
+        <div class="wcard" style="flex:1;min-width:60px;padding:9px 10px;"><span class="wi" style="font-size:16px;">🌡</span><span class="wv" style="font-size:15px;">${sst!=null?sst.toFixed(1)+'°C':'—'}</span><span class="wl">Sea temp</span></div>
       </div>`;
   } catch(e) {
     el.innerHTML = '';
@@ -2940,13 +2942,40 @@ function editCatch(id) {
   document.getElementById('elat').value = editLat.toFixed(4);
   document.getElementById('elng').value = editLng.toFixed(4);
   document.getElementById('editModal').classList.add('open');
-  setTimeout(() => initEditMap(editLat, editLng), 100);
+  setTimeout(() => { initEditMap(editLat, editLng); updateEditTidePreview(); }, 100);
 }
 
 function closeEdit() {
   document.getElementById('editModal').classList.remove('open');
   editId = null;
   editPhoto = undefined;
+}
+
+function updateEditTidePreview() {
+  const d = document.getElementById('edate').value;
+  const t = document.getElementById('etime').value;
+  const el = document.getElementById('editTidePreview');
+  if (!el) return;
+  if (!d || !t) { el.innerHTML = ''; return; }
+  try {
+    const dt = new Date(`${d}T${t}:00${_nzISOOffset()}`);
+    const tideLabel = _calcTideLabelForCatch(dt);
+    const mo = moonAt(dt);
+    // Colour-code the tide direction
+    const isIncoming = tideLabel.includes('Incoming');
+    const isOutgoing = tideLabel.includes('Outgoing');
+    const bgCol  = isIncoming ? 'rgba(79,195,161,0.12)' : isOutgoing ? 'rgba(239,159,39,0.1)' : 'rgba(55,138,221,0.1)';
+    const brdCol = isIncoming ? 'rgba(79,195,161,0.35)' : isOutgoing ? 'rgba(239,159,39,0.3)' : 'rgba(55,138,221,0.25)';
+    const txtCol = isIncoming ? '#0a5c43' : isOutgoing ? '#6b3e08' : '#0a3868';
+    const arrow  = isIncoming ? '↑' : isOutgoing ? '↓' : '↔';
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;background:${bgCol};border:0.5px solid ${brdCol};">
+      <span style="font-size:16px;">${arrow}</span>
+      <div style="flex:1;">
+        <div style="font-size:12px;font-weight:600;color:${txtCol};">${tideLabel}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px;">${mo.e} ${mo.n} · ${mo.il}% illumination</div>
+      </div>
+    </div>`;
+  } catch(e) { el.innerHTML = ''; }
 }
 
 async function handleEditPhoto(e) {
@@ -3179,6 +3208,12 @@ function renderStats() {
       const isHighlight = mi === bestMonthIdx;
       svgBars += `<rect x="${x}" y="${stackY}" width="${barW}" height="${segH}"
         fill="${spColor(sp)}" opacity="${isHighlight?1:0.72}" rx="2"/>`;
+      // Show count inside segment only if tall enough to fit text legibly
+      if (segH >= 13) {
+        svgBars += `<text x="${x+barW/2}" y="${stackY + segH/2 + 3}" text-anchor="middle"
+          font-size="7" font-weight="700" fill="rgba(255,255,255,0.92)"
+          font-family="system-ui,sans-serif">${cnt}</text>`;
+      }
     });
     // Total label above bar
     const labelY = chartH - bottomPad - totalBarH - 3;
