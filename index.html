@@ -2801,19 +2801,21 @@ function _calcTideLabelForCatch(dt, portOverride) {
     const port = portOverride || activePort;
     const ms = dt.getTime();
 
-    // Determine height using the most accurate source available.
-    // API cache covers ≈3 days around now; for anything outside that window
-    // (historical catches, far-future dates) go straight to the harmonic model.
+    // Only trust the API cache if the timestamp actually falls INSIDE the cached
+    // time range. _tideHeightFromCache clamps out-of-range requests to the first/
+    // last series value rather than returning null, so both h and h5 would be
+    // identical at the boundary → rising always false → always "Outgoing".
     let h, h5;
-    const cacheH  = _tideHeightFromCache(ms);
-    const cacheH5 = _tideHeightFromCache(ms + 5 * 60000);
-    if (cacheH !== null && cacheH5 !== null) {
-      // Cache covers this timestamp — prefer it (more accurate near-term).
-      h  = cacheH;
-      h5 = cacheH5;
+    const ser = _tideCache?.series;
+    const inCacheRange = ser && ser.length > 1 &&
+                         ms >= ser[0].ms && (ms + 5 * 60000) <= ser[ser.length - 1].ms;
+
+    if (inCacheRange) {
+      h  = _tideHeightFromCache(ms);
+      h5 = _tideHeightFromCache(ms + 5 * 60000);
     } else {
-      // Outside cache window (historical/future) — use harmonic model directly.
-      // The harmonic model is fully self-contained and date-independent.
+      // Historical catch, future date, or no cache — use harmonic model.
+      // tideHeightAt() is date-independent and accurate to ~10-20 min for NZ ports.
       h  = tideHeightAt(dt, port);
       h5 = tideHeightAt(new Date(ms + 5 * 60000), port);
     }
@@ -2822,9 +2824,8 @@ function _calcTideLabelForCatch(dt, portOverride) {
     if (!isFinite(h5)) h5 = 0;
     const rising = h5 > h;
 
-    // Always use port-based bounds for the High/Mid/Low threshold.
-    // API cache bounds can be misleading for historical dates (they're from a
-    // different 3-day window) so we use the stable theoretical port amplitude.
+    // Use stable port amplitude for the High/Mid/Low threshold — not API bounds,
+    // which are from a different 3-day window and wrong for historical dates.
     const bounds = portBounds(port);
     const range = bounds.hi - bounds.lo || 1;
     const mid = bounds.lo + range * 0.5, qtr = range * 0.22;
