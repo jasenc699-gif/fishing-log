@@ -339,9 +339,11 @@ input[type=file]{display:none;}
           </div>
         </div>
         <div class="r2">
-          <div><label>Fly / Bait</label><input type="text" id="fly" placeholder="e.g. Crazy Charlie"></div>
-          <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6"></div>
+          <div><label>Fly / Bait</label><input type="text" id="fly" placeholder="e.g. Crazy Charlie" list="flySuggestions" autocomplete="off"></div>
+          <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6" list="flycolSuggestions" autocomplete="off"></div>
         </div>
+        <datalist id="flySuggestions"></datalist>
+        <datalist id="flycolSuggestions"></datalist>
 
         <label>Notes</label>
         <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;"></textarea>
@@ -415,6 +417,17 @@ input[type=file]{display:none;}
           <span style="font-size:9px;color:var(--hint);">now</span>
           <span style="font-size:9px;color:var(--hint);">+12h</span>
         </div>
+      </div>
+
+      <!-- Tide Date Checker -->
+      <div class="sec">
+        <div class="stitle">🔍 Tide Checker — Any Date</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Look up tides for any past or future date at your current station.</div>
+        <div class="r2">
+          <div><label>Date</label><input type="date" id="tideCheckDate" oninput="runTideCheck()"></div>
+          <div><label>Time (optional)</label><input type="time" id="tideCheckTime" oninput="runTideCheck()"></div>
+        </div>
+        <div id="tideCheckResult" style="margin-top:10px;"></div>
       </div>
     </div>
 
@@ -565,6 +578,8 @@ input[type=file]{display:none;}
           <option value="oldest">Oldest first</option>
           <option value="weight">Heaviest first</option>
           <option value="length">Longest first</option>
+          <option value="location">By location</option>
+          <option value="fish">By species</option>
         </select>
       </div>
       <!-- Backup / Restore bar -->
@@ -682,8 +697,8 @@ input[type=file]{display:none;}
             </div>
           </div>
           <div class="r2" style="margin-top:0;">
-            <div><label>Fly / Bait</label><input type="text" id="efly" placeholder="e.g. Crazy Charlie"></div>
-            <div><label>Colour &amp; size</label><input type="text" id="eflycol" placeholder="e.g. Chartreuse, #6"></div>
+            <div><label>Fly / Bait</label><input type="text" id="efly" placeholder="e.g. Crazy Charlie" list="flySuggestions" autocomplete="off"></div>
+            <div><label>Colour &amp; size</label><input type="text" id="eflycol" placeholder="e.g. Chartreuse, #6" list="flycolSuggestions" autocomplete="off"></div>
           </div>
           <label>Notes</label>
           <textarea id="enotes" rows="3" style="resize:none;font-size:16px;" placeholder="Depth, technique, conditions..."></textarea>
@@ -849,6 +864,7 @@ const now = new Date(), today = now.toISOString().split('T')[0], nowT = now.toTi
 ['ctime'].forEach(id => { const e=document.getElementById(id); if(e) e.value=nowT; });
 updateHeader();
 _refreshNicknameSuggestions();
+_refreshFlyColSuggestions();
 
 // ─────────────────────────────────────────────
 // STORAGE INIT — migrate + hydrate photos from IDB
@@ -1522,6 +1538,19 @@ function _refreshNicknameSuggestions() {
   dl.innerHTML = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">`).join('');
 }
 
+function _refreshFlyColSuggestions() {
+  const flyDl  = document.getElementById('flySuggestions');
+  const colDl  = document.getElementById('flycolSuggestions');
+  if (flyDl) {
+    const flies = [...new Set(catches.map(c => c.fly).filter(Boolean))].sort();
+    flyDl.innerHTML = flies.map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join('');
+  }
+  if (colDl) {
+    const cols = [...new Set(catches.map(c => c.flycol).filter(Boolean))].sort();
+    colDl.innerHTML = cols.map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join('');
+  }
+}
+
 // Main map
 function initMainMap() {
   if(mainMap) { mainMap.invalidateSize(); refreshMainMap(); return; }
@@ -1555,7 +1584,8 @@ function refreshMainMap() {
   catches.forEach(c => {
     if(!c.lat||!c.lng) return;
     const m=L.marker([c.lat,c.lng],{icon:leafIcon(20,speciesColor(c.fish))}).addTo(mainMap);
-    m.bindPopup(`<b>${c.fish}</b>${c.nickname?'<br>📌 '+c.nickname:''}${c.length?'<br>'+c.length+'cm':''}${c.weight?' · '+c.weight+'kg':''}${c.location?'<br>'+c.location:''}<br><small>${c.date} ${c.time}</small><br><small>Tide: ${c.tide}</small>${c.notes?'<br><small><i>'+c.notes.slice(0,80)+(c.notes.length>80?'…':'')+'</i></small>':''}`);
+    const popupHtml = `<b>${c.fish}</b>${c.nickname?'<br>📌 '+c.nickname:''}${c.length?'<br>'+c.length+'cm':''}${c.weight?' · '+c.weight+'kg':''}${c.location?'<br>'+c.location:''}<br><small>${c.date} ${c.time}</small><br><small>Tide: ${c.tide}</small>${c.notes?'<br><small><i>'+c.notes.slice(0,80)+(c.notes.length>80?'…':'')+'</i></small>':''}<br><button onclick="go('list');editCatch('${c.id}')" style="margin-top:6px;padding:4px 10px;background:#4fc3a1;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:#003520;width:100%;">✏️ Edit catch</button>`;
+    m.bindPopup(popupHtml);
     mainPins.push(m);
   });
   if(mainPins.length) { const g=L.featureGroup(mainPins); mainMap.fitBounds(g.getBounds().pad(0.3)); }
@@ -2437,6 +2467,63 @@ async function fetchMarineData() {
 }
 
 // ─────────────────────────────────────────────
+// TIDE DATE CHECKER — any past or future date
+// ─────────────────────────────────────────────
+function runTideCheck() {
+  const dateVal = document.getElementById('tideCheckDate').value;
+  const timeVal = document.getElementById('tideCheckTime').value || '12:00';
+  const el = document.getElementById('tideCheckResult');
+  if (!el) return;
+  if (!dateVal) { el.innerHTML = ''; return; }
+  try {
+    const dt = new Date(`${dateVal}T${timeVal}:00${_nzISOOffset()}`);
+    if (!isFinite(dt.getTime())) { el.innerHTML = ''; return; }
+
+    const port = activePort;
+    // Always use harmonic — date checker spans any historical/future date
+    const h  = tideHeightAt(dt, port);
+    const h5 = tideHeightAt(new Date(dt.getTime() + 5 * 60000), port);
+    const rising = h5 > h;
+    const bounds = portBounds(port);
+    const range = bounds.hi - bounds.lo || 1;
+    const mid = bounds.lo + range * 0.5, qtr = range * 0.22;
+    const tl = h > mid + qtr ? 'High Tide' : h < mid - qtr ? 'Low Tide' : (rising ? 'Mid — Rising' : 'Mid — Falling');
+    const label = tl + (rising ? ' · Incoming' : ' · Outgoing');
+    const arrow = rising ? '↑' : '↓';
+    const isIncoming = rising;
+    const bg  = isIncoming ? 'rgba(79,195,161,0.12)' : 'rgba(239,159,39,0.1)';
+    const brd = isIncoming ? 'rgba(79,195,161,0.35)' : 'rgba(239,159,39,0.3)';
+    const col = isIncoming ? '#0a5c43' : '#6b3e08';
+
+    // Find surrounding high/low events using harmonic scan (±18h window)
+    const evts = findTideEvents(new Date(dt.getTime() - 18*3600000), 8, port)
+      .filter(e => e.time.getTime() >= dt.getTime() - 18*3600000);
+    const nextEvt = evts.find(e => e.time.getTime() > dt.getTime());
+    const prevEvt = [...evts].reverse().find(e => e.time.getTime() <= dt.getTime());
+
+    const mo = moonAt(dt);
+    const fmtEvt = e => e ? `${e.type} ${_fmtTideTime(e.time)} (${isFinite(e.h)?e.h.toFixed(2)+'m':'—'})` : '—';
+
+    el.innerHTML = `
+      <div style="padding:10px 12px;border-radius:8px;background:${bg};border:0.5px solid ${brd};margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:700;color:${col};">${arrow} ${label}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px;">Height: <b>${isFinite(h)?h.toFixed(2)+'m ('+( h*3.28084).toFixed(1)+'ft)':'—'}</b> · ${port.name}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+        <div style="background:var(--surf);border-radius:8px;padding:9px 10px;border:0.5px solid var(--border);">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Previous</div>
+          <div style="color:var(--text);">${fmtEvt(prevEvt)}</div>
+        </div>
+        <div style="background:var(--surf);border-radius:8px;padding:9px 10px;border:0.5px solid var(--border);">
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Next</div>
+          <div style="color:var(--text);">${fmtEvt(nextEvt)}</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--hint);">Moon: ${mo.e} ${mo.n} · ${mo.il}% · Harmonic model · ${port.name}</div>`;
+  } catch(e) { if(el) el.innerHTML = '<div style="font-size:12px;color:var(--hint);">Could not calculate tide.</div>'; }
+}
+
+// ─────────────────────────────────────────────
 // SOLUNAR — John Alden Knight's theory (1926)
 // ─────────────────────────────────────────────
 function solunarAt(dt, lng) {
@@ -2707,27 +2794,40 @@ function updateBarometer(hpa, history) {
 // ─────────────────────────────────────────────
 
 // ── Tide label helper used by saveCatch + saveEdit ───────────────────────────
-// Uses API cache heights if available (more accurate), falls back to harmonic.
+// For dates within the API cache window (~3 days), uses cached heights.
+// For all other dates (historical or far future), uses the harmonic model —
+// which is accurate to ~10-20 min for NZ ports and works for any date/time.
 // portOverride lets saveEdit pass the nearest port to the edited coordinates.
 function _calcTideLabelForCatch(dt, portOverride) {
   try {
     const port = portOverride || activePort;
     const ms = dt.getTime();
-    let h  = _tideHeightFromCache(ms);
-    let h5 = _tideHeightFromCache(ms + 5 * 60000);
-    if (h  == null) h  = tideHeightAt(dt, port);
-    if (h5 == null) h5 = tideHeightAt(new Date(ms + 5 * 60000), port);
+
+    // Determine height using the most accurate source available.
+    // API cache covers ≈3 days around now; for anything outside that window
+    // (historical catches, far-future dates) go straight to the harmonic model.
+    let h, h5;
+    const cacheH  = _tideHeightFromCache(ms);
+    const cacheH5 = _tideHeightFromCache(ms + 5 * 60000);
+    if (cacheH !== null && cacheH5 !== null) {
+      // Cache covers this timestamp — prefer it (more accurate near-term).
+      h  = cacheH;
+      h5 = cacheH5;
+    } else {
+      // Outside cache window (historical/future) — use harmonic model directly.
+      // The harmonic model is fully self-contained and date-independent.
+      h  = tideHeightAt(dt, port);
+      h5 = tideHeightAt(new Date(ms + 5 * 60000), port);
+    }
+
     if (!isFinite(h))  h  = 0;
     if (!isFinite(h5)) h5 = 0;
     const rising = h5 > h;
-    // Use API series bounds if available for tighter high/low thresholds
-    let bounds;
-    if (_tideCache?.series?.length > 1) {
-      const hs = _tideCache.series.map(p => p.h).filter(isFinite);
-      bounds = hs.length ? { lo: Math.min(...hs) - 0.05, hi: Math.max(...hs) + 0.05 } : portBounds(port);
-    } else {
-      bounds = portBounds(port);
-    }
+
+    // Always use port-based bounds for the High/Mid/Low threshold.
+    // API cache bounds can be misleading for historical dates (they're from a
+    // different 3-day window) so we use the stable theoretical port amplitude.
+    const bounds = portBounds(port);
     const range = bounds.hi - bounds.lo || 1;
     const mid = bounds.lo + range * 0.5, qtr = range * 0.22;
     const tl = h > mid + qtr ? 'High Tide' : h < mid - qtr ? 'Low Tide' : (rising ? 'Mid — Rising' : 'Mid — Falling');
@@ -2799,8 +2899,9 @@ async function saveCatch() {
   photo=null;
   const pu=document.getElementById('puEl'),img=pu.querySelector('img');if(img)img.remove();
   document.getElementById('puInner').style.display='flex';
-  // Refresh nickname autocomplete suggestions
+  // Refresh nickname + fly/col autocomplete suggestions
   _refreshNicknameSuggestions();
+  _refreshFlyColSuggestions();
 }
 
 // ─────────────────────────────────────────────
@@ -2945,6 +3046,8 @@ function renderList() {
   else if(sort==='oldest') s.sort((a,b)=>{const da=new Date((a.date||'1970-01-01')+'T'+(a.time||'00:00')),db=new Date((b.date||'1970-01-01')+'T'+(b.time||'00:00'));return da-db;});
   else if(sort==='weight')s.sort((a,b)=>(parseFloat(b.weight)||0)-(parseFloat(a.weight)||0));
   else if(sort==='length')s.sort((a,b)=>(parseFloat(b.length)||0)-(parseFloat(a.length)||0));
+  else if(sort==='location')s.sort((a,b)=>(a.nickname||a.location||'').localeCompare(b.nickname||b.location||''));
+  else if(sort==='fish')s.sort((a,b)=>(a.fish||'').localeCompare(b.fish||''));
   const wts=catches.filter(c=>c.weight).map(c=>parseFloat(c.weight)||0);
   document.getElementById('tstats').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+(wts.length?' · Best: '+Math.max(...wts).toFixed(1)+'kg':'');
   if(!catches.length){
@@ -3172,6 +3275,7 @@ function saveEdit() {
   renderList();
   renderStats();
   _refreshNicknameSuggestions();
+  _refreshFlyColSuggestions();
   showToast('Catch updated! ✏️', 'success');
   vibrate([30,15,30]);
 }
@@ -3447,6 +3551,29 @@ function renderStats() {
         <div style="width:100%;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 6px 4px;">
           ${monthChartSVG}
         </div>
+        ${(()=>{
+          // Best month per species
+          const spBestMonth = {};
+          orderedSpecies.forEach(sp => {
+            let bestMi = -1, bestCnt = 0;
+            monthSpecies.forEach((ms2, mi) => {
+              if((ms2[sp]||0) > bestCnt) { bestCnt = ms2[sp]||0; bestMi = mi; }
+            });
+            if(bestMi >= 0 && bestCnt > 0) spBestMonth[sp] = { month: MONTHS[bestMi], short: MON_SHORT[bestMi], cnt: bestCnt };
+          });
+          const rows = Object.entries(spBestMonth);
+          if(!rows.length) return '';
+          return `<div style="width:100%;margin-top:10px;">
+            <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;padding:0 4px;">Best month per species</div>
+            ${rows.map(([sp,{month,short,cnt}])=>`
+              <div style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:0.5px solid rgba(255,255,255,0.06);">
+                <svg width="10" height="10" viewBox="0 0 10 10" style="flex-shrink:0;"><circle cx="5" cy="5" r="5" fill="${spColor(sp)}"/></svg>
+                <div style="flex:1;font-size:12px;color:rgba(255,255,255,0.82);">${sp}</div>
+                <div style="font-size:12px;font-weight:700;color:#fff;">${short}</div>
+                <div style="font-size:10px;color:rgba(255,255,255,0.4);">×${cnt}</div>
+              </div>`).join('')}
+          </div>`;
+        })()}
       </div>`:''}
     </div>
 
