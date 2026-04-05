@@ -12,6 +12,8 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
 <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -175,7 +177,31 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .insight-val{font-size:15px;font-weight:600;color:#fff;margin-top:2px;}
 .insight-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:1px;}
 
-/* MISC */
+/* ── MARKER CLUSTER OVERRIDES ──────────────────────────────────────── */
+.marker-cluster-small,.marker-cluster-medium,.marker-cluster-large{background:none!important;}
+.marker-cluster-small div,.marker-cluster-medium div,.marker-cluster-large div{background:none!important;}
+.mc-bubble{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-direction:column;border:2.5px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.45);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;}
+.mc-bubble span{font-size:13px;font-weight:800;color:#fff;line-height:1;}
+.mc-bubble small{font-size:7px;color:rgba(255,255,255,0.8);line-height:1;margin-top:1px;}
+/* ── QUICK-VIEW POPUP ──────────────────────────────────────────────── */
+.qv-popup .leaflet-popup-content-wrapper{border-radius:14px;padding:0;overflow:hidden;box-shadow:0 6px 28px rgba(0,0,0,0.32);border:none;max-width:230px;min-width:200px;}
+.qv-popup .leaflet-popup-content{margin:0;width:auto!important;}
+.qv-popup .leaflet-popup-tip-container{margin-top:-1px;}
+.qv-card{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;}
+.qv-thumb{width:100%;height:110px;object-fit:cover;display:block;background:#2c2c2c;}
+.qv-thumb-placeholder{width:100%;height:80px;background:linear-gradient(135deg,#2c2c2c,#383838);display:flex;align-items:center;justify-content:center;font-size:32px;}
+.qv-body{padding:10px 12px 12px;}
+.qv-fish{font-size:15px;font-weight:700;color:#1a1a1a;line-height:1.2;}
+.qv-loc{font-size:11px;color:#666;margin-top:2px;}
+.qv-combo{background:#f0faf6;border:0.5px solid rgba(79,195,161,0.35);border-radius:7px;padding:7px 9px;margin-top:8px;}
+.qv-combo-lbl{font-size:8.5px;font-weight:700;color:#0a5c43;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px;}
+.qv-combo-val{font-size:12px;font-weight:600;color:#1a1a1a;}
+.qv-meta{font-size:10px;color:#888;margin-top:6px;line-height:1.6;}
+.qv-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;}
+.qv-btn{border:none;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center;line-height:1.3;}
+.qv-btn-nav{background:#4fc3a1;color:#003520;}
+.qv-btn-edit{background:#f0f0ee;color:#444;}
+
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
 input[type=file]{display:none;}
 .install-bar{background:#383838;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;flex-shrink:0;}
@@ -466,14 +492,6 @@ input[type=file]{display:none;}
         </div>
       </div>
 
-      <!-- Tide Date Checker -->
-      <div class="sec">
-        <div class="stitle">🔍 Tide Checker — Any Date</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Look up the full tide schedule for any past or future date.</div>
-        <label>Date</label>
-        <input type="date" id="tideCheckDate" oninput="runTideCheck()">
-        <div id="tideCheckResult" style="margin-top:10px;"></div>
-      </div>
     </div>
 
     <!-- ══ MOON ══ -->
@@ -685,7 +703,7 @@ input[type=file]{display:none;}
           <button class="map-ctrl-btn active" id="mmStreetBtn" onclick="setMainMapLayer('street')">🗺 Street</button>
           <button class="map-ctrl-btn" id="mmSatBtn" onclick="setMainMapLayer('satellite')">🛰 Satellite</button>
         </div>
-        <div id="mainmap" style="width:100%;height:300px;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);"></div>
+        <div id="mainmap" style="width:100%;height:380px;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);"></div>
         <div id="mleg" style="margin-top:8px;font-size:12px;color:var(--muted);">No catches logged yet.</div>
       <div id="mapLegend" style="display:none;margin-top:8px;"></div>
       </div>
@@ -891,6 +909,7 @@ input[type=file]{display:none;}
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script>
 // ─────────────────────────────────────────────
 // INDEXEDDB — Photo Storage
@@ -961,7 +980,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 // ─────────────────────────────────────────────
 let catches = [], photo = null;
 let logMap = null, logPin = null, logStreetLayer = null, logSatLayer = null, logLayerMode = 'street';
-let mainMap = null, mainPins = [], mainStreetLayer = null, mainSatLayer = null, mainLayerMode = 'street';
+let mainMap = null, mainPins = [], mainCluster = null, mainStreetLayer = null, mainSatLayer = null, mainLayerMode = 'street';
 let cmaps = {};
 let geoTimer = null, revTimer = null;
 let wxLat = -37.6878, wxLng = 176.1651; // default Tauranga
@@ -1798,6 +1817,60 @@ function _renderManageSuggestions() {
   }).join('');
 }
 
+// ── Navigate-to helper — opens Google Maps (Android) or Apple Maps (iOS) ──
+function openNavigation(lat, lng, label) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const url = isIOS
+    ? `maps://?ll=${lat},${lng}&q=${encodeURIComponent(label||'Fishing spot')}`
+    : `https://maps.google.com/?q=${lat},${lng}`;
+  window.open(url, '_blank');
+}
+
+// Build a rich quick-view popup for a catch (async — loads photo from IDB)
+async function _buildQuickViewPopup(c) {
+  const fish      = c.fish || 'Unknown species';
+  const loc       = c.nickname || c.location || '';
+  const fly       = c.fly   || null;
+  const flycol    = c.flycol || null;
+  const comboLine = [fly, flycol].filter(Boolean).join(' · ');
+  const weight    = c.weight ? c.weight + ' kg' : '';
+  const length    = c.length ? c.length + ' cm' : '';
+  const sizeLine  = [length, weight].filter(Boolean).join(' · ');
+  const color     = speciesColor(fish);
+
+  // Try to load photo thumb from IDB
+  let photoHtml = `<div class="qv-thumb-placeholder" style="background:linear-gradient(135deg,${color}33,${color}11);">🐟</div>`;
+  try {
+    const dataUrl = await idbGet(c.id);
+    if (dataUrl) {
+      photoHtml = `<img class="qv-thumb" src="${dataUrl}" alt="${fish}" loading="lazy">`;
+    }
+  } catch(_) {}
+
+  return `<div class="qv-card">
+    ${photoHtml}
+    <div class="qv-body">
+      <div style="display:flex;align-items:center;gap:6px;">
+        <svg width="10" height="10" viewBox="0 0 10 10" style="flex-shrink:0;"><circle cx="5" cy="5" r="5" fill="${color}"/></svg>
+        <div class="qv-fish">${fish}</div>
+      </div>
+      ${loc ? `<div class="qv-loc">📍 ${loc}</div>` : ''}
+      ${comboLine ? `<div class="qv-combo">
+        <div class="qv-combo-lbl">🎣 Killer Combo</div>
+        <div class="qv-combo-val">${comboLine}</div>
+      </div>` : ''}
+      <div class="qv-meta">
+        ${sizeLine ? sizeLine + '<br>' : ''}
+        ${c.date || ''}${c.time ? ' · ' + c.time : ''}${c.tide ? '<br>Tide: ' + c.tide : ''}
+      </div>
+      <div class="qv-actions">
+        <button class="qv-btn qv-btn-nav" onclick="openNavigation(${c.lat},${c.lng},'${(loc||fish).replace(/'/g,"\\'")}')">🧭 Navigate</button>
+        <button class="qv-btn qv-btn-edit" onclick="mainMap.closePopup();go('list');editCatch('${c.id}')">✏️ Edit</button>
+      </div>
+    </div>
+  </div>`;
+}
+
 // Main map
 function initMainMap() {
   if(mainMap) { mainMap.invalidateSize(); refreshMainMap(); return; }
@@ -1822,21 +1895,66 @@ function setMainMapLayer(mode) {
 
 function refreshMainMap() {
   if(!mainMap) return;
-  mainPins.forEach(m=>mainMap.removeLayer(m)); mainPins=[];
+  // Clear old cluster
+  if(mainCluster) { mainMap.removeLayer(mainCluster); mainCluster = null; }
+  mainPins = [];
   if(!catches.length) {
     document.getElementById('mleg').textContent='No catches logged yet.';
     document.getElementById('loclist').textContent='No locations saved yet.';
     return;
   }
-  catches.forEach(c => {
-    if(!c.lat||!c.lng) return;
-    const m=L.marker([c.lat,c.lng],{icon:leafIcon(20,speciesColor(c.fish))}).addTo(mainMap);
-    const popupHtml = `<b>${c.fish}</b>${c.nickname?'<br>📌 '+c.nickname:''}${c.length?'<br>'+c.length+'cm':''}${c.weight?' · '+c.weight+'kg':''}${c.location?'<br>'+c.location:''}<br><small>${c.date} ${c.time}</small><br><small>Tide: ${c.tide}</small>${c.notes?'<br><small><i>'+c.notes.slice(0,80)+(c.notes.length>80?'…':'')+'</i></small>':''}<br><button onclick="go('list');editCatch('${c.id}')" style="margin-top:6px;padding:4px 10px;background:#4fc3a1;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:#003520;width:100%;">✏️ Edit catch</button>`;
-    m.bindPopup(popupHtml);
-    mainPins.push(m);
+
+  // Build cluster group with custom icons
+  mainCluster = L.markerClusterGroup({
+    maxClusterRadius: 50,
+    iconCreateFunction: function(cluster) {
+      const count = cluster.getChildCount();
+      // Pick dominant species colour from child markers
+      const children = cluster.getAllChildMarkers();
+      const spMap = {};
+      children.forEach(m => { const sp = m.options._species||''; spMap[sp]=(spMap[sp]||0)+1; });
+      const dominant = Object.entries(spMap).sort((a,b)=>b[1]-a[1])[0];
+      const col = dominant ? speciesColor(dominant[0]) : '#4fc3a1';
+      const size = count > 20 ? 46 : count > 9 ? 42 : 38;
+      return L.divIcon({
+        html: `<div class="mc-bubble" style="width:${size}px;height:${size}px;background:${col};border-color:rgba(255,255,255,0.9);">
+          <span>${count}</span><small>catches</small>
+        </div>`,
+        className: '',
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2]
+      });
+    }
   });
-  if(mainPins.length) { const g=L.featureGroup(mainPins); mainMap.fitBounds(g.getBounds().pad(0.3)); }
-  document.getElementById('mleg').textContent=catches.length+' catch location'+(catches.length!==1?'s':'')+' on map';
+
+  catches.forEach(c => {
+    if(!c.lat || !c.lng) return;
+    const marker = L.marker([c.lat, c.lng], {
+      icon: leafIcon(22, speciesColor(c.fish)),
+      _species: c.fish  // stash for cluster colour
+    });
+
+    // Bind a loading popup, then swap in the rich content once IDB resolves
+    marker.bindPopup('<div style="padding:14px;font-size:13px;color:#888;">Loading…</div>', {
+      className: 'qv-popup',
+      maxWidth: 240,
+      minWidth: 200
+    });
+    marker.on('click', async () => {
+      if (!marker.isPopupOpen()) return;
+      const html = await _buildQuickViewPopup(c);
+      marker.setPopupContent(html);
+    });
+
+    mainCluster.addLayer(marker);
+    mainPins.push(marker);
+  });
+
+  mainMap.addLayer(mainCluster);
+  if(mainPins.length) {
+    mainMap.fitBounds(mainCluster.getBounds().pad(0.25));
+  }
+  document.getElementById('mleg').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+' across '+mainPins.length+' location'+(mainPins.length!==1?'s':'');
   // Build species colour legend
   const legendEl = document.getElementById('mapLegend');
   if(legendEl) {
@@ -2999,7 +3117,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
     const pressArrowEl = document.getElementById('wxPressTrendArrow');
     const pressTrendEl = document.getElementById('wxPressTrend');
     if (pressureHistory.length >= 2) {
-      const diff = hpa - pressureHistory[0];
+      const diff = pressure - pressureHistory[0];
       if (diff > 2)       { pressArrowEl.textContent = '↑'; pressTrendEl.textContent = 'Rising'; }
       else if (diff < -2) { pressArrowEl.textContent = '↓'; pressArrowEl.style.color = '#e74c3c'; pressTrendEl.textContent = 'Falling'; }
       else                { pressArrowEl.textContent = '→'; pressArrowEl.style.color = 'rgba(255,255,255,0.4)'; pressTrendEl.textContent = 'Steady'; }
