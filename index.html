@@ -130,6 +130,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .stat-bar-wrap{background:var(--surf);border-radius:6px;height:6px;flex:1;margin:0 10px;overflow:hidden;}
 .stat-bar{height:6px;border-radius:6px;background:var(--teal);}
 .insight-card{background:var(--dark);border-radius:12px;padding:14px;margin-bottom:10px;}
+/* STATS — summary tiles */
+.summary-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:2px;}
+.sum-tile{background:var(--surf);border-radius:10px;padding:14px 8px 12px;text-align:center;border:0.5px solid var(--border);}
+.sum-val{font-size:26px;font-weight:700;color:var(--text);line-height:1;}
+.sum-lbl{font-size:10px;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:0.5px;}
+/* STATS — 2-col insight tile grid */
+.insight-grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
+.insight-tile{background:rgba(255,255,255,0.06);border-radius:10px;padding:12px 12px 10px;}
+.insight-tile .it-icon{font-size:18px;margin-bottom:5px;}
+.insight-tile .it-title{font-size:10px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px;}
+.insight-tile .it-val{font-size:14px;font-weight:600;color:#fff;line-height:1.2;}
+.insight-tile .it-sub{font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;}
 .insight-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid rgba(255,255,255,0.07);}
 .insight-item:last-child{border-bottom:none;padding-bottom:0;}
 .insight-icon{font-size:22px;flex-shrink:0;}
@@ -3508,23 +3520,40 @@ document.getElementById('editModal').addEventListener('click', function(e) {
 // ─────────────────────────────────────────────
 function renderStats() {
   const el = document.getElementById('statsContent');
+
+  // ── Always-visible summary data ──
+  const speciesCountAll = {};
+  catches.forEach(c => { speciesCountAll[c.fish] = (speciesCountAll[c.fish]||0)+1; });
+  const topSpeciesAll = Object.entries(speciesCountAll).sort((a,b)=>b[1]-a[1]);
+  const totalLocations = new Set(catches.map(c=>c.location).filter(Boolean)).size;
+  const photosCount = catches.filter(c=>c.photo).length;
+
+  const summaryHTML = `
+    <div class="sec">
+      <div class="stitle">📊 Overview</div>
+      <div class="summary-tiles">
+        <div class="sum-tile"><div class="sum-val">${catches.length}</div><div class="sum-lbl">Catches</div></div>
+        <div class="sum-tile"><div class="sum-val">${topSpeciesAll.length}</div><div class="sum-lbl">Species</div></div>
+        <div class="sum-tile"><div class="sum-val">${totalLocations}</div><div class="sum-lbl">Spots</div></div>
+      </div>
+      ${photosCount > 0 ? `<div class="stat-row" style="margin-top:6px;"><div class="stat-label">Catches with photos</div><div class="stat-value">${photosCount}</div></div>` : ''}
+    </div>`;
+
   if(catches.length < 3) {
-    el.innerHTML = `
+    el.innerHTML = summaryHTML + `
       <div class="insight-card">
-        <div style="text-align:center;padding:30px 10px;">
-          <div style="font-size:46px;margin-bottom:12px;">📊</div>
-          <div style="color:#fff;font-size:15px;font-weight:600;margin-bottom:8px;">Keep fishing!</div>
-          <div style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.6;">Log at least 3 catches to unlock<br>your personalised fishing insights.</div>
-          <div style="margin-top:14px;color:rgba(255,255,255,0.25);font-size:12px;">${catches.length} of 3 catches logged</div>
+        <div style="text-align:center;padding:24px 10px;">
+          <div style="font-size:38px;margin-bottom:10px;">📈</div>
+          <div style="color:#fff;font-size:14px;font-weight:600;margin-bottom:6px;">Insights unlock at 3 catches</div>
+          <div style="color:rgba(255,255,255,0.45);font-size:13px;line-height:1.6;">Log ${3-catches.length} more catch${(3-catches.length)!==1?'es':''} to unlock<br>your personalised fishing insights.</div>
         </div>
       </div>`;
     return;
   }
 
-  // ── Top species ──
-  const speciesCount = {};
-  catches.forEach(c => { speciesCount[c.fish] = (speciesCount[c.fish]||0)+1; });
-  const topSpecies = Object.entries(speciesCount).sort((a,b)=>b[1]-a[1]);
+  // ── Full stats ──
+  const speciesCount = speciesCountAll;
+  const topSpecies = topSpeciesAll;
   const maxSp = topSpecies[0][1];
 
   // ── Best tide ──
@@ -3573,6 +3602,16 @@ function renderStats() {
     moonCount[phase] = (moonCount[phase]||0)+1;
   });
   const topMoon = Object.entries(moonCount).sort((a,b)=>b[1]-a[1])[0];
+
+  // ── Top fly/bait patterns ──
+  const flyCount = {};
+  catches.forEach(c => { if(c.fly) flyCount[c.fly]=(flyCount[c.fly]||0)+1; });
+  const topFlies = Object.entries(flyCount).sort((a,b)=>b[1]-a[1]).slice(0,4);
+
+  // ── Top colour/size combos ──
+  const flycolCount = {};
+  catches.forEach(c => { if(c.flycol) flycolCount[c.flycol]=(flycolCount[c.flycol]||0)+1; });
+  const topFlyCols = Object.entries(flycolCount).sort((a,b)=>b[1]-a[1]).slice(0,4);
 
   // ── Best bite window ──
   // (removed — replaced by Best Month)
@@ -3690,10 +3729,48 @@ function renderStats() {
   const best = withWeight[0];
   const avgWeight = withWeight.length ? (withWeight.reduce((s,c)=>s+parseFloat(c.weight),0)/withWeight.length).toFixed(1) : null;
 
-  // ── Render insights ──
-  el.innerHTML = `
+  // ── Best-month-per-species table ──
+  const spBestMonthHTML = (()=>{
+    const spBestMonth = {};
+    orderedSpecies.forEach(sp => {
+      let bestMi=-1,bestCnt=0,worstMi=-1,worstCnt=Infinity,total=0,activeMons=0;
+      monthSpecies.forEach((ms2,mi)=>{
+        const cnt=ms2[sp]||0;
+        if(cnt>0){ total+=cnt; activeMons++;
+          if(cnt>bestCnt){bestCnt=cnt;bestMi=mi;}
+          if(cnt<worstCnt){worstCnt=cnt;worstMi=mi;}
+        }
+      });
+      if(bestMi>=0&&bestCnt>0) spBestMonth[sp]={
+        bestShort:MON_SHORT[bestMi],bestCnt,
+        worstShort:activeMons>1?MON_SHORT[worstMi]:null,worstCnt,
+        total,activeMons
+      };
+    });
+    const rows=Object.entries(spBestMonth);
+    if(!rows.length) return '';
+    return `<div style="width:100%;margin-top:12px;">
+      <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;padding:0 4px;">Best month per species</div>
+      <div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:0;font-size:11px;color:rgba(255,255,255,0.5);padding:4px 4px 6px;border-bottom:0.5px solid rgba(255,255,255,0.1);">
+        <div></div><div>Species</div><div style="text-align:center;">Best</div><div style="text-align:center;padding:0 4px;">Worst</div><div style="text-align:right;">Total</div>
+      </div>
+      ${rows.map(([sp,d])=>`
+        <div style="display:grid;grid-template-columns:14px 1fr auto auto auto;gap:0;align-items:center;padding:6px 4px;border-bottom:0.5px solid rgba(255,255,255,0.06);">
+          <svg width="10" height="10" viewBox="0 0 10 10" style="flex-shrink:0;"><circle cx="5" cy="5" r="5" fill="${spColor(sp)}"/></svg>
+          <div style="font-size:12px;color:rgba(255,255,255,0.85);padding-left:4px;">${sp}</div>
+          <div style="text-align:center;font-size:12px;font-weight:700;color:#4fc3a1;">${d.bestShort}<span style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.4);"> ×${d.bestCnt}</span></div>
+          <div style="text-align:center;padding:0 4px;font-size:12px;color:rgba(255,255,255,0.4);">${d.worstShort?d.worstShort+'<span style="font-size:9px;"> ×'+d.worstCnt+'</span>':'—'}</div>
+          <div style="text-align:right;font-size:12px;font-weight:600;color:#fff;">${d.total}<span style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.4);"> / ${d.activeMons}mo</span></div>
+        </div>`).join('')}
+    </div>`;
+  })();
+
+  // ── Assemble page ──
+  el.innerHTML = summaryHTML + `
+
+    ${(best||avgWeight)?`
     <div class="insight-card">
-      <div class="dlbl">🏆 Your Best Stats</div>
+      <div class="dlbl">🏆 Trophies</div>
       ${best?`
       <div class="insight-item">
         <div class="insight-icon">🐟</div>
@@ -3712,98 +3789,52 @@ function renderStats() {
           <div class="insight-sub">From ${withWeight.length} weighed catch${withWeight.length!==1?'es':''}</div>
         </div>
       </div>`:''}
-      <div class="insight-item">
-        <div class="insight-icon">🌊</div>
-        <div class="insight-text">
-          <div class="insight-title">Best Tide</div>
-          <div class="insight-val">${topTide?topTide[0]:'—'}</div>
-          <div class="insight-sub">${topTide?topTide[1]+' catch'+(topTide[1]!==1?'es':'')+' in this state':''}</div>
-        </div>
+    </div>`:''}
+
+    ${topMonths.length?`
+    <div class="insight-card">
+      <div class="dlbl">📅 Catches by Month</div>
+      <div style="background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 6px 4px;">
+        ${monthChartSVG}
       </div>
-      <div class="insight-item">
-        <div class="insight-icon">🕐</div>
-        <div class="insight-text">
-          <div class="insight-title">Best Time of Day</div>
-          <div class="insight-val">${topTime?topTime[0]:'—'}</div>
-          <div class="insight-sub">${topTime?topTime[1]+' catch'+(topTime[1]!==1?'es':''):''}</div>
-        </div>
+      ${spBestMonthHTML}
+    </div>`:''}
+
+    <div class="insight-card">
+      <div class="dlbl">🌊 Conditions &amp; Tactics</div>
+      <div class="insight-grid-2col">
+        ${topTide?`<div class="insight-tile"><div class="it-icon">🌊</div><div class="it-title">Best Tide</div><div class="it-val">${topTide[0]}</div><div class="it-sub">${topTide[1]} catch${topTide[1]!==1?'es':''}</div></div>`:''}
+        ${topTime?`<div class="insight-tile"><div class="it-icon">🕐</div><div class="it-title">Best Time</div><div class="it-val">${topTime[0]}</div><div class="it-sub">${topTime[1]} catch${topTime[1]!==1?'es':''}</div></div>`:''}
+        ${topMethod?`<div class="insight-tile"><div class="it-icon">🎣</div><div class="it-title">Best Method</div><div class="it-val">${topMethod[0]}</div><div class="it-sub">${topMethod[1]} catch${topMethod[1]!==1?'es':''}</div></div>`:''}
+        ${topPlatform?`<div class="insight-tile"><div class="it-icon">${topPlatform[0]==='Wading'?'🚶':topPlatform[0]==='Kayak'?'🚣':'⛵'}</div><div class="it-title">Best Platform</div><div class="it-val">${topPlatform[0]}</div><div class="it-sub">${topPlatform[1]} catch${topPlatform[1]!==1?'es':''}</div></div>`:''}
+        ${topMoon?`<div class="insight-tile"><div class="it-icon">🌙</div><div class="it-title">Best Moon</div><div class="it-val">${topMoon[0]}</div><div class="it-sub">${topMoon[1]} catch${topMoon[1]!==1?'es':''}</div></div>`:''}
       </div>
-      ${topMethod?`
-      <div class="insight-item">
-        <div class="insight-icon">🎣</div>
-        <div class="insight-text">
-          <div class="insight-title">Best Method</div>
-          <div class="insight-val">${topMethod[0]}</div>
-          <div class="insight-sub">${topMethod[1]} catch${topMethod[1]!==1?'es':''}</div>
-        </div>
-      </div>`:''}
-      ${topPlatform?`
-      <div class="insight-item">
-        <div class="insight-icon">${topPlatform[0]==='Wading'?'🚶':topPlatform[0]==='Kayak'?'🚣':'⛵'}</div>
-        <div class="insight-text">
-          <div class="insight-title">Best Platform</div>
-          <div class="insight-val">${topPlatform[0]}</div>
-          <div class="insight-sub">${topPlatform[1]} catch${topPlatform[1]!==1?'es':''}</div>
-        </div>
-      </div>`:''}
-      ${topMoon?`
-      <div class="insight-item">
-        <div class="insight-icon">🌙</div>
-        <div class="insight-text">
-          <div class="insight-title">Best Moon Phase</div>
-          <div class="insight-val">${topMoon[0]}</div>
-          <div class="insight-sub">${topMoon[1]} catch${topMoon[1]!==1?'es':''}</div>
-        </div>
-      </div>`:''}
-      ${topMonths.length?`
-      <div class="insight-item" style="align-items:flex-start;flex-direction:column;gap:0;">
-        <div style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:10px;">
-          <div class="insight-icon">📅</div>
-          <div class="insight-text">
-            <div class="insight-title">Catches by Month</div>
-          </div>
-        </div>
-        <div style="width:100%;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 6px 4px;">
-          ${monthChartSVG}
-        </div>
-        ${(()=>{
-          // Best month per species — expanded with best/worst + spread
-          const spBestMonth = {};
-          orderedSpecies.forEach(sp => {
-            let bestMi = -1, bestCnt = 0, worstMi = -1, worstCnt = Infinity, total = 0, activeMons = 0;
-            monthSpecies.forEach((ms2, mi) => {
-              const cnt = ms2[sp] || 0;
-              if (cnt > 0) {
-                total += cnt; activeMons++;
-                if (cnt > bestCnt)  { bestCnt = cnt; bestMi = mi; }
-                if (cnt < worstCnt) { worstCnt = cnt; worstMi = mi; }
-              }
-            });
-            if (bestMi >= 0 && bestCnt > 0) spBestMonth[sp] = {
-              bestMonth: MONTHS[bestMi], bestShort: MON_SHORT[bestMi], bestCnt,
-              worstShort: activeMons > 1 ? MON_SHORT[worstMi] : null, worstCnt,
-              total, activeMons
-            };
-          });
-          const rows = Object.entries(spBestMonth);
-          if (!rows.length) return '';
-          return `<div style="width:100%;margin-top:12px;">
-            <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;padding:0 4px;">Best month per species</div>
-            <div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:0;font-size:11px;color:rgba(255,255,255,0.5);padding:4px 4px 6px;border-bottom:0.5px solid rgba(255,255,255,0.1);">
-              <div></div><div>Species</div><div style="text-align:center;">Best</div><div style="text-align:center;padding:0 4px;">Worst</div><div style="text-align:right;">Total</div>
-            </div>
-            ${rows.map(([sp,d])=>`
-              <div style="display:grid;grid-template-columns:14px 1fr auto auto auto;gap:0;align-items:center;padding:6px 4px;border-bottom:0.5px solid rgba(255,255,255,0.06);">
-                <svg width="10" height="10" viewBox="0 0 10 10" style="flex-shrink:0;"><circle cx="5" cy="5" r="5" fill="${spColor(sp)}"/></svg>
-                <div style="font-size:12px;color:rgba(255,255,255,0.85);padding-left:4px;">${sp}</div>
-                <div style="text-align:center;font-size:12px;font-weight:700;color:#4fc3a1;">${d.bestShort}<span style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.4);"> ×${d.bestCnt}</span></div>
-                <div style="text-align:center;padding:0 4px;font-size:12px;color:rgba(255,255,255,0.4);">${d.worstShort?d.worstShort+'<span style="font-size:9px;"> ×'+d.worstCnt+'</span>':'—'}</div>
-                <div style="text-align:right;font-size:12px;font-weight:600;color:#fff;">${d.total}<span style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.4);"> / ${d.activeMons}mo</span></div>
-              </div>`).join('')}
-          </div>`;
-        })()}
-      </div>`:''}
     </div>
+
+    ${(topFlies.length||topFlyCols.length)?`
+    <div class="insight-card">
+      <div class="dlbl">🎯 Top Patterns &amp; Gear</div>
+      ${topFlies.length?`
+      <div style="margin-bottom:${topFlyCols.length?'12px':'0'};">
+        <div style="font-size:10px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:7px;">Fly / Bait</div>
+        ${topFlies.map(([fly,cnt],i)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.07);">
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.28);width:14px;text-align:right;">${i+1}</div>
+          <div style="flex:1;font-size:13px;color:#fff;">${fly}</div>
+          <div style="font-size:12px;font-weight:600;color:#4fc3a1;">${cnt} catch${cnt!==1?'es':''}</div>
+        </div>`).join('')}
+      </div>`:''}
+      ${topFlyCols.length?`
+      <div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:7px;">Colour &amp; Size</div>
+        ${topFlyCols.map(([col,cnt],i)=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.07);">
+          <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.28);width:14px;text-align:right;">${i+1}</div>
+          <div style="flex:1;font-size:13px;color:#fff;">${col}</div>
+          <div style="font-size:12px;font-weight:600;color:#4fc3a1;">${cnt} catch${cnt!==1?'es':''}</div>
+        </div>`).join('')}
+      </div>`:''}
+    </div>`:''}
 
     <div class="sec">
       <div class="stitle">🐟 Species Breakdown</div>
@@ -3813,14 +3844,6 @@ function renderStats() {
           <div class="stat-bar-wrap"><div class="stat-bar" style="width:${Math.round(cnt/maxSp*100)}%"></div></div>
           <div class="stat-value">${cnt}</div>
         </div>`).join('')}
-    </div>
-
-    <div class="sec">
-      <div class="stitle">📅 Summary</div>
-      <div class="stat-row"><div class="stat-label">Total catches</div><div class="stat-value">${catches.length}</div></div>
-      <div class="stat-row"><div class="stat-label">Species caught</div><div class="stat-value">${topSpecies.length}</div></div>
-      <div class="stat-row"><div class="stat-label">Locations fished</div><div class="stat-value">${new Set(catches.map(c=>c.location)).size}</div></div>
-      ${catches.some(c=>c.photo)?`<div class="stat-row"><div class="stat-label">Catches with photos</div><div class="stat-value">${catches.filter(c=>c.photo).length}</div></div>`:''}
     </div>
   `;
 }
