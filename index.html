@@ -201,6 +201,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .qv-btn{border:none;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center;line-height:1.3;}
 .qv-btn-nav{background:#4fc3a1;color:#003520;}
 .qv-btn-edit{background:#f0f0ee;color:#444;}
+/* ── MAP FILTER PANEL ──────────────────────────────────────────────── */
+.map-filter-panel{background:var(--white);border:0.5px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:8px;animation:panelSlide 0.2s ease;}
+@keyframes panelSlide{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
+.mf-section-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.mf-pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
+.mf-pills:last-child{margin-bottom:0;}
+.mf-pill{display:inline-flex;align-items:center;gap:3px;padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--surf);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;}
+.mf-pill-check{font-size:10px;display:none;margin-right:1px;}
+.mf-pill.on .mf-pill-check{display:inline;}
+.mf-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#e74c3c;color:#fff;font-size:9px;font-weight:800;margin-left:4px;padding:0 3px;line-height:1;vertical-align:middle;}
+.map-ctrl-btn.filter-on{background:var(--dark);color:#fff;border-color:var(--dark);}
+#mapActiveBar{display:none;align-items:center;gap:5px;padding:7px 10px;background:rgba(79,195,161,0.08);border:0.5px solid rgba(79,195,161,0.3);border-radius:8px;margin-bottom:8px;flex-wrap:wrap;}
+#mapActiveBar.show{display:flex;}
+.mf-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:10px;background:rgba(79,195,161,0.18);color:#0a5c43;font-size:10px;font-weight:700;}
+.mf-chip-x{background:none;border:none;cursor:pointer;color:#0a5c43;font-size:11px;padding:0 0 0 2px;line-height:1;font-weight:700;}
 
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
 input[type=file]{display:none;}
@@ -702,6 +717,23 @@ input[type=file]{display:none;}
         <div class="main-map-controls">
           <button class="map-ctrl-btn active" id="mmStreetBtn" onclick="setMainMapLayer('street')">🗺 Street</button>
           <button class="map-ctrl-btn" id="mmSatBtn" onclick="setMainMapLayer('satellite')">🛰 Satellite</button>
+          <button class="map-ctrl-btn" id="mapFilterBtn" onclick="toggleMapFilterPanel()" style="position:relative;">⚙️ Filter<span id="mapFilterBadge" class="mf-badge" style="display:none;position:absolute;top:-5px;right:-5px;"></span></button>
+        </div>
+        <!-- Active filter chips bar -->
+        <div id="mapActiveBar">
+          <span style="font-size:10px;font-weight:700;color:#0a5c43;flex-shrink:0;">Showing:</span>
+          <div id="mapActiveChips" style="display:flex;flex-wrap:wrap;gap:4px;flex:1;"></div>
+          <button onclick="clearMapFilters()" style="background:none;border:none;font-size:11px;font-weight:700;color:#e74c3c;cursor:pointer;padding:0;white-space:nowrap;font-family:inherit;">✕ Clear</button>
+        </div>
+        <!-- Filter slide panel -->
+        <div id="mapFilterPanel" style="display:none;">
+          <div class="map-filter-panel">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div style="font-size:12px;font-weight:700;color:var(--text);">Filter Catches</div>
+              <button onclick="clearMapFilters()" style="background:none;border:none;font-size:11px;color:var(--teal);font-weight:600;cursor:pointer;padding:0;font-family:inherit;">Clear all</button>
+            </div>
+            <div id="mapFilterContent"><div style="font-size:12px;color:var(--hint);">Log some catches to use filters.</div></div>
+          </div>
         </div>
         <div id="mainmap" style="width:100%;height:380px;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);"></div>
         <div id="mleg" style="margin-top:8px;font-size:12px;color:var(--muted);">No catches logged yet.</div>
@@ -981,6 +1013,7 @@ if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 let catches = [], photo = null;
 let logMap = null, logPin = null, logStreetLayer = null, logSatLayer = null, logLayerMode = 'street';
 let mainMap = null, mainPins = [], mainCluster = null, mainStreetLayer = null, mainSatLayer = null, mainLayerMode = 'street';
+const mapFilters = { species: new Set(), tide: new Set(), weather: new Set() };
 let cmaps = {};
 let geoTimer = null, revTimer = null;
 let wxLat = -37.6878, wxLng = 176.1651; // default Tauranga
@@ -1871,6 +1904,129 @@ async function _buildQuickViewPopup(c) {
   </div>`;
 }
 
+// ─────────────────────────────────────────────
+// MAP FILTERS
+// ─────────────────────────────────────────────
+function _catchMatchesFilters(c) {
+  // Species — OR within group
+  if (mapFilters.species.size > 0 && !mapFilters.species.has(c.fish)) return false;
+  // Tide — OR within group
+  if (mapFilters.tide.size > 0) {
+    const t = c.tide || '';
+    const hit = [...mapFilters.tide].some(k =>
+      k === 'Incoming' ? t.includes('Incoming') :
+      k === 'Outgoing' ? t.includes('Outgoing') :
+      k === 'High'     ? t.includes('High Tide') :
+      k === 'Low'      ? t.includes('Low Tide') : false
+    );
+    if (!hit) return false;
+  }
+  // Weather — OR within group
+  if (mapFilters.weather.size > 0 && !mapFilters.weather.has(c.weather)) return false;
+  return true;
+}
+
+function _totalActiveFilters() {
+  return mapFilters.species.size + mapFilters.tide.size + mapFilters.weather.size;
+}
+
+function toggleMapFilter(type, value) {
+  const s = mapFilters[type];
+  s.has(value) ? s.delete(value) : s.add(value);
+  _syncMapFilterUI();
+  refreshMainMap();
+}
+
+function clearMapFilters() {
+  mapFilters.species.clear(); mapFilters.tide.clear(); mapFilters.weather.clear();
+  _syncMapFilterUI();
+  refreshMainMap();
+}
+
+function toggleMapFilterPanel() {
+  const panel = document.getElementById('mapFilterPanel');
+  const opening = panel.style.display === 'none';
+  panel.style.display = opening ? 'block' : 'none';
+  if (opening) renderMapFilterPanel();
+}
+
+// Render the pill UI inside the panel
+function renderMapFilterPanel() {
+  const el = document.getElementById('mapFilterContent');
+  if (!el) return;
+
+  // Derive available options from all catches (not filtered)
+  const allSpecies  = [...new Set(catches.map(c => c.fish).filter(Boolean))].sort();
+  const allWeathers = [...new Set(catches.map(c => c.weather).filter(v => v && v !== '—'))].sort();
+  const TIDE_OPTS   = [
+    { key: 'Incoming', label: '↑ Incoming' },
+    { key: 'Outgoing', label: '↓ Outgoing' },
+    { key: 'High',     label: '🔼 High Tide' },
+    { key: 'Low',      label: '🔽 Low Tide'  },
+  ].filter(o => catches.some(c => {
+    const t = c.tide || '';
+    return o.key === 'Incoming' ? t.includes('Incoming') :
+           o.key === 'Outgoing' ? t.includes('Outgoing') :
+           o.key === 'High'     ? t.includes('High Tide') :
+                                  t.includes('Low Tide');
+  }));
+
+  const WX_EMOJI = { 'Clear sky':'☀️','Mainly clear':'🌤','Partly cloudy':'⛅','Overcast':'☁️',
+                     'Foggy':'🌫','Drizzle':'🌦','Rain':'🌧','Rain showers':'🌧',
+                     'Thunderstorm':'⛈','Cloudy':'☁️','Snow':'❄️' };
+
+  const pill = (type, value, label, colorHex) => {
+    const active = mapFilters[type].has(value);
+    const col    = colorHex || '#4fc3a1';
+    const styleOn  = `background:${col};color:#fff;border-color:${col};`;
+    const styleOff = `background:var(--surf);color:var(--muted);border-color:var(--border);`;
+    return `<button class="mf-pill${active?' on':''}" style="${active?styleOn:styleOff}"
+        onclick="toggleMapFilter('${type}','${value.replace(/'/g,"\\'")}')">
+      <span class="mf-pill-check">✓</span>${label||value}
+    </button>`;
+  };
+
+  const section = (heading, pills) => pills.length === 0 ? '' : `
+    <div class="mf-section-lbl">${heading}</div>
+    <div class="mf-pills">${pills}</div>`;
+
+  let html = '';
+  if (allSpecies.length)  html += section('🐟 Species', allSpecies.map(sp => pill('species', sp, sp, speciesColor(sp))).join(''));
+  if (TIDE_OPTS.length)   html += section('🌊 Tide Phase', TIDE_OPTS.map(o => pill('tide', o.key, o.label)).join(''));
+  if (allWeathers.length) html += section('☁️ Weather', allWeathers.map(w => pill('weather', w, (WX_EMOJI[w]?WX_EMOJI[w]+' ':'')+w)).join(''));
+  if (!html) html = '<div style="font-size:12px;color:var(--hint);">Log some catches to use filters.</div>';
+  el.innerHTML = html;
+}
+
+// Keep badge, button highlight, and active-chips bar in sync
+function _syncMapFilterUI() {
+  const total = _totalActiveFilters();
+  // Badge on Filter button
+  const badge = document.getElementById('mapFilterBadge');
+  if (badge) { badge.textContent = total || ''; badge.style.display = total ? 'flex' : 'none'; }
+  // Filter button highlight
+  const btn = document.getElementById('mapFilterBtn');
+  if (btn) btn.classList.toggle('filter-on', total > 0);
+  // Active chips bar
+  const bar   = document.getElementById('mapActiveBar');
+  const chips = document.getElementById('mapActiveChips');
+  if (!bar || !chips) return;
+  if (total === 0) { bar.classList.remove('show'); chips.innerHTML = ''; return; }
+  bar.classList.add('show');
+  const makeChip = (type, value, label) =>
+    `<span class="mf-chip">${label}
+      <button class="mf-chip-x" onclick="toggleMapFilter('${type}','${value.replace(/'/g,"\\'")}')">✕</button>
+    </span>`;
+  const TIDE_LABEL = { Incoming:'↑ Incoming', Outgoing:'↓ Outgoing', High:'High Tide', Low:'Low Tide' };
+  let html = '';
+  mapFilters.species.forEach(v => { html += makeChip('species', v, v); });
+  mapFilters.tide.forEach(v    => { html += makeChip('tide',    v, TIDE_LABEL[v] || v); });
+  mapFilters.weather.forEach(v => { html += makeChip('weather', v, v); });
+  chips.innerHTML = html;
+  // Also refresh pill states if panel is open
+  if (document.getElementById('mapFilterPanel')?.style.display !== 'none') renderMapFilterPanel();
+}
+
 // Main map
 function initMainMap() {
   if(mainMap) { mainMap.invalidateSize(); refreshMainMap(); return; }
@@ -1898,18 +2054,21 @@ function refreshMainMap() {
   // Clear old cluster
   if(mainCluster) { mainMap.removeLayer(mainCluster); mainCluster = null; }
   mainPins = [];
+
   if(!catches.length) {
     document.getElementById('mleg').textContent='No catches logged yet.';
     document.getElementById('loclist').textContent='No locations saved yet.';
     return;
   }
 
+  // Apply filters
+  const filtered = catches.filter(_catchMatchesFilters);
+
   // Build cluster group with custom icons
   mainCluster = L.markerClusterGroup({
     maxClusterRadius: 50,
     iconCreateFunction: function(cluster) {
       const count = cluster.getChildCount();
-      // Pick dominant species colour from child markers
       const children = cluster.getAllChildMarkers();
       const spMap = {};
       children.forEach(m => { const sp = m.options._species||''; spMap[sp]=(spMap[sp]||0)+1; });
@@ -1927,14 +2086,12 @@ function refreshMainMap() {
     }
   });
 
-  catches.forEach(c => {
+  filtered.forEach(c => {
     if(!c.lat || !c.lng) return;
     const marker = L.marker([c.lat, c.lng], {
       icon: leafIcon(22, speciesColor(c.fish)),
-      _species: c.fish  // stash for cluster colour
+      _species: c.fish
     });
-
-    // Bind a loading popup, then swap in the rich content once IDB resolves
     marker.bindPopup('<div style="padding:14px;font-size:13px;color:#888;">Loading…</div>', {
       className: 'qv-popup',
       maxWidth: 240,
@@ -1945,7 +2102,6 @@ function refreshMainMap() {
       const html = await _buildQuickViewPopup(c);
       marker.setPopupContent(html);
     });
-
     mainCluster.addLayer(marker);
     mainPins.push(marker);
   });
@@ -1954,49 +2110,59 @@ function refreshMainMap() {
   if(mainPins.length) {
     mainMap.fitBounds(mainCluster.getBounds().pad(0.25));
   }
-  document.getElementById('mleg').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+' across '+mainPins.length+' location'+(mainPins.length!==1?'s':'');
-  // Build species colour legend
+
+  // Legend text — show filter context when active
+  const total = _totalActiveFilters();
+  const legEl = document.getElementById('mleg');
+  if (total > 0) {
+    legEl.innerHTML = `<span style="color:var(--teal);font-weight:600;">${filtered.length}</span> of ${catches.length} catch${catches.length!==1?'es':''} match your filters`;
+  } else {
+    legEl.textContent = filtered.length+' catch'+(filtered.length!==1?'es':'')+' across '+mainPins.length+' location'+(mainPins.length!==1?'s':'');
+  }
+  if (!mainPins.length && total > 0) {
+    legEl.innerHTML += ' — <span style="color:var(--hint);">try broadening your filters</span>';
+  }
+
+  // Species colour legend (always from full catch list so colours don't disappear)
   const legendEl = document.getElementById('mapLegend');
   if(legendEl) {
-    const speciesToShow = [...new Set(catches.map(c=>c.fish))].filter(Boolean);
+    const speciesToShow = [...new Set(filtered.map(c=>c.fish))].filter(Boolean);
     if(speciesToShow.length) {
-      legendEl.style.display='flex';
-      legendEl.style.flexWrap='wrap';
-      legendEl.style.gap='6px';
-      legendEl.style.marginTop='8px';
+      legendEl.style.display='flex'; legendEl.style.flexWrap='wrap'; legendEl.style.gap='6px'; legendEl.style.marginTop='8px';
       legendEl.innerHTML = speciesToShow.map(sp=>`
         <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);">
           <svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="5" fill="${speciesColor(sp)}"/></svg>${sp}
         </div>`).join('');
-    }
+    } else { legendEl.style.display='none'; }
   }
-  // ── Location list grouped by nickname ────────────────────────────────────
-  // Catches with no nickname are grouped under their location name.
+
+  // Location list — grouped by nickname, respects active filters
   const locGroups = {};
-  catches.forEach(c => {
+  filtered.forEach(c => {
     const key = c.nickname || c.location || 'Unknown location';
     if (!locGroups[key]) locGroups[key] = { nickname: !!c.nickname, location: c.location || '', catches: [] };
     locGroups[key].catches.push(c);
   });
   const sortedGroups = Object.entries(locGroups).sort((a, b) => b[1].catches.length - a[1].catches.length);
+  if (!sortedGroups.length) {
+    document.getElementById('loclist').innerHTML = '<div style="font-size:13px;color:var(--hint);padding:6px 0;">No spots match the current filters.</div>';
+    return;
+  }
   document.getElementById('loclist').innerHTML = sortedGroups.map(([key, grp]) => {
     const cnt = grp.catches.length;
-    // Build species summary: { species: count }
     const spMap = {};
     grp.catches.forEach(c => { if (c.fish) spMap[c.fish] = (spMap[c.fish] || 0) + 1; });
-    const spEntries = Object.entries(spMap).sort((a,b) => b[1]-a[1]);
-    const spDots = spEntries.map(([sp, n]) =>
+    const spDots = Object.entries(spMap).sort((a,b)=>b[1]-a[1]).map(([sp,n]) =>
       `<span style="display:inline-flex;align-items:center;gap:3px;margin-right:6px;font-size:11px;color:var(--muted);">
-        <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="${speciesColor(sp)}"/></svg>${sp}${n > 1 ? ' ×'+n : ''}
-      </span>`
-    ).join('');
-    const subtitle = grp.nickname ? (grp.location ? grp.location : '') : '';
+        <svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="${speciesColor(sp)}"/></svg>${sp}${n>1?' ×'+n:''}
+      </span>`).join('');
+    const subtitle = grp.nickname ? (grp.location || '') : '';
     return `<div style="padding:10px 0;border-bottom:0.5px solid var(--border);">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:13px;color:var(--text);">${grp.nickname ? '📌 ' : '📍 '}${key}</div>
-          ${subtitle ? `<div style="font-size:11px;color:var(--hint);margin-top:1px;">${subtitle}</div>` : ''}
-          <div style="margin-top:5px;line-height:1.8;">${spDots || '<span style="font-size:11px;color:var(--hint);">No species recorded</span>'}</div>
+          <div style="font-weight:700;font-size:13px;color:var(--text);">${grp.nickname?'📌 ':'📍 '}${key}</div>
+          ${subtitle?`<div style="font-size:11px;color:var(--hint);margin-top:1px;">${subtitle}</div>`:''}
+          <div style="margin-top:5px;line-height:1.8;">${spDots||'<span style="font-size:11px;color:var(--hint);">No species recorded</span>'}</div>
         </div>
         <div style="flex-shrink:0;text-align:right;">
           <div style="font-size:16px;font-weight:700;color:var(--text);">${cnt}</div>
