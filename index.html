@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -61,7 +61,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pu{width:100%;min-height:200px;max-height:65vh;border:none;border-radius:12px;display:flex;align-items:stretch;justify-content:center;cursor:pointer;background:#2c2c2c;overflow:hidden;position:relative;}
 .pu img{width:100%;height:100%;object-fit:contain;position:absolute;inset:0;background:#1a1a1a;}
 .pu-inner{position:absolute;inset:0;display:flex;flex-direction:column;z-index:1;}
-.pu-fish-cover{flex:1;background:url('icon-512.png') center/contain no-repeat;}
+.pu-fish-cover{flex:1;background:#444444 url('icon-512.png') center/contain no-repeat;}
 .pu-text-block{padding:12px 16px 16px;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,0.68));}
 .pu-add-text{font-size:14px;font-weight:600;color:#ffffff;letter-spacing:0.1px;}
 .pu-add-sub{font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px;}
@@ -171,6 +171,12 @@ input[type=file]{display:none;}
 .edit-modal-title{font-size:16px;font-weight:700;color:#fff;}
 .edit-close{background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;}
 .edit-modal-body{padding:14px;}
+/* MANAGE SUGGESTIONS MODAL */
+.msug-wrap{display:none;position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,0.62);overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.msug-wrap.open{display:block;}
+.msug-inner{max-width:430px;margin:0 auto;padding:14px;padding-top:calc(env(safe-area-inset-top)+14px);padding-bottom:40px;}
+.msug-card{background:var(--surf2);border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.4);}
+.msug-head{background:var(--dark);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
 /* DELETE CONFIRM MODAL */
 .del-modal-wrap{display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:24px;}
 .del-modal-wrap.open{display:flex;}
@@ -342,8 +348,12 @@ input[type=file]{display:none;}
           <div><label>Fly / Bait</label><input type="text" id="fly" placeholder="e.g. Crazy Charlie" list="flySuggestions" autocomplete="off"></div>
           <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6" list="flycolSuggestions" autocomplete="off"></div>
         </div>
+        <label>Fishing Rig</label>
+        <input type="text" id="rig" placeholder="e.g. Epic 890TI" list="rigSuggestions" autocomplete="off">
         <datalist id="flySuggestions"></datalist>
         <datalist id="flycolSuggestions"></datalist>
+        <datalist id="rigSuggestions"></datalist>
+        <button type="button" class="gpsbtn" onclick="openManageSuggestions()" style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;">✏️ Manage saved entries</button>
 
         <label>Notes</label>
         <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;"></textarea>
@@ -571,13 +581,26 @@ input[type=file]{display:none;}
 
     <!-- ══ CATCHES ══ -->
     <div class="pg" id="pg-list">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div id="tstats" style="font-size:13px;font-weight:600;color:var(--text);">0 catches</div>
         <select id="sortby" onchange="renderList()" style="width:auto;padding:6px 10px;font-size:12px;">
           <option value="newest">Newest first</option>
           <option value="oldest">Oldest first</option>
+          <option value="month">By month</option>
           <option value="location">By location</option>
           <option value="fish">By species</option>
+        </select>
+      </div>
+      <!-- Filter bar -->
+      <div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;">
+        <select id="filterMonth" onchange="renderList()" style="flex:1;min-width:110px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
+          <option value="">All months</option>
+          <option>January</option><option>February</option><option>March</option><option>April</option>
+          <option>May</option><option>June</option><option>July</option><option>August</option>
+          <option>September</option><option>October</option><option>November</option><option>December</option>
+        </select>
+        <select id="filterFish" onchange="renderList()" style="flex:1;min-width:110px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
+          <option value="">All species</option>
         </select>
       </div>
       <!-- Backup / Restore bar -->
@@ -619,6 +642,23 @@ input[type=file]{display:none;}
 <div class="lightbox-wrap" id="photoLightbox" onclick="closeLightbox()">
   <button class="lightbox-close" onclick="closeLightbox()">✕</button>
   <img class="lightbox-img" id="lightboxImg" src="" alt="Catch photo">
+</div>
+
+<!-- ══ MANAGE SUGGESTIONS MODAL ══ -->
+<div class="msug-wrap" id="manageSuggestionsPanel">
+  <div class="msug-inner">
+    <div class="msug-card">
+      <div class="msug-head">
+        <span style="font-size:16px;font-weight:700;color:#fff;">✏️ Manage Saved Entries</span>
+        <button onclick="closeManageSuggestions()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+      </div>
+      <div style="padding:14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Tap ✕ to hide an entry from autocomplete. It stays in your existing catches — just won't appear as a suggestion.</div>
+        <div id="manageSuggestionsContent"></div>
+        <button class="sbtn" style="margin-top:8px;background:var(--dark3);" onclick="closeManageSuggestions()">Done</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ══ DELETE CONFIRM MODAL ══ -->
@@ -698,6 +738,8 @@ input[type=file]{display:none;}
             <div><label>Fly / Bait</label><input type="text" id="efly" placeholder="e.g. Crazy Charlie" list="flySuggestions" autocomplete="off"></div>
             <div><label>Colour &amp; size</label><input type="text" id="eflycol" placeholder="e.g. Chartreuse, #6" list="flycolSuggestions" autocomplete="off"></div>
           </div>
+          <label>Fishing Rig</label>
+          <input type="text" id="erig" placeholder="e.g. Epic 890TI" list="rigSuggestions" autocomplete="off">
           <label>Notes</label>
           <textarea id="enotes" rows="3" style="resize:none;font-size:16px;" placeholder="Depth, technique, conditions..."></textarea>
         </div>
@@ -712,9 +754,10 @@ input[type=file]{display:none;}
         <div class="sec" style="margin-bottom:14px;">
           <div class="stitle">📍 Location</div>
           <label>Location Nickname</label>
-          <input type="text" id="enickname" placeholder="e.g. The Ledge" list="nicknameSuggestions" autocomplete="off">
-          <label>Location name</label>
-          <input type="text" id="eloc" placeholder="e.g. Tauranga Harbour">
+          <input type="text" id="enickname" placeholder="e.g. Blue Tongue" list="nicknameSuggestions" autocomplete="off">
+          <label>Search location</label>
+          <input type="text" id="eloc" placeholder="e.g. Tauranga Harbour" oninput="onEditLocInput()" autocomplete="off">
+          <div class="geo-status" id="egstat"></div>
           <div class="r2">
             <div><label>Latitude</label><input type="number" id="elat" step="0.0001" oninput="onEditCoordInput()" inputmode="decimal"></div>
             <div><label>Longitude</label><input type="number" id="elng" step="0.0001" oninput="onEditCoordInput()" inputmode="decimal"></div>
@@ -1392,6 +1435,31 @@ function setGeoStatus(msg, spin) {
   e.innerHTML = spin ? `<span class="spin"></span> ${msg}` : msg;
 }
 
+let editGeoTimer = null;
+function onEditLocInput() {
+  clearTimeout(editGeoTimer);
+  const q = document.getElementById('eloc').value.trim();
+  const st = document.getElementById('egstat');
+  if(q.length < 3) { if(st) st.textContent = ''; return; }
+  if(st) st.innerHTML = '<span class="spin"></span> Searching...';
+  editGeoTimer = setTimeout(() => fwdGeoEdit(q), 700);
+}
+
+async function fwdGeoEdit(q) {
+  const st = document.getElementById('egstat');
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`, { headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'} });
+    const d = await r.json();
+    if(d && d.length) {
+      const la = parseFloat(d[0].lat), ln = parseFloat(d[0].lon);
+      document.getElementById('elat').value = la.toFixed(4);
+      document.getElementById('elng').value = ln.toFixed(4);
+      if(editMap && editPin) { editPin.setLatLng([la,ln]); editMap.setView([la,ln],13); }
+      if(st) st.textContent = '📍 ' + d[0].display_name.split(',').slice(0,2).join(',');
+    } else { if(st) st.textContent = 'No location found — try a broader name'; }
+  } catch(e) { if(st) st.textContent = 'Search unavailable offline'; }
+}
+
 function onLocInput() {
   clearTimeout(geoTimer);
   const q = document.getElementById('locname').value.trim();
@@ -1529,24 +1597,92 @@ function toggleLogMapLayer() {
 // ─────────────────────────────────────────────
 // NICKNAME SUGGESTIONS — keep datalist fresh
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// MANAGED SUGGESTIONS — autocomplete with delete
+// Values come from catch data (deduplicated). A separate "deleted" set in
+// localStorage lets users permanently hide entries they don't want to see again.
+// ─────────────────────────────────────────────
+function _getSuggestionDeleted(key) {
+  try { return new Set(JSON.parse(localStorage.getItem('_del_'+key)||'[]')); } catch(e) { return new Set(); }
+}
+function _addSuggestionDeleted(key, val) {
+  try {
+    const s = _getSuggestionDeleted(key); s.add(val);
+    localStorage.setItem('_del_'+key, JSON.stringify([...s]));
+  } catch(e) {}
+}
+function deleteSuggestion(key, val) {
+  _addSuggestionDeleted(key, val);
+  _refreshAllSuggestions();
+}
+
+function _buildDatalist(dl, values, key) {
+  if (!dl) return;
+  const deleted = _getSuggestionDeleted(key);
+  const filtered = values.filter(v => v && !deleted.has(v));
+  // Plain datalist — browser renders the dropdown, no custom delete UI needed in datalist itself.
+  // We expose deletion via a separate manage panel opened by a link below each field.
+  dl.innerHTML = filtered.map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join('');
+}
+
 function _refreshNicknameSuggestions() {
   const dl = document.getElementById('nicknameSuggestions');
-  if (!dl) return;
   const names = [...new Set(catches.map(c => c.nickname).filter(Boolean))].sort();
-  dl.innerHTML = names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">`).join('');
+  _buildDatalist(dl, names, 'nickname');
 }
 
 function _refreshFlyColSuggestions() {
-  const flyDl  = document.getElementById('flySuggestions');
-  const colDl  = document.getElementById('flycolSuggestions');
-  if (flyDl) {
-    const flies = [...new Set(catches.map(c => c.fly).filter(Boolean))].sort();
-    flyDl.innerHTML = flies.map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join('');
+  const flies = [...new Set(catches.map(c => c.fly).filter(Boolean))].sort();
+  const cols  = [...new Set(catches.map(c => c.flycol).filter(Boolean))].sort();
+  const rigs  = [...new Set(catches.map(c => c.rig).filter(Boolean))].sort();
+  _buildDatalist(document.getElementById('flySuggestions'),   flies, 'fly');
+  _buildDatalist(document.getElementById('flycolSuggestions'),cols,  'flycol');
+  _buildDatalist(document.getElementById('rigSuggestions'),   rigs,  'rig');
+}
+
+function _refreshAllSuggestions() {
+  _refreshNicknameSuggestions();
+  _refreshFlyColSuggestions();
+  if (document.getElementById('manageSuggestionsPanel')?.style.display !== 'none') {
+    _renderManageSuggestions();
   }
-  if (colDl) {
-    const cols = [...new Set(catches.map(c => c.flycol).filter(Boolean))].sort();
-    colDl.innerHTML = cols.map(v => `<option value="${v.replace(/"/g,'&quot;')}">`).join('');
-  }
+}
+
+// ── Suggestion manager modal ─────────────────────────────────────────────────
+function openManageSuggestions() {
+  const panel = document.getElementById('manageSuggestionsPanel');
+  if (!panel) return;
+  _renderManageSuggestions();
+  panel.classList.add('open');
+}
+function closeManageSuggestions() {
+  const panel = document.getElementById('manageSuggestionsPanel');
+  if (panel) panel.classList.remove('open');
+}
+
+function _renderManageSuggestions() {
+  const el = document.getElementById('manageSuggestionsContent');
+  if (!el) return;
+  const sections = [
+    { key:'nickname', label:'📌 Location Nicknames', values:[...new Set(catches.map(c=>c.nickname).filter(Boolean))].sort() },
+    { key:'fly',      label:'🎣 Fly / Bait',         values:[...new Set(catches.map(c=>c.fly).filter(Boolean))].sort() },
+    { key:'flycol',   label:'🎨 Colour & Size',       values:[...new Set(catches.map(c=>c.flycol).filter(Boolean))].sort() },
+    { key:'rig',      label:'🎿 Fishing Rig',          values:[...new Set(catches.map(c=>c.rig).filter(Boolean))].sort() },
+  ];
+  el.innerHTML = sections.map(sec => {
+    const deleted = _getSuggestionDeleted(sec.key);
+    const active  = sec.values.filter(v => !deleted.has(v));
+    const hidden  = sec.values.filter(v =>  deleted.has(v));
+    if (!sec.values.length) return `<div style="margin-bottom:14px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">${sec.label}</div><div style="font-size:12px;color:var(--hint);">No entries yet</div></div>`;
+    return `<div style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">${sec.label}</div>
+      ${active.map(v=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--surf);border-radius:6px;margin-bottom:4px;border:0.5px solid var(--border);">
+        <span style="font-size:13px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${v}</span>
+        <button onclick="deleteSuggestion('${sec.key}','${v.replace(/'/g,"\\'")}');" style="background:none;border:none;color:#e03c3c;font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;">✕</button>
+      </div>`).join('')}
+      ${hidden.length ? `<div style="font-size:10px;color:var(--hint);margin-top:4px;">${hidden.length} hidden — <button onclick="(function(){try{localStorage.removeItem('_del_${sec.key}');}catch(e){}; _refreshAllSuggestions();})();" style="background:none;border:none;color:var(--teal);font-size:10px;cursor:pointer;padding:0;">Restore all</button></div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 // Main map
@@ -2865,6 +3001,7 @@ async function saveCatch() {
     platform:document.getElementById('platform').value,
     fly:document.getElementById('fly').value,
     flycol:document.getElementById('flycol').value,
+    rig:document.getElementById('rig').value,
     notes:document.getElementById('notes').value,
     location:document.getElementById('locname').value||'New Zealand',
     nickname:document.getElementById('cnickname').value.trim(),
@@ -2887,7 +3024,7 @@ async function saveCatch() {
   vibrate([40,20,40]);
   showToast('Your catch has been logged! 🎣', 'success');
   // Clear catch-specific fields but keep location + nickname for multi-catch sessions
-  ['ftype','fcust','flen','fwt','method','platform','fly','flycol','notes'].forEach(fieldId=>document.getElementById(fieldId).value='');
+  ['ftype','fcust','flen','fwt','method','platform','fly','flycol','rig','notes'].forEach(fieldId=>document.getElementById(fieldId).value='');
   // Reset date/time back to now so the next catch doesn't inherit an old EXIF date
   const resetNow = new Date();
   document.getElementById('cdate').value = resetNow.toISOString().split('T')[0];
@@ -3040,15 +3177,43 @@ function renderList() {
   // FIX: destroy stale Leaflet instances before rebuilding to prevent memory leaks
   Object.keys(cmaps).forEach(id => { try { cmaps[id].remove(); } catch(e) {} });
   cmaps = {};
-  const sort=document.getElementById('sortby').value;let s=[...catches];
+
+  // ── Populate fish filter dropdown with unique species (no duplicates) ──
+  const fishFilter = document.getElementById('filterFish');
+  if (fishFilter) {
+    const currentFish = fishFilter.value;
+    const allFish = [...new Set(catches.map(c => c.fish).filter(Boolean))].sort();
+    fishFilter.innerHTML = '<option value="">All species</option>' +
+      allFish.map(f => `<option value="${f}"${f===currentFish?' selected':''}>${f}</option>`).join('');
+  }
+
+  const sort        = document.getElementById('sortby').value;
+  const filterMonth = document.getElementById('filterMonth')?.value || '';
+  const filterFish2 = document.getElementById('filterFish')?.value  || '';
+  const MONTHS_ALL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // Filter first
+  let s = catches.filter(c => {
+    if (filterMonth) {
+      const parts = (c.date || '').split('-');
+      if (parts.length < 2) return false;
+      const mIdx = parseInt(parts[1], 10) - 1;
+      if (MONTHS_ALL[mIdx] !== filterMonth) return false;
+    }
+    if (filterFish2 && c.fish !== filterFish2) return false;
+    return true;
+  });
+
+  // Sort
   if(sort==='newest') s.sort((a,b)=>{const da=new Date((a.date||'1970-01-01')+'T'+(a.time||'00:00')),db=new Date((b.date||'1970-01-01')+'T'+(b.time||'00:00'));return db-da;});
   else if(sort==='oldest') s.sort((a,b)=>{const da=new Date((a.date||'1970-01-01')+'T'+(a.time||'00:00')),db=new Date((b.date||'1970-01-01')+'T'+(b.time||'00:00'));return da-db;});
-  else if(sort==='weight')s.sort((a,b)=>(parseFloat(b.weight)||0)-(parseFloat(a.weight)||0));
-  else if(sort==='length')s.sort((a,b)=>(parseFloat(b.length)||0)-(parseFloat(a.length)||0));
-  else if(sort==='location')s.sort((a,b)=>(a.nickname||a.location||'').localeCompare(b.nickname||b.location||''));
-  else if(sort==='fish')s.sort((a,b)=>(a.fish||'').localeCompare(b.fish||''));
+  else if(sort==='month') s.sort((a,b)=>{const ma=(a.date||'').split('-')[1]||'00',mb=(b.date||'').split('-')[1]||'00';return parseInt(ma)-parseInt(mb);});
+  else if(sort==='location') s.sort((a,b)=>(a.nickname||a.location||'').localeCompare(b.nickname||b.location||''));
+  else if(sort==='fish') s.sort((a,b)=>(a.fish||'').localeCompare(b.fish||''));
+
   const wts=catches.filter(c=>c.weight).map(c=>parseFloat(c.weight)||0);
-  document.getElementById('tstats').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+(wts.length?' · Best: '+Math.max(...wts).toFixed(1)+'kg':'');
+  const filtered = s.length !== catches.length ? ` · ${s.length} shown` : '';
+  document.getElementById('tstats').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+(wts.length?' · Best: '+Math.max(...wts).toFixed(1)+'kg':'')+filtered;
   if(!catches.length){
     document.getElementById('clist').innerHTML=`<div class="empty">
       <img src="icon-192.png" style="width:80px;height:80px;border-radius:18px;opacity:0.35;margin-bottom:4px;mix-blend-mode:normal;" alt="">
@@ -3074,7 +3239,7 @@ function renderList() {
           </div>
           <div class="cmeta">${[c.length?c.length+'cm':'',c.weight?c.weight+'kg':''].filter(Boolean).join(' · ')||'Size not recorded'}</div>
           <div class="cmeta" style="font-size:11px;">${c.date} ${c.time} · ${c.location}</div>
-          ${(c.method||c.platform)?`<div class="cmeta" style="font-size:11px;color:var(--hint);">${[c.method,c.platform,c.fly,c.flycol].filter(Boolean).join(' · ')}</div>`:''}
+          ${(c.method||c.platform)?`<div class="cmeta" style="font-size:11px;color:var(--hint);">${[c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · ')}</div>`:''}
           ${c.notes?`<div class="cmeta" style="font-size:11px;font-style:italic;color:var(--hint);">"${c.notes.slice(0,60)}${c.notes.length>60?'…':''}"</div>`:''}
           <div class="ctags">
             <span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':c.tide||'—'}</span>
@@ -3128,6 +3293,7 @@ function editCatch(id) {
   document.getElementById('eplatform').value = c.platform || '';
   document.getElementById('efly').value      = c.fly      || '';
   document.getElementById('eflycol').value   = c.flycol   || '';
+  document.getElementById('erig').value      = c.rig      || '';
   document.getElementById('enotes').value    = c.notes    || '';
   document.getElementById('edate').value     = c.date     || '';
   document.getElementById('etime').value     = c.time     || '';
@@ -3254,6 +3420,7 @@ function saveEdit() {
     platform: document.getElementById('eplatform').value,
     fly:      document.getElementById('efly').value,
     flycol:   document.getElementById('eflycol').value,
+    rig:      document.getElementById('erig').value,
     notes:    document.getElementById('enotes').value,
     date:     newDate,
     time:     newTime,
@@ -3542,34 +3709,44 @@ function renderStats() {
           <div class="insight-icon">📅</div>
           <div class="insight-text">
             <div class="insight-title">Catches by Month</div>
-            <div class="insight-val" style="font-size:13px;">${topMonths[0].name} is your best month
-              <span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.45);"> — ${topMonths[0].total} catch${topMonths[0].total!==1?'es':''}</span>
-            </div>
           </div>
         </div>
         <div style="width:100%;background:rgba(255,255,255,0.05);border-radius:10px;padding:10px 6px 4px;">
           ${monthChartSVG}
         </div>
         ${(()=>{
-          // Best month per species
+          // Best month per species — expanded with best/worst + spread
           const spBestMonth = {};
           orderedSpecies.forEach(sp => {
-            let bestMi = -1, bestCnt = 0;
+            let bestMi = -1, bestCnt = 0, worstMi = -1, worstCnt = Infinity, total = 0, activeMons = 0;
             monthSpecies.forEach((ms2, mi) => {
-              if((ms2[sp]||0) > bestCnt) { bestCnt = ms2[sp]||0; bestMi = mi; }
+              const cnt = ms2[sp] || 0;
+              if (cnt > 0) {
+                total += cnt; activeMons++;
+                if (cnt > bestCnt)  { bestCnt = cnt; bestMi = mi; }
+                if (cnt < worstCnt) { worstCnt = cnt; worstMi = mi; }
+              }
             });
-            if(bestMi >= 0 && bestCnt > 0) spBestMonth[sp] = { month: MONTHS[bestMi], short: MON_SHORT[bestMi], cnt: bestCnt };
+            if (bestMi >= 0 && bestCnt > 0) spBestMonth[sp] = {
+              bestMonth: MONTHS[bestMi], bestShort: MON_SHORT[bestMi], bestCnt,
+              worstShort: activeMons > 1 ? MON_SHORT[worstMi] : null, worstCnt,
+              total, activeMons
+            };
           });
           const rows = Object.entries(spBestMonth);
-          if(!rows.length) return '';
-          return `<div style="width:100%;margin-top:10px;">
-            <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;padding:0 4px;">Best month per species</div>
-            ${rows.map(([sp,{month,short,cnt}])=>`
-              <div style="display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:0.5px solid rgba(255,255,255,0.06);">
+          if (!rows.length) return '';
+          return `<div style="width:100%;margin-top:12px;">
+            <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;padding:0 4px;">Best month per species</div>
+            <div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:0;font-size:11px;color:rgba(255,255,255,0.5);padding:4px 4px 6px;border-bottom:0.5px solid rgba(255,255,255,0.1);">
+              <div></div><div>Species</div><div style="text-align:center;">Best</div><div style="text-align:center;padding:0 4px;">Worst</div><div style="text-align:right;">Total</div>
+            </div>
+            ${rows.map(([sp,d])=>`
+              <div style="display:grid;grid-template-columns:14px 1fr auto auto auto;gap:0;align-items:center;padding:6px 4px;border-bottom:0.5px solid rgba(255,255,255,0.06);">
                 <svg width="10" height="10" viewBox="0 0 10 10" style="flex-shrink:0;"><circle cx="5" cy="5" r="5" fill="${spColor(sp)}"/></svg>
-                <div style="flex:1;font-size:12px;color:rgba(255,255,255,0.82);">${sp}</div>
-                <div style="font-size:12px;font-weight:700;color:#fff;">${short}</div>
-                <div style="font-size:10px;color:rgba(255,255,255,0.4);">×${cnt}</div>
+                <div style="font-size:12px;color:rgba(255,255,255,0.85);padding-left:4px;">${sp}</div>
+                <div style="text-align:center;font-size:12px;font-weight:700;color:#4fc3a1;">${d.bestShort}<span style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.4);"> ×${d.bestCnt}</span></div>
+                <div style="text-align:center;padding:0 4px;font-size:12px;color:rgba(255,255,255,0.4);">${d.worstShort?d.worstShort+'<span style="font-size:9px;"> ×'+d.worstCnt+'</span>':'—'}</div>
+                <div style="text-align:right;font-size:12px;font-weight:600;color:#fff;">${d.total}<span style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.4);"> / ${d.activeMons}mo</span></div>
               </div>`).join('')}
           </div>`;
         })()}
