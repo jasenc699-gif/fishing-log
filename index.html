@@ -432,11 +432,9 @@ input[type=file]{display:none;}
       <!-- Tide Date Checker -->
       <div class="sec">
         <div class="stitle">🔍 Tide Checker — Any Date</div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Look up tides for any past or future date at your current station.</div>
-        <div class="r2">
-          <div><label>Date</label><input type="date" id="tideCheckDate" oninput="runTideCheck()"></div>
-          <div><label>Time (optional)</label><input type="time" id="tideCheckTime" oninput="runTideCheck()"></div>
-        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Look up the full tide schedule for any past or future date.</div>
+        <label>Date</label>
+        <input type="date" id="tideCheckDate" oninput="runTideCheck()">
         <div id="tideCheckResult" style="margin-top:10px;"></div>
       </div>
     </div>
@@ -561,6 +559,10 @@ input[type=file]{display:none;}
         </div>
       </div>
       <div class="sec" style="margin-top:0;"><div class="stitle">⚡ Fishing Conditions</div><div id="wxcond" style="font-size:14px;color:var(--text);line-height:1.7;">—</div></div>
+      <div class="sec" style="margin-top:0;padding-bottom:10px;">
+        <div class="stitle">📅 7-Day Forecast</div>
+        <div id="wxforecast" style="font-size:13px;color:var(--hint);">Loading forecast…</div>
+      </div>
       <button class="sbtn teal-btn" style="margin-top:4px;margin-bottom:10px;" onclick="autoWeather(true)">🔄 Refresh Weather</button>
     </div>
 
@@ -2605,56 +2607,66 @@ async function fetchMarineData() {
 // ─────────────────────────────────────────────
 function runTideCheck() {
   const dateVal = document.getElementById('tideCheckDate').value;
-  const timeVal = document.getElementById('tideCheckTime').value || '12:00';
   const el = document.getElementById('tideCheckResult');
   if (!el) return;
   if (!dateVal) { el.innerHTML = ''; return; }
   try {
-    const dt = new Date(`${dateVal}T${timeVal}:00${_nzISOOffset()}`);
-    if (!isFinite(dt.getTime())) { el.innerHTML = ''; return; }
-
     const port = activePort;
-    // Always use harmonic — date checker spans any historical/future date
-    const h  = tideHeightAt(dt, port);
-    const h5 = tideHeightAt(new Date(dt.getTime() + 5 * 60000), port);
-    const rising = h5 > h;
-    const bounds = portBounds(port);
-    const range = bounds.hi - bounds.lo || 1;
-    const mid = bounds.lo + range * 0.5, qtr = range * 0.22;
-    const tl = h > mid + qtr ? 'High Tide' : h < mid - qtr ? 'Low Tide' : (rising ? 'Mid — Rising' : 'Mid — Falling');
-    const label = tl + (rising ? ' · Incoming' : ' · Outgoing');
-    const arrow = rising ? '↑' : '↓';
-    const isIncoming = rising;
-    const bg  = isIncoming ? 'rgba(79,195,161,0.12)' : 'rgba(239,159,39,0.1)';
-    const brd = isIncoming ? 'rgba(79,195,161,0.35)' : 'rgba(239,159,39,0.3)';
-    const col = isIncoming ? '#0a5c43' : '#6b3e08';
 
-    // Find surrounding high/low events using harmonic scan (±18h window)
-    const evts = findTideEvents(new Date(dt.getTime() - 18*3600000), 8, port)
-      .filter(e => e.time.getTime() >= dt.getTime() - 18*3600000);
-    const nextEvt = evts.find(e => e.time.getTime() > dt.getTime());
-    const prevEvt = [...evts].reverse().find(e => e.time.getTime() <= dt.getTime());
+    // Build a NZ-aware noon for the chosen date (DST-safe reference)
+    const nzNoon = new Date(`${dateVal}T12:00:00${_nzISOOffset()}`);
+    if (!isFinite(nzNoon.getTime())) { el.innerHTML = ''; return; }
 
-    const mo = moonAt(dt);
-    const fmtEvt = e => e ? `${e.type} ${_fmtTideTime(e.time)} (${isFinite(e.h)?e.h.toFixed(2)+'m':'—'})` : '—';
+    // Scan from midnight the previous day to catch early-morning tides
+    const scanFrom = new Date(nzNoon.getTime() - 20 * 3600000);
+
+    // Collect all events that fall on the chosen NZ calendar date
+    const allEvts = findTideEvents(scanFrom, 12, port);
+    const dayEvts = allEvts.filter(e => _nzDateStr(e.time.getTime()) === dateVal);
+
+    // Moon + sun for the day
+    const mo = moonAt(nzNoon);
+    const sun = _sunriseSunset(nzNoon, appLat, appLng);
+
+    // Header
+    const dayName = new Intl.DateTimeFormat('en-NZ',{weekday:'long',timeZone:'Pacific/Auckland'}).format(nzNoon);
+    const dateDisp = new Intl.DateTimeFormat('en-NZ',{day:'numeric',month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(nzNoon);
+
+    if (!dayEvts.length) {
+      el.innerHTML = `<div style="font-size:13px;color:var(--hint);padding:10px 0;">No tide events found for this date at ${port.name}.</div>`;
+      return;
+    }
+
+    // Build event rows matching the live tide style
+    const rows = dayEvts.map(e => {
+      const isH = e.type === 'High';
+      const t   = _fmtTideTime(e.time);
+      const hm  = isFinite(e.h) ? e.h.toFixed(2) : '—';
+      const hft = isFinite(e.h) ? (e.h * 3.28084).toFixed(1) : '—';
+      return `<div class="tide-event-row">
+        <span class="tide-event-badge ${isH?'high':'low'}">${isH?'HIGH TIDE':'LOW TIDE'}</span>
+        <div style="flex:1;min-width:0;">
+          <div class="tide-event-time">${t}</div>
+          <div class="tide-event-ht">${hm}m (${hft}ft)<span class="tide-lat-badge">LAT</span></div>
+        </div>
+      </div>`;
+    }).join('');
 
     el.innerHTML = `
-      <div style="padding:10px 12px;border-radius:8px;background:${bg};border:0.5px solid ${brd};margin-bottom:8px;">
-        <div style="font-size:13px;font-weight:700;color:${col};">${arrow} ${label}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px;">Height: <b>${isFinite(h)?h.toFixed(2)+'m ('+( h*3.28084).toFixed(1)+'ft)':'—'}</b> · ${port.name}</div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
-        <div style="background:var(--surf);border-radius:8px;padding:9px 10px;border:0.5px solid var(--border);">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Previous</div>
-          <div style="color:var(--text);">${fmtEvt(prevEvt)}</div>
+      <div class="tide-day-card" style="margin-bottom:0;">
+        <div class="tide-day-head">
+          <div class="tide-day-datestr">${dayName}, ${dateDisp}</div>
+          <div class="tide-day-meta" style="margin-top:6px;">
+            ${sun ? `<div class="tide-day-meta-row">🌅 ${sun.rise} – ${sun.set}</div>` : ''}
+            <div class="tide-day-meta-row">${mo.e} ${mo.n} · ${mo.il}% illumination</div>
+            <div class="tide-day-meta-row" style="font-size:9px;color:rgba(255,255,255,0.35);">Harmonic model · ${port.name}</div>
+          </div>
         </div>
-        <div style="background:var(--surf);border-radius:8px;padding:9px 10px;border:0.5px solid var(--border);">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Next</div>
-          <div style="color:var(--text);">${fmtEvt(nextEvt)}</div>
-        </div>
-      </div>
-      <div style="margin-top:8px;font-size:11px;color:var(--hint);">Moon: ${mo.e} ${mo.n} · ${mo.il}% · Harmonic model · ${port.name}</div>`;
-  } catch(e) { if(el) el.innerHTML = '<div style="font-size:12px;color:var(--hint);">Could not calculate tide.</div>'; }
+        <div>${rows}</div>
+      </div>`;
+  } catch(e) {
+    if(el) el.innerHTML = '<div style="font-size:12px;color:var(--hint);">Could not calculate tides.</div>';
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -2780,9 +2792,9 @@ function autoWeather(force) {
 
 async function fetchOpenMeteo(lat, lng, locName) {
   try {
-    // Fetch land weather + marine data in parallel
+    // Fetch land weather + marine data in parallel — add daily vars for 7-day forecast
     const [landRes, marineRes, geoRes] = await Promise.all([
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=precipitation_probability,surface_pressure&forecast_days=1&wind_speed_unit=kmh&timezone=auto`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=precipitation_probability,surface_pressure&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=7&wind_speed_unit=kmh&timezone=auto`),
       fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction&forecast_days=1`).catch(()=>null),
       locName ? null : fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}}).catch(()=>null)
     ]);
@@ -2844,6 +2856,41 @@ async function fetchOpenMeteo(lat, lng, locName) {
 
     // Update barometer
     updateBarometer(pressure, pressureHistory);
+
+    // ── 7-day forecast ────────────────────────────────────────────────────────
+    const daily = land.daily;
+    const fcastEl = document.getElementById('wxforecast');
+    if (fcastEl && daily?.time?.length) {
+      const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      fcastEl.innerHTML = daily.time.map((dateStr, i) => {
+        const d       = new Date(dateStr + 'T12:00:00');
+        const dayLbl  = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DAY_SHORT[d.getDay()];
+        const code2   = daily.weather_code?.[i] ?? 3;
+        const hi      = daily.temperature_2m_max?.[i] != null ? Math.round(daily.temperature_2m_max[i]) : '—';
+        const lo      = daily.temperature_2m_min?.[i] != null ? Math.round(daily.temperature_2m_min[i]) : '—';
+        const rain    = daily.precipitation_probability_max?.[i] ?? 0;
+        const wnd     = daily.wind_speed_10m_max?.[i]  != null ? Math.round(daily.wind_speed_10m_max[i]) : '—';
+        const wdirDeg = daily.wind_direction_10m_dominant?.[i];
+        const wdirLbl = wdirDeg != null ? windDir(wdirDeg) : '—';
+        const fishBg  = weatherConditionOM(code2, typeof wnd==='number'?wnd:0);
+        const dot     = fishBg.startsWith('✅')?'#4fc3a1':fishBg.startsWith('🟡')?'#f39c12':'#e74c3c';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border);">
+          <div style="width:52px;flex-shrink:0;">
+            <div style="font-size:12px;font-weight:${i<2?'700':'400'};color:${i<2?'var(--text)':'var(--muted)'};">${dayLbl}</div>
+            <div style="font-size:10px;color:var(--hint);">${d.getDate()} ${d.toLocaleString('en-NZ',{month:'short'})}</div>
+          </div>
+          <div style="font-size:22px;flex-shrink:0;">${omIcon(code2)}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;color:var(--text);">${omDesc(code2)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px;">💨 ${wnd} km/h ${wdirLbl} · 🌧 ${rain}%</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--text);">${hi}° <span style="font-weight:400;color:var(--hint);">${lo}°</span></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:${dot};margin:3px 0 0 auto;"></div>
+          </div>
+        </div>`;
+      }).join('');
+    }
 
     // Store coords for reuse
     wxLat = lat; wxLng = lng;
