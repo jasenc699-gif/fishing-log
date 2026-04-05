@@ -84,6 +84,31 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .wgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
 .wcard{background:var(--surf);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:3px;border:0.5px solid var(--border);}
 .wi{font-size:20px;}.wv{font-size:18px;font-weight:600;color:var(--text);}.wl{font-size:11px;color:var(--muted);}
+/* WEATHER HERO */
+.wx-hero{background:var(--dark);border-radius:12px;padding:14px;margin-bottom:10px;}
+.wx-safe{border-radius:9px;padding:10px 13px;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.wx-safe-good{background:rgba(79,195,161,0.15);border:0.5px solid rgba(79,195,161,0.4);}
+.wx-safe-caution{background:rgba(243,156,18,0.15);border:0.5px solid rgba(243,156,18,0.4);}
+.wx-safe-danger{background:rgba(231,76,60,0.15);border:0.5px solid rgba(231,76,60,0.4);}
+.wx-safe-loading{background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.12);}
+.wx-big3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.wx-b3{background:rgba(255,255,255,0.07);border-radius:9px;padding:10px 9px 9px;}
+.wx-b3-lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.38);font-weight:700;margin-bottom:5px;}
+/* HOURLY RIBBON */
+.wx-ribbon{display:flex;overflow-x:auto;gap:6px;padding-bottom:4px;padding-right:13px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;}
+.wx-ribbon::-webkit-scrollbar{display:none;}
+.wx-cell{flex-shrink:0;width:56px;background:var(--surf);border-radius:10px;padding:8px 4px 7px;text-align:center;scroll-snap-align:start;display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid transparent;position:relative;}
+.wx-cell-now{background:var(--dark2);border-color:rgba(255,255,255,0.18);}
+.wx-cell-major{border-color:rgba(79,195,161,0.6);background:rgba(79,195,161,0.07);}
+.wx-cell-minor{border-color:rgba(239,159,39,0.5);}
+.wx-wind-pill{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;margin-top:1px;color:#fff;}
+.wx-wind-calm{background:rgba(79,195,161,0.55);}
+.wx-wind-mod{background:rgba(243,156,18,0.7);}
+.wx-wind-strong{background:rgba(231,76,60,0.75);}
+/* SWELL STRIP */
+.wx-swell-strip{display:flex;gap:8px;overflow-x:auto;margin-bottom:10px;padding:1px 0;}
+.wx-swell-strip::-webkit-scrollbar{display:none;}
+.wx-sw-card{flex-shrink:0;background:var(--white);border:0.5px solid var(--border);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:2px;min-width:90px;}
 
 /* BUTTONS */
 .sbtn{width:100%;padding:14px;background:var(--grey-btn);border:none;border-radius:12px;font-size:16px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;transition:background 0.15s,transform 0.1s;}
@@ -514,39 +539,96 @@ input[type=file]{display:none;}
 
     <!-- ══ WEATHER ══ -->
     <div class="pg" id="pg-wx">
+      <!-- Header -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:13px;font-weight:600;color:var(--text);">Weather</div>
         <span id="wxBadge" class="api-badge offline-badge">⏳ Loading...</span>
       </div>
-      <div style="background:#1c3428;border-radius:12px;padding:18px;margin-bottom:10px;display:flex;align-items:center;gap:14px;">
-        <div id="wxi" style="font-size:48px;">⛅</div>
-        <div>
-          <div id="wxt" style="font-size:32px;font-weight:600;color:#fff;">—</div>
-          <div id="wxd" style="font-size:14px;color:rgba(255,255,255,0.65);margin-top:2px;">Loading...</div>
-          <div id="wxl" style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:3px;">Detecting location...</div>
+
+      <!-- ① HERO: Safe-to-Fish + Big Three -->
+      <div class="wx-hero">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+          <div id="wxi" style="font-size:44px;line-height:1;">⛅</div>
+          <div style="flex:1;min-width:0;">
+            <div id="wxt" style="font-size:28px;font-weight:700;color:#fff;line-height:1;">—</div>
+            <div id="wxd" style="font-size:13px;color:rgba(255,255,255,0.65);margin-top:3px;">Loading…</div>
+            <div id="wxl" style="font-size:11px;color:rgba(255,255,255,0.38);margin-top:2px;">Detecting location…</div>
+          </div>
+        </div>
+        <!-- Safe-to-fish status banner -->
+        <div id="wxSafeStatus" class="wx-safe wx-safe-loading">
+          <div id="wxSafeIcon" style="font-size:20px;flex-shrink:0;">⏳</div>
+          <div>
+            <div id="wxSafeLabel" style="font-size:13px;font-weight:700;color:#fff;line-height:1.2;">Loading conditions…</div>
+            <div id="wxSafeSub" style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;"></div>
+          </div>
+        </div>
+        <!-- Big Three: Wind / Pressure / Sky -->
+        <div class="wx-big3">
+          <!-- Wind -->
+          <div class="wx-b3">
+            <div class="wx-b3-lbl">Wind</div>
+            <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
+              <svg id="wxWindArrow" width="18" height="18" viewBox="0 0 20 20" style="flex-shrink:0;transition:transform 0.5s ease;" title="Wind direction">
+                <polygon points="10,1 15,15 10,12 5,15" fill="#4fc3a1"/>
+                <polygon points="10,19 5,5 10,8 15,5" fill="rgba(79,195,161,0.2)"/>
+              </svg>
+              <span id="wxWindSpd" style="font-size:15px;font-weight:700;color:#fff;line-height:1;">—</span>
+            </div>
+            <div id="wxWindDir" style="font-size:10px;color:rgba(255,255,255,0.5);">—</div>
+            <div id="wxGust" style="font-size:10px;color:rgba(255,255,255,0.32);margin-top:2px;">Gust —</div>
+          </div>
+          <!-- Pressure -->
+          <div class="wx-b3">
+            <div class="wx-b3-lbl">Pressure</div>
+            <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:3px;">
+              <span id="wxPressVal" style="font-size:15px;font-weight:700;color:#fff;">—</span>
+              <span id="wxPressTrendArrow" style="font-size:15px;font-weight:700;color:#4fc3a1;line-height:1;"></span>
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);">hPa</div>
+            <div id="wxPressTrend" style="font-size:10px;color:rgba(255,255,255,0.32);margin-top:2px;">—</div>
+          </div>
+          <!-- Sky -->
+          <div class="wx-b3">
+            <div class="wx-b3-lbl">Sky</div>
+            <div style="margin-bottom:3px;">
+              <span id="wxFeels" style="font-size:15px;font-weight:700;color:#fff;">—</span>
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.5);">feels like</div>
+            <div id="wxRainNow" style="font-size:10px;color:rgba(255,255,255,0.32);margin-top:2px;">Rain —</div>
+          </div>
         </div>
       </div>
-      <div class="wgrid">
-        <div class="wcard"><span class="wi">💨</span><span class="wv" id="wxwind">—</span><span class="wl">Wind speed</span></div>
-        <div class="wcard"><span class="wi">🧭</span><span class="wv" id="wxwdir">—</span><span class="wl">Wind direction</span></div>
-        <div class="wcard"><span class="wi">💧</span><span class="wv" id="wxh">—</span><span class="wl">Humidity</span></div>
-        <div class="wcard"><span class="wi">🌡</span><span class="wv" id="wxf">—</span><span class="wl">Feels like</span></div>
-        <div class="wcard"><span class="wi">👁</span><span class="wv" id="wxv">—</span><span class="wl">Visibility</span></div>
-        <div class="wcard"><span class="wi">📊</span><span class="wv" id="wxp">—</span><span class="wl">Pressure</span></div>
-        <div class="wcard"><span class="wi">🌊</span><span class="wv" id="wxswell">—</span><span class="wl">Swell</span></div>
-        <div class="wcard"><span class="wi">🌧</span><span class="wv" id="wxrain">—</span><span class="wl">Rain chance</span></div>
+
+      <!-- Marine swell strip (populated by JS when available) -->
+      <div id="wxSwellStrip" style="display:none;" class="sec" style="padding:10px 13px;">
+        <div class="stitle" style="margin-bottom:8px;">🌊 Marine</div>
+        <div id="wxSwellCards" class="wx-swell-strip"></div>
       </div>
+
+      <!-- ② 24-HOUR RIBBON -->
+      <div class="sec" style="padding:10px 0 10px 13px;overflow:hidden;">
+        <div class="stitle" style="padding-right:13px;margin-bottom:8px;">🕐 Next 24 Hours</div>
+        <div id="wxRibbon" class="wx-ribbon">
+          <div style="font-size:12px;color:var(--hint);padding:14px 0;">Loading…</div>
+        </div>
+        <div style="display:flex;gap:14px;margin-top:7px;padding-right:13px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#4fc3a1;flex-shrink:0;"></div>Major bite</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#EF9F27;flex-shrink:0;"></div>Minor bite</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#e74c3c;flex-shrink:0;"></div>Strong wind</div>
+        </div>
+      </div>
+
+      <!-- ③ BAROMETER (unchanged) -->
       <div class="baro-wrap" id="baroCard">
         <div class="stitle" style="margin-bottom:0;">🌡 Barometer</div>
         <div class="baro-gauge">
           <svg class="baro-arc" width="160" height="84" viewBox="0 0 160 84">
-            <!-- Background arc segments: Poor | Fair | Good | Fair | Poor -->
             <path d="M14,80 A70,70 0 0,1 38,22" stroke="#e74c3c" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
             <path d="M38,22 A70,70 0 0,1 70,10" stroke="#f39c12" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
             <path d="M70,10 A70,70 0 0,1 90,10" stroke="#4fc3a1" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
             <path d="M90,10 A70,70 0 0,1 122,22" stroke="#f39c12" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
             <path d="M122,22 A70,70 0 0,1 146,80" stroke="#e74c3c" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
-            <!-- Labels -->
             <text x="8" y="80" font-size="8" fill="#e74c3c" opacity="0.7" text-anchor="middle">970</text>
             <text x="80" y="7" font-size="8" fill="#4fc3a1" opacity="0.9" text-anchor="middle">1013</text>
             <text x="152" y="80" font-size="8" fill="#e74c3c" opacity="0.7" text-anchor="middle">1050</text>
@@ -570,16 +652,28 @@ input[type=file]{display:none;}
           </div>
         </div>
       </div>
+
+      <!-- ④ FISHING CONDITIONS -->
       <div class="sec" style="margin-top:0;"><div class="stitle">⚡ Fishing Conditions</div><div id="wxcond" style="font-size:14px;color:var(--text);line-height:1.7;">—</div></div>
+
+      <!-- ⑤ 7-DAY FORECAST -->
       <div class="sec" style="margin-top:0;padding-bottom:10px;">
         <div class="stitle">📅 7-Day Forecast</div>
         <div id="wxforecast" style="font-size:13px;color:var(--hint);">Loading forecast…</div>
-        <div style="display:flex;gap:14px;margin-top:10px;padding-top:8px;border-top:0.5px solid var(--border);">
+        <div style="display:flex;gap:14px;margin-top:10px;padding-top:8px;border-top:0.5px solid var(--border);flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><div style="width:9px;height:9px;border-radius:50%;background:#4fc3a1;flex-shrink:0;"></div>Excellent fishing</div>
           <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><div style="width:9px;height:9px;border-radius:50%;background:#f39c12;flex-shrink:0;"></div>Fair conditions</div>
           <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><div style="width:9px;height:9px;border-radius:50%;background:#e74c3c;flex-shrink:0;"></div>Poor / stay safe</div>
         </div>
       </div>
+
+      <!-- Hidden legacy elements (still updated by JS for catch-logging weather field) -->
+      <div style="display:none;">
+        <span id="wxwind">—</span><span id="wxwdir">—</span><span id="wxh">—</span>
+        <span id="wxf">—</span><span id="wxv">—</span><span id="wxp">—</span>
+        <span id="wxswell">—</span><span id="wxrain">—</span>
+      </div>
+
       <button class="sbtn teal-btn" style="margin-top:4px;margin-bottom:10px;" onclick="autoWeather(true)">🔄 Refresh Weather</button>
     </div>
 
@@ -2811,8 +2905,8 @@ async function fetchOpenMeteo(lat, lng, locName) {
   try {
     // Fetch land weather + marine data in parallel — add daily vars for 7-day forecast
     const [landRes, marineRes, geoRes] = await Promise.all([
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,visibility&hourly=precipitation_probability,surface_pressure&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=7&wind_speed_unit=kmh&timezone=auto`),
-      fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction&forecast_days=1`).catch(()=>null),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,visibility&hourly=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,precipitation_probability,surface_pressure&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=7&wind_speed_unit=kmh&timezone=auto`),
+      fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction,wave_period,sea_surface_temperature&forecast_days=1`).catch(()=>null),
       locName ? null : fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}}).catch(()=>null)
     ]);
 
@@ -2837,12 +2931,8 @@ async function fetchOpenMeteo(lat, lng, locName) {
       .map(h => pressureHourly[Math.max(0,h)] || null)
       .filter(Boolean);
 
-    // Marine / swell
+    // Marine / swell — parsed later in the UI block
     let swellTxt = '—';
-    if(marineRes && marineRes.ok) {
-      const marine = await marineRes.json();
-      if(marine.current?.wave_height != null) swellTxt = marine.current.wave_height.toFixed(1)+' m';
-    }
 
     // Location name
     let displayLoc = locName || 'Your location';
@@ -2859,6 +2949,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
     document.getElementById('wxt').textContent = temp+'°C';
     document.getElementById('wxd').textContent = omDesc(code);
     document.getElementById('wxl').textContent = displayLoc;
+    // Legacy hidden elements (used by catch-logging weather field)
     document.getElementById('wxwind').textContent = wspeed+' km/h';
     document.getElementById('wxwdir').textContent = wdir;
     document.getElementById('wxh').textContent = humidity+'%';
@@ -2870,6 +2961,137 @@ async function fetchOpenMeteo(lat, lng, locName) {
     document.getElementById('wxcond').textContent = weatherConditionOM(code, wspeed);
     document.getElementById('wxBadge').className='api-badge live-badge';
     document.getElementById('wxBadge').textContent='🌤 Live';
+
+    // ── Hero: Safe-to-fish banner ──
+    const condStr = weatherConditionOM(code, wspeed);
+    const safeEl  = document.getElementById('wxSafeStatus');
+    const safeIcon = document.getElementById('wxSafeIcon');
+    const safeLabel = document.getElementById('wxSafeLabel');
+    const safeSub   = document.getElementById('wxSafeSub');
+    if (condStr.startsWith('✅')) {
+      safeEl.className = 'wx-safe wx-safe-good';
+      safeIcon.textContent = '✅';
+      safeLabel.textContent = condStr.startsWith('✅ Excellent') ? 'Good Conditions' : 'Good Conditions';
+    } else if (condStr.startsWith('🟡')) {
+      safeEl.className = 'wx-safe wx-safe-caution';
+      safeIcon.textContent = '⚠️';
+      safeLabel.textContent = 'Caution';
+    } else {
+      safeEl.className = 'wx-safe wx-safe-danger';
+      safeIcon.textContent = '🚫';
+      safeLabel.textContent = wspeed > 40 ? 'Stay Ashore — Gale Warning' : 'Rough Conditions';
+    }
+    safeSub.textContent = condStr.replace(/^[✅🟡🟠🔴]\s*/,'');
+
+    // ── Hero: Wind tile ──
+    const wdirDegCur = cur.wind_direction_10m || 0;
+    const gustVal    = cur.wind_gusts_10m != null ? Math.round(cur.wind_gusts_10m) : null;
+    // Arrow points toward where wind blows (opposite of source)
+    const arrowRot   = (wdirDegCur + 180) % 360;
+    const arrowEl = document.getElementById('wxWindArrow');
+    if (arrowEl) arrowEl.style.transform = `rotate(${arrowRot}deg)`;
+    document.getElementById('wxWindSpd').textContent = wspeed + ' km/h';
+    document.getElementById('wxWindDir').textContent = wdir;
+    document.getElementById('wxGust').textContent = gustVal != null ? 'Gust ' + gustVal + ' km/h' : '';
+
+    // ── Hero: Pressure tile ──
+    document.getElementById('wxPressVal').textContent = pressure;
+    const pressArrowEl = document.getElementById('wxPressTrendArrow');
+    const pressTrendEl = document.getElementById('wxPressTrend');
+    if (pressureHistory.length >= 2) {
+      const diff = hpa - pressureHistory[0];
+      if (diff > 2)       { pressArrowEl.textContent = '↑'; pressTrendEl.textContent = 'Rising'; }
+      else if (diff < -2) { pressArrowEl.textContent = '↓'; pressArrowEl.style.color = '#e74c3c'; pressTrendEl.textContent = 'Falling'; }
+      else                { pressArrowEl.textContent = '→'; pressArrowEl.style.color = 'rgba(255,255,255,0.4)'; pressTrendEl.textContent = 'Steady'; }
+    }
+
+    // ── Hero: Sky tile ──
+    document.getElementById('wxFeels').textContent = feels + '°C';
+    document.getElementById('wxRainNow').textContent = 'Rain ' + rainNow;
+
+    // ── Marine swell strip ──
+    if (marineRes && marineRes.ok) {
+      try {
+        const marineData = await marineRes.json();
+        const wh = marineData.current?.wave_height;
+        const wp = marineData.current?.wave_period;
+        const wd2 = marineData.current?.wave_direction;
+        if (wh != null) {
+          const swellStrip = document.getElementById('wxSwellStrip');
+          const swellCards = document.getElementById('wxSwellCards');
+          swellStrip.style.display = '';
+          const sst = marineData.current?.sea_surface_temperature;
+          const wdirLabel = wd2 != null ? windDir(wd2) : '—';
+          swellCards.innerHTML = `
+            <div class="wx-sw-card"><span style="font-size:18px;">🌊</span><span style="font-size:15px;font-weight:700;color:var(--text);">${wh.toFixed(1)} m</span><span style="font-size:10px;color:var(--muted);">Swell ht</span></div>
+            ${wp != null ? `<div class="wx-sw-card"><span style="font-size:18px;">⏱</span><span style="font-size:15px;font-weight:700;color:var(--text);">${Math.round(wp)}s</span><span style="font-size:10px;color:var(--muted);">Period</span></div>` : ''}
+            <div class="wx-sw-card"><span style="font-size:18px;">🧭</span><span style="font-size:15px;font-weight:700;color:var(--text);">${wdirLabel}</span><span style="font-size:10px;color:var(--muted);">Direction</span></div>
+            ${sst != null ? `<div class="wx-sw-card"><span style="font-size:18px;">🌡</span><span style="font-size:15px;font-weight:700;color:var(--text);">${sst.toFixed(1)}°C</span><span style="font-size:10px;color:var(--muted);">Sea temp</span></div>` : ''}`;
+          swellTxt = wh.toFixed(1) + ' m';
+        }
+      } catch(_) {}
+    }
+    document.getElementById('wxswell').textContent = swellTxt;
+
+    // ── 24-Hour Ribbon ──
+    const hourlyTemps  = land.hourly?.temperature_2m || [];
+    const hourlyCodes  = land.hourly?.weather_code   || [];
+    const hourlyWinds  = land.hourly?.wind_speed_10m || [];
+    const hourlyWdirs  = land.hourly?.wind_direction_10m || [];
+    const hourlyRain   = land.hourly?.precipitation_probability || [];
+    // Bite windows for today
+    const todayDt = new Date(); todayDt.setHours(12,0,0,0);
+    const sol = solunarAt(todayDt, lng);
+    function biteWindow(hr) {
+      const h = ((hr%24)+24)%24;
+      function inWin(start, dur) {
+        const s=((start%24)+24)%24, e=(s+dur)%24;
+        return e>s ? (h>=s&&h<e) : (h>=s||h<e);
+      }
+      if(inWin(sol.m1,2)||inWin(sol.m2,2)) return 'major';
+      if(inWin(sol.n1,1)||inWin(sol.n2,1)) return 'minor';
+      return null;
+    }
+    const ribbonEl = document.getElementById('wxRibbon');
+    if (ribbonEl && hourlyTemps.length) {
+      // Find the first hour index in the hourly array matching current hour of today
+      const nowH    = new Date().getHours();
+      // Hourly array starts at midnight today (index 0 = 00:00)
+      const startIdx = nowH;
+      const cells   = [];
+      for (let i = 0; i < 25; i++) {
+        const idx  = startIdx + i;
+        if (idx >= hourlyTemps.length) break;
+        const hr   = (nowH + i) % 24;
+        const t    = hourlyTemps[idx] != null ? Math.round(hourlyTemps[idx]) : '—';
+        const wc   = hourlyCodes[idx]  ?? 3;
+        const ws   = hourlyWinds[idx]  != null ? Math.round(hourlyWinds[idx]) : null;
+        const rain = hourlyRain[idx]   ?? 0;
+        const bite = biteWindow(hr);
+        const isNow = i === 0;
+        const h12  = hr === 0 ? '12am' : hr < 12 ? hr+'am' : hr === 12 ? '12pm' : (hr-12)+'pm';
+        const windClass = ws == null ? '' : ws > 40 ? 'wx-wind-strong' : ws > 20 ? 'wx-wind-mod' : 'wx-wind-calm';
+        const windLabel = ws != null ? ws + ' km/h' : '—';
+        let cellClass = 'wx-cell';
+        if (isNow) cellClass += ' wx-cell-now';
+        else if (bite === 'major') cellClass += ' wx-cell-major';
+        else if (bite === 'minor') cellClass += ' wx-cell-minor';
+        const bitePin = bite === 'major' ? '<div style="font-size:9px;line-height:1;margin-bottom:1px;">🐟</div>'
+                       : bite === 'minor' ? '<div style="font-size:9px;line-height:1;margin-bottom:1px;">⭐</div>' : '';
+        const timeColor = isNow ? '#fff' : 'var(--muted)';
+        const tempColor = isNow ? '#fff' : 'var(--text)';
+        cells.push(`<div class="${cellClass}">
+          ${bitePin}
+          <div style="font-size:9px;color:${timeColor};font-weight:${isNow?'700':'400'};">${isNow?'Now':h12}</div>
+          <div style="font-size:18px;line-height:1.1;">${omIcon(wc)}</div>
+          <div style="font-size:11px;font-weight:600;color:${tempColor};">${t}°</div>
+          <div class="wx-wind-pill ${windClass}">${windLabel}</div>
+          ${rain>0?`<div style="font-size:9px;color:var(--hint);margin-top:1px;">💧${rain}%</div>`:''}
+        </div>`);
+      }
+      ribbonEl.innerHTML = cells.join('');
+      // Scroll ribbon to "Now" cell (already first, so no-op — but keep for future)
+    }
 
     // Update barometer
     updateBarometer(pressure, pressureHistory);
