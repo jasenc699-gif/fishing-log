@@ -1548,8 +1548,6 @@ async function handlePhoto(e) {
           lng = numLng;
         }
       }
-      // Toast diagnostic so values are always visible regardless of UI state
-      showToast('📍 lat=' + JSON.stringify(rawLat) + ' ('+typeof rawLat+') lng=' + JSON.stringify(rawLng) + ' ('+typeof rawLng+') → lat=' + lat, 'success');
 
       // Path B: XMP decimal strings — Samsung newer firmware stores GPS as XMP
       // properties 'GPSLatitude' / 'GPSLongitude' as plain decimal strings like
@@ -1586,17 +1584,43 @@ async function handlePhoto(e) {
       }
     }
 
-    // Path D: exifr.gps() dedicated helper as last resort — re-reads the buffer but
-    // uses a different internal code path that can succeed when parse() returned null.
-    // Only invoked when all above paths failed to avoid double-reading unnecessarily.
+    // Path D: exifr.gps() dedicated helper — uses a different internal code path.
     if (lat == null) {
       try {
         const g = await exifr.gps(arrayBuf);
-        if (g?.latitude != null && isFinite(g.latitude) &&
-            g?.longitude != null && isFinite(g.longitude)) {
-          lat = g.latitude; lng = g.longitude;
+        if (g?.latitude != null && isFinite(Number(g.latitude)) &&
+            g?.longitude != null && isFinite(Number(g.longitude))) {
+          lat = Number(g.latitude); lng = Number(g.longitude);
         }
       } catch(err) { console.warn('exifr.gps() fallback failed:', err); }
+    }
+
+    // Path E: raw GPS IFD parse — mergeOutput:true can produce null when exifr fails to
+    // translate DMS rationals on certain Samsung firmware. Re-parse with mergeOutput:false
+    // and translateValues:false to get the unprocessed GPS IFD, then convert manually.
+    if (lat == null) {
+      try {
+        const rawParsed = await exifr.parse(arrayBuf, {
+          gps: true, tiff: false, exif: false, xmp: false, icc: false, iptc: false,
+          translateValues: false, reviveValues: false, mergeOutput: false
+        });
+        const gpsIfd = rawParsed?.GPS ?? rawParsed?.gps;
+        if (gpsIfd) {
+          const rational2dec = v => Array.isArray(v) ? v[0] / (v[1] || 1) : Number(v);
+          const dms2dd = (dms, ref) => {
+            if (!Array.isArray(dms) || dms.length < 3) return NaN;
+            const dd = rational2dec(dms[0]) + rational2dec(dms[1]) / 60 + rational2dec(dms[2]) / 3600;
+            return (ref === 'S' || ref === 'W') ? -dd : dd;
+          };
+          const gLat = gpsIfd.GPSLatitude  ?? gpsIfd.latitude;
+          const gLng = gpsIfd.GPSLongitude ?? gpsIfd.longitude;
+          const gLatRef = gpsIfd.GPSLatitudeRef  ?? gpsIfd.latitudeRef  ?? 'S'; // NZ is always S
+          const gLngRef = gpsIfd.GPSLongitudeRef ?? gpsIfd.longitudeRef ?? 'E'; // NZ is always E
+          const latD = Array.isArray(gLat) ? dms2dd(gLat, gLatRef) : (gLat != null ? Number(gLat) * (gLatRef==='S'?-1:1) : NaN);
+          const lngD = Array.isArray(gLng) ? dms2dd(gLng, gLngRef) : (gLng != null ? Number(gLng) * (gLngRef==='W'?-1:1) : NaN);
+          if (isFinite(latD) && isFinite(lngD)) { lat = latD; lng = lngD; }
+        }
+      } catch(err) { console.warn('Path E raw GPS IFD failed:', err); }
     }
 
     if (lat != null && lng != null) {
