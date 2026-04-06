@@ -1529,21 +1529,27 @@ async function handlePhoto(e) {
         const gpsKeys = Object.keys(parsed).filter(k => /gps|lat|lon|lng/i.test(k));
         exifDbg.style.display = 'block';
         exifDbg.style.color = '#e07000';
-        if (gpsKeys.length) {
-          const vals = gpsKeys.map(k => `${k}=${JSON.stringify(parsed[k])}`).join(' · ');
-          exifDbg.textContent = '🔍 ' + vals;
-        } else {
-          exifDbg.textContent = '🔍 No GPS keys in EXIF — browser may have stripped them';
-        }
+        exifDbg.textContent = gpsKeys.length
+          ? '🔍 GPS keys found: ' + gpsKeys.join(', ')
+          : '🔍 No GPS keys found in EXIF at all';
       }
 
       // Path A: exifr translated to decimal degrees — works on most devices including
       // standard Android, iPhone, and Google Photos downloads (when GPS is present).
-      if (typeof parsed.latitude  === 'number' && isFinite(parsed.latitude) &&
-          typeof parsed.longitude === 'number' && isFinite(parsed.longitude)) {
-        lat = parsed.latitude;
-        lng = parsed.longitude;
+      // Use Number() coercion instead of strict typeof check — exifr sometimes returns
+      // latitude/longitude as strings or other coercible types on certain devices.
+      const rawLat = parsed.latitude;
+      const rawLng = parsed.longitude;
+      if (rawLat != null && rawLng != null) {
+        const numLat = Number(rawLat);
+        const numLng = Number(rawLng);
+        if (isFinite(numLat) && isFinite(numLng)) {
+          lat = numLat;
+          lng = numLng;
+        }
       }
+      // Toast diagnostic so values are always visible regardless of UI state
+      showToast('📍 lat=' + JSON.stringify(rawLat) + ' ('+typeof rawLat+') lng=' + JSON.stringify(rawLng) + ' ('+typeof rawLng+') → lat=' + lat, 'success');
 
       // Path B: XMP decimal strings — Samsung newer firmware stores GPS as XMP
       // properties 'GPSLatitude' / 'GPSLongitude' as plain decimal strings like
@@ -1599,16 +1605,6 @@ async function handlePhoto(e) {
       if (logMap && logPin) { logPin.setLatLng([lat, lng]); logMap.setView([lat, lng], 14); }
       clearTimeout(revTimer); revTimer = setTimeout(() => revGeo(lat, lng), 300);
       exifFilled.push('📍 GPS location');
-      // Update diagnostic to confirm write succeeded
-      const exifDbg = document.getElementById('exifInfo');
-      if (exifDbg) exifDbg.textContent += ' → wrote ' + lat.toFixed(4) + ', ' + lng.toFixed(4);
-    } else {
-      // lat/lng still null — show why Path A failed
-      const exifDbg = document.getElementById('exifInfo');
-      if (exifDbg && parsed) {
-        const pLat = parsed.latitude, pLng = parsed.longitude;
-        exifDbg.textContent += ' ⚠️ Path A failed: lat=' + typeof pLat + '(' + pLat + ') lng=' + typeof pLng + '(' + pLng + ')';
-      }
     }
 
     // ── DateTime — reuse parsed object, no second file read ──
