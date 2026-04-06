@@ -366,7 +366,7 @@ input,select,textarea{min-height:44px;}
 
       <!-- 1. PHOTO -->
       <div class="sec">
-        <div class="stitle">📸 Photo</div>
+        <div class="stitle">📸 Photo <span style="font-size:10px;font-weight:600;color:#e03c3c;letter-spacing:0;text-transform:none;">Required</span></div>
         <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
             <div class="pu-fish-cover"></div>
@@ -1492,13 +1492,28 @@ async function handlePhoto(e) {
 
   let exifFilled = [];
   try {
-    // ── Read file into ArrayBuffer first for reliable Samsung content:// URI support ──
-    const arrayBuf = await new Promise((res, rej) => {
-      const reader = new FileReader();
-      reader.onload  = e => res(e.target.result);
-      reader.onerror = () => rej(new Error('ArrayBuffer read failed'));
-      reader.readAsArrayBuffer(f);
-    });
+    // ── Check exifr loaded ──
+    if (typeof exifr === 'undefined') {
+      showToast('⚠️ EXIF library failed to load — GPS cannot be read. Check your internet connection.', 'error');
+      throw new Error('exifr not loaded');
+    }
+
+    // ── Read file into ArrayBuffer ──
+    // f.arrayBuffer() (native File API) is preferred over FileReader on Chrome Android
+    // as it bypasses an extra abstraction layer that can drop EXIF on some builds.
+    // FileReader is kept as a fallback for older WebViews.
+    let arrayBuf;
+    try {
+      arrayBuf = await f.arrayBuffer();
+    } catch(err) {
+      console.warn('f.arrayBuffer() failed, falling back to FileReader:', err);
+      arrayBuf = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload  = e => res(e.target.result);
+        reader.onerror = () => rej(new Error('ArrayBuffer read failed'));
+        reader.readAsArrayBuffer(f);
+      });
+    }
 
     // ── Primary parse: tiff+exif+gps covers standard EXIF; xmp covers Samsung modern ──
     let parsed = null;
@@ -1516,22 +1531,18 @@ async function handlePhoto(e) {
     // ── GPS extraction — four progressive fallback paths ──
     let lat = null, lng = null;
     if (parsed) {
-      // ── DEBUG: log all parsed EXIF keys so we can see what Samsung A36 returns ──
+      const gpsKeys = Object.keys(parsed).filter(k => /gps|lat|lon|lng/i.test(k));
       console.log('EXIF DEBUG — all keys:', Object.keys(parsed));
-      console.log('EXIF DEBUG — GPS-related fields:', JSON.stringify(
-        Object.fromEntries(Object.entries(parsed).filter(([k]) =>
-          /gps|lat|lon|lng|location|position/i.test(k)
-        ))
-      ));
-      // Show debug info on screen temporarily
+      console.log('EXIF DEBUG — GPS keys:', gpsKeys);
+
+      // Show persistent diagnostic in the exifInfo div
       const exifDbg = document.getElementById('exifInfo');
       if (exifDbg) {
-        const gpsKeys = Object.keys(parsed).filter(k => /gps|lat|lon|lng/i.test(k));
         exifDbg.style.display = 'block';
         exifDbg.style.color = '#e07000';
         exifDbg.textContent = gpsKeys.length
-          ? '🔍 GPS keys found: ' + gpsKeys.join(', ')
-          : '🔍 No GPS keys found in EXIF at all';
+          ? '🔍 GPS keys: ' + gpsKeys.join(', ')
+          : '🔍 No GPS keys in EXIF — browser may have stripped them';
       }
 
       // Path A: exifr translated to decimal degrees — works on most devices including
@@ -1640,16 +1651,20 @@ async function handlePhoto(e) {
       badgeText.textContent = exifFilled.join(' · ') + ' captured from photo';
       badge.classList.add('show');
     }
-    exifEl.style.display = 'none'; // hide old small text — badge replaces it
+    // Only hide exifInfo if it doesn't contain a diagnostic message
+    if (exifEl && !exifEl.textContent.startsWith('🔍')) exifEl.style.display = 'none';
     // Hide date/time section only if date was auto-filled; otherwise show it so user can enter manually
     if (dtSection) {
       dtSection.style.display = exifFilled.some(s => s.includes('Date')) ? 'none' : '';
     }
   } else {
     if (badge) badge.classList.remove('show');
-    exifEl.style.display = 'block';
-    exifEl.style.color = 'var(--hint)';
-    exifEl.textContent = 'ℹ️ No location or date found in photo — please enter manually below';
+    // Only show the generic fallback if we don't already have a diagnostic message showing
+    if (exifEl && !exifEl.textContent.startsWith('🔍')) {
+      exifEl.style.display = 'block';
+      exifEl.style.color = 'var(--hint)';
+      exifEl.textContent = 'ℹ️ No location or date found in photo — please enter manually below';
+    }
     // Show date/time section so user can fill it in
     if (dtSection) dtSection.style.display = '';
   }
