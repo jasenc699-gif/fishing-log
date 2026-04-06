@@ -1516,6 +1516,23 @@ async function handlePhoto(e) {
     // ── GPS extraction — four progressive fallback paths ──
     let lat = null, lng = null;
     if (parsed) {
+      // ── DEBUG: log all parsed EXIF keys so we can see what Samsung A36 returns ──
+      console.log('EXIF DEBUG — all keys:', Object.keys(parsed));
+      console.log('EXIF DEBUG — GPS-related fields:', JSON.stringify(
+        Object.fromEntries(Object.entries(parsed).filter(([k]) =>
+          /gps|lat|lon|lng|location|position/i.test(k)
+        ))
+      ));
+      // Show debug info on screen temporarily
+      const exifDbg = document.getElementById('exifInfo');
+      if (exifDbg) {
+        const gpsKeys = Object.keys(parsed).filter(k => /gps|lat|lon|lng/i.test(k));
+        exifDbg.style.display = 'block';
+        exifDbg.style.color = '#e07000';
+        exifDbg.textContent = gpsKeys.length
+          ? '🔍 GPS keys found: ' + gpsKeys.join(', ')
+          : '🔍 No GPS keys found in EXIF at all';
+      }
 
       // Path A: exifr translated to decimal degrees — works on most devices including
       // standard Android, iPhone, and Google Photos downloads (when GPS is present).
