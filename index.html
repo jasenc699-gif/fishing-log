@@ -317,6 +317,20 @@ input[type=file]{display:none;}
 .tide-event-time{font-size:12px;font-weight:700;color:var(--text);line-height:1.3;}
 .tide-event-ht{font-size:9px;color:var(--muted);margin-top:2px;}
 .tide-lat-badge{font-size:6px;background:rgba(0,0,0,0.07);border:0.5px solid #ccc;border-radius:2px;padding:0 3px;color:var(--hint);margin-left:3px;vertical-align:middle;}
+/* LOG TAB UX */
+.exif-badge{display:none;align-items:center;gap:6px;padding:7px 10px;background:rgba(79,195,161,0.12);border:0.5px solid rgba(79,195,161,0.35);border-radius:8px;margin-top:8px;font-size:12px;color:#0a5c43;font-weight:500;}
+.exif-badge.show{display:flex;}
+.exif-badge-icon{font-size:14px;}
+.stepper{display:flex;align-items:center;border:0.5px solid #d0d0cc;border-radius:8px;overflow:hidden;background:var(--white);}
+.stepper input{flex:1;border:none;text-align:center;font-size:16px;padding:10px 4px;min-width:0;background:transparent;font-family:inherit;}
+.stepper input:focus{outline:none;}
+.stepper button{flex-shrink:0;width:42px;min-height:44px;border:none;background:var(--surf);color:var(--muted);font-size:20px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;touch-action:manipulation;}
+.stepper button:active{background:var(--border);}
+.coll-head{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;-webkit-user-select:none;}
+.coll-arrow{font-size:12px;color:var(--hint);transition:transform .2s;}
+.coll-body{overflow:hidden;transition:max-height .3s ease;}
+.log-submit-bar{position:sticky;bottom:0;left:0;right:0;padding:10px 13px max(env(safe-area-inset-bottom),10px);background:linear-gradient(transparent,var(--surf2) 30%);z-index:10;}
+input,select,textarea{min-height:44px;}
 </style>
 </head>
 <body>
@@ -349,7 +363,9 @@ input[type=file]{display:none;}
 
     <!-- ══ LOG ══ -->
     <div class="pg show" id="pg-log">
-<div class="sec">
+
+      <!-- 1. PHOTO -->
+      <div class="sec">
         <div class="stitle">📸 Photo</div>
         <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
@@ -360,6 +376,11 @@ input[type=file]{display:none;}
             </div>
           </div>
         </div>
+        <!-- EXIF auto-fill badge — shown when photo supplies GPS/date -->
+        <div class="exif-badge" id="exifBadge">
+          <span class="exif-badge-icon">✅</span>
+          <span id="exifBadgeText">GPS &amp; time captured from photo</span>
+        </div>
         <div style="margin-top:8px;">
           <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
         </div>
@@ -368,10 +389,11 @@ input[type=file]{display:none;}
         <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
       </div>
 
+      <!-- 2. CATCH ESSENTIALS -->
       <div class="sec">
         <div class="stitle">🐟 Catch Details</div>
         <label>Fish species</label>
-        <select id="ftype">
+        <select id="ftype" style="min-height:44px;">
           <option value="">Select species...</option>
           <option>Snapper</option><option>Kingfish</option><option>Kahawai</option>
           <option>Gurnard</option><option>John Dory</option><option>Blue Cod</option>
@@ -380,32 +402,51 @@ input[type=file]{display:none;}
           <option>Other</option>
         </select>
         <label>Custom species (if Other)</label>
-        <input type="text" id="fcust" placeholder="e.g. Flounder">
-        <div class="r2">
-          <div><label>Length (cm)</label><input type="number" id="flen" placeholder="42" inputmode="decimal"></div>
-          <div><label>Weight (kg)</label><input type="number" id="fwt" step="0.1" placeholder="1.8" inputmode="decimal"></div>
+        <input type="text" id="fcust" placeholder="e.g. Flounder" style="min-height:44px;">
+        <div class="r2" style="margin-top:10px;">
+          <div>
+            <label>Length (cm)</label>
+            <div class="stepper">
+              <button type="button" onclick="adjustVal('flen',-1)">−</button>
+              <input type="number" id="flen" placeholder="cm" inputmode="decimal">
+              <button type="button" onclick="adjustVal('flen',1)">+</button>
+            </div>
+          </div>
+          <div>
+            <label>Weight (kg)</label>
+            <div class="stepper">
+              <button type="button" onclick="adjustVal('fwt',-0.1)">−</button>
+              <input type="number" id="fwt" step="0.1" placeholder="kg" inputmode="decimal">
+              <button type="button" onclick="adjustVal('fwt',0.1)">+</button>
+            </div>
+          </div>
         </div>
       </div>
 
+      <!-- 3. DATE & TIME -->
+      <div class="sec">
+        <div class="stitle">📅 Date &amp; Time</div>
+        <div class="r2">
+          <div><label>Date</label><input type="date" id="cdate" style="min-height:44px;"></div>
+          <div><label>Time</label><input type="time" id="ctime" style="min-height:44px;"></div>
+        </div>
+      </div>
+
+      <!-- 4. TACKLE & METHOD -->
       <div class="sec">
         <div class="stitle">
           <svg width="18" height="18" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M30 8 Q34 8 34 14 Q34 22 26 26 Q22 28 20 32 Q19 35 22 36" stroke="#888" stroke-width="2" fill="none" stroke-linecap="round"/>
-            <circle cx="30" cy="8" r="3.5" fill="#d4af37"/>
-            <circle cx="30" cy="8" r="2" fill="#f5d060" opacity="0.7"/>
+            <circle cx="30" cy="8" r="3.5" fill="#d4af37"/><circle cx="30" cy="8" r="2" fill="#f5d060" opacity="0.7"/>
             <path d="M30 11 Q28 16 26 20 Q24 24 22 27" stroke="#9acd32" stroke-width="3" fill="none" stroke-linecap="round"/>
             <path d="M30 9 Q24 5 16 8 Q12 10 10 14" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round" opacity="0.85"/>
-            <path d="M30 9 Q22 3 14 5 Q10 6 8 10" stroke="white" stroke-width="1" fill="none" stroke-linecap="round" opacity="0.5"/>
-            <path d="M25 19 Q20 16 15 18" stroke="#9acd32" stroke-width="1" fill="none" stroke-linecap="round"/>
-            <path d="M25 19 Q20 22 16 22" stroke="#9acd32" stroke-width="1" fill="none" stroke-linecap="round"/>
-            <path d="M28 12 Q22 8 17 11" stroke="#c0c0c0" stroke-width="0.8" fill="none" stroke-linecap="round" opacity="0.7"/>
           </svg>
-          Fishing Method
+          Tackle &amp; Method
         </div>
         <div class="r2">
           <div>
             <label>Method</label>
-            <select id="method">
+            <select id="method" style="min-height:44px;">
               <option value="">Select...</option>
               <option>Fly fishing</option><option>Spinning</option><option>Bait fishing</option>
               <option>Trolling</option><option>Jigging</option><option>Surfcasting</option>
@@ -414,58 +455,70 @@ input[type=file]{display:none;}
           </div>
           <div>
             <label>Platform</label>
-            <select id="platform">
+            <select id="platform" style="min-height:44px;">
               <option value="">Select...</option>
-              <option>Wading</option>
-              <option>Boat</option>
-              <option>Kayak</option>
+              <option>Wading</option><option>Boat</option><option>Kayak</option>
             </select>
           </div>
         </div>
         <div class="r2">
-          <div><label>Fly / Bait</label><input type="text" id="fly" placeholder="e.g. Crazy Charlie" list="flySuggestions" autocomplete="off"></div>
-          <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6" list="flycolSuggestions" autocomplete="off"></div>
+          <div><label>Fly / Bait</label><input type="text" id="fly" placeholder="e.g. Crazy Charlie" list="flySuggestions" autocomplete="off" style="min-height:44px;"></div>
+          <div><label>Colour &amp; size</label><input type="text" id="flycol" placeholder="e.g. Chartreuse, #6" list="flycolSuggestions" autocomplete="off" style="min-height:44px;"></div>
         </div>
         <label>Fishing Rig</label>
-        <input type="text" id="rig" placeholder="e.g. Epic 890TI" list="rigSuggestions" autocomplete="off">
+        <input type="text" id="rig" placeholder="e.g. Epic 890TI" list="rigSuggestions" autocomplete="off" style="min-height:44px;">
         <datalist id="flySuggestions"></datalist>
         <datalist id="flycolSuggestions"></datalist>
         <datalist id="rigSuggestions"></datalist>
         <button type="button" class="gpsbtn" onclick="openManageSuggestions()" style="margin-top:8px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;">✏️ Manage saved entries</button>
-
-        <label>Notes</label>
-        <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;"></textarea>
       </div>
 
-      <div class="sec">
-        <div class="stitle">📅 Date &amp; Time</div>
-        <div class="r2">
-          <div><label>Date</label><input type="date" id="cdate"></div>
-          <div><label>Time</label><input type="time" id="ctime"></div>
-        </div>
-      </div>
-
+      <!-- 5. LOCATION — map first -->
       <div class="sec">
         <div class="stitle">📍 Location</div>
-        <label>Search location</label>
-        <input type="text" id="locname" placeholder="e.g. Tauranga Harbour" oninput="onLocInput()" autocomplete="off">
+        <div class="mapbox" id="logmap" style="margin-bottom:10px;">
+          <button class="map-layer-btn" id="logMapLayerBtn" onclick="toggleLogMapLayer()">🛰 Satellite</button>
+        </div>
+        <button class="gpsbtn" onclick="doGPS()" style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📡 Use my GPS location</button>
+        <label style="margin-top:8px;">Search location</label>
+        <input type="text" id="locname" placeholder="e.g. Tauranga Harbour" oninput="onLocInput()" autocomplete="off" style="min-height:44px;">
         <div class="geo-status" id="gstat"></div>
         <label>Location Nickname <span style="font-weight:400;color:var(--hint);font-size:10px;">— your personal name for this spot</span></label>
-        <input type="text" id="cnickname" placeholder="e.g. Blue Tongue" list="nicknameSuggestions" autocomplete="off">
+        <input type="text" id="cnickname" placeholder="e.g. Blue Tongue" list="nicknameSuggestions" autocomplete="off" style="min-height:44px;">
         <datalist id="nicknameSuggestions"></datalist>
         <div class="r2">
-          <div><label>Latitude</label><input type="number" id="clat" step="0.0001" value="-37.6878" oninput="onCoordInput()" inputmode="decimal"></div>
-          <div><label>Longitude</label><input type="number" id="clng" step="0.0001" value="176.1651" oninput="onCoordInput()" inputmode="decimal"></div>
+          <div><label>Latitude</label><input type="number" id="clat" step="0.0001" value="-37.6878" oninput="onCoordInput()" inputmode="decimal" style="min-height:44px;"></div>
+          <div><label>Longitude</label><input type="number" id="clng" step="0.0001" value="176.1651" oninput="onCoordInput()" inputmode="decimal" style="min-height:44px;"></div>
         </div>
-        <button class="gpsbtn" onclick="doGPS()">📡 Use my GPS location</button>
-        <div class="geo-hint">💡 Type a place to move the pin · drag pin or tap map to reverse-geocode</div>
-        <div class="mapbox" id="logmap">
-          <button class="map-layer-btn" id="logMapLayerBtn" onclick="toggleLogMapLayer()">🛰 Satellite</button>
+        <div class="geo-hint">💡 Tap map to drop pin · drag pin · or search above</div>
+      </div>
+
+      <!-- 6. NOTES -->
+      <div class="sec">
+        <div class="stitle">📝 Notes</div>
+        <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;min-height:44px;"></textarea>
+      </div>
+
+      <!-- 7. CONDITIONS (collapsible) -->
+      <div class="sec" id="condCard">
+        <div class="coll-head" onclick="toggleCond()">
+          <div class="stitle" style="margin-bottom:0;">🌊 Conditions <span style="font-size:10px;color:var(--hint);font-weight:400;">(auto-filled on save)</span></div>
+          <span class="coll-arrow" id="condArrow">▼</span>
+        </div>
+        <div class="coll-body" id="condBody" style="max-height:0;">
+          <div style="padding-top:10px;">
+            <div class="info-box" style="font-size:12px;line-height:1.7;color:var(--muted);">
+              Tide state, moon phase, and solunar window are automatically calculated from the date, time, and location you enter above — no action needed. They will be recorded when you save the catch.
+            </div>
+          </div>
         </div>
       </div>
 
-      <button class="sbtn" onclick="saveCatch()">Save Catch</button>
-      <div style="height:20px;"></div>
+      <!-- sticky submit -->
+      <div class="log-submit-bar">
+        <button class="sbtn teal-btn" onclick="saveCatch()" style="font-size:17px;padding:15px;">🎣 Save Catch</button>
+      </div>
+      <div style="height:80px;"></div>
     </div>
 
     <!-- ══ TIDE ══ -->
@@ -1115,6 +1168,27 @@ function vibrate(ms) {
   if(navigator.vibrate) navigator.vibrate(ms);
 }
 
+// ── Stepper helper for length/weight ─────────────────────────────────────────
+function adjustVal(id, delta) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const step = parseFloat(el.step) || 1;
+  const cur  = parseFloat(el.value) || 0;
+  const next = Math.max(0, Math.round((cur + delta) * 100) / 100);
+  el.value = next || '';
+  vibrate(10);
+}
+
+// ── Collapsible conditions card ──────────────────────────────────────────────
+let _condOpen = false;
+function toggleCond() {
+  _condOpen = !_condOpen;
+  const body  = document.getElementById('condBody');
+  const arrow = document.getElementById('condArrow');
+  if (body)  body.style.maxHeight  = _condOpen ? body.scrollHeight + 200 + 'px' : '0';
+  if (arrow) arrow.style.transform = _condOpen ? 'rotate(180deg)' : '';
+}
+
 function openLightbox(src) {
   const lb = document.getElementById('photoLightbox');
   const img = document.getElementById('lightboxImg');
@@ -1554,12 +1628,18 @@ async function handlePhoto(e) {
     }
   } catch(err) { console.warn('EXIF parse error:', err); }
 
-  // Show EXIF result — distinguish "found GPS" from "found date only" from "found nothing"
-  exifEl.style.display = 'block';
+  // Show EXIF result — use the new green badge when data was found, small text otherwise
+  const badge     = document.getElementById('exifBadge');
+  const badgeText = document.getElementById('exifBadgeText');
   if (exifFilled.length) {
-    exifEl.style.color = 'var(--teal)';
-    exifEl.textContent = '✅ Auto-filled from photo: ' + exifFilled.join(' · ');
+    if (badge && badgeText) {
+      badgeText.textContent = exifFilled.join(' · ') + ' captured from photo';
+      badge.classList.add('show');
+    }
+    exifEl.style.display = 'none'; // hide old small text — badge replaces it
   } else {
+    if (badge) badge.classList.remove('show');
+    exifEl.style.display = 'block';
     exifEl.style.color = 'var(--hint)';
     exifEl.textContent = 'ℹ️ No location or date found in photo — please enter manually below';
   }
@@ -1698,17 +1778,17 @@ function satelliteLayer() {
   });
 }
 const SPECIES_COLORS = {
-  'Snapper':    '#FF2424',  // bold red
-  'Kingfish':   '#FFAA00',  // amber/gold
+  'Snapper':    '#FF2020',  // vivid red
+  'Kingfish':   '#FFB300',  // deep amber
   'Kahawai':    '#00C244',  // vivid green
-  'Gurnard':    '#BB00EE',  // vivid violet
-  'John Dory':  '#00AAFF',  // sky blue
-  'Blue Cod':   '#0033CC',  // deep royal blue
-  'Trevally':   '#FF6600',  // orange
-  'Tarakihi':   '#FF0088',  // hot pink
-  'Moki':       '#00CCAA',  // teal/mint
-  'Hapuka':     '#AADD00',  // lime yellow-green
-  'Crayfish':   '#6644BB',  // blue-violet
+  'Gurnard':    '#CC00FF',  // electric violet
+  'John Dory':  '#00C8FF',  // cyan-blue (distinct from royal blue)
+  'Blue Cod':   '#1A56FF',  // bright royal blue (distinct from cyan)
+  'Trevally':   '#FF5500',  // deep orange (distinct from red)
+  'Tarakihi':   '#FF007A',  // hot magenta-pink
+  'Moki':       '#FF8C00',  // burnt orange (distinct from Trevally orange and Kingfish amber)
+  'Hapuka':     '#C6F000',  // vivid chartreuse (high contrast on dark)
+  'Crayfish':   '#9933FF',  // purple (distinct from violet)
 };
 function speciesColor(fish) {
   return SPECIES_COLORS[fish] || '#4fc3a1';
@@ -3685,6 +3765,8 @@ async function saveCatch() {
   document.getElementById('gstat').textContent='';
   document.getElementById('compressInfo').style.display='none';
   document.getElementById('exifInfo').style.display='none';
+  const badge = document.getElementById('exifBadge');
+  if (badge) badge.classList.remove('show');
   photo=null;
   const pu=document.getElementById('puEl'),img=pu.querySelector('img');if(img)img.remove();
   document.getElementById('puInner').style.display='flex';
@@ -4229,9 +4311,9 @@ function renderStats() {
 
   // Species colour palette — matches SPECIES_COLORS map used on the map
   const SP_CHART_COLORS = {
-    'Snapper':'#FF2424','Kingfish':'#FFAA00','Kahawai':'#00C244','Gurnard':'#BB00EE',
-    'John Dory':'#00AAFF','Blue Cod':'#0033CC','Trevally':'#FF6600','Tarakihi':'#FF0088',
-    'Moki':'#00CCAA','Hapuka':'#AADD00','Crayfish':'#6644BB'
+    'Snapper':'#FF2020','Kingfish':'#FFB300','Kahawai':'#00C244','Gurnard':'#CC00FF',
+    'John Dory':'#00C8FF','Blue Cod':'#1A56FF','Trevally':'#FF5500','Tarakihi':'#FF007A',
+    'Moki':'#FF8C00','Hapuka':'#C6F000','Crayfish':'#9933FF'
   };
   function spColor(sp) { return SP_CHART_COLORS[sp] || '#4fc3a1'; }
 
