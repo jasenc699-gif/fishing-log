@@ -381,20 +381,10 @@ input,select,textarea{min-height:44px;}
           <span class="exif-badge-icon">✅</span>
           <span id="exifBadgeText">GPS &amp; time captured from photo</span>
         </div>
-        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 6px;min-height:56px;">
-            <span style="font-size:18px;">🖼️</span>
-            <span style="font-size:12px;font-weight:600;color:var(--text);">Choose from Gallery</span>
-            <span style="font-size:10px;color:var(--teal);font-weight:500;">GPS works ✓</span>
-          </button>
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiCam');i.value='';i.click();" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 6px;min-height:56px;">
-            <span style="font-size:18px;">📷</span>
-            <span style="font-size:12px;font-weight:600;color:var(--text);">Take Photo</span>
-            <span style="font-size:10px;color:var(--hint);font-weight:500;">GPS may not work</span>
-          </button>
+        <div style="margin-top:8px;">
+          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Upload Photo</button>
         </div>
         <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
-        <input type="file" id="fiCam" accept="image/*" capture="environment" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
       </div>
@@ -909,20 +899,10 @@ input,select,textarea{min-height:44px;}
               </div>
             </div>
           </div>
-          <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 6px;min-height:56px;">
-              <span style="font-size:18px;">🖼️</span>
-              <span style="font-size:12px;font-weight:600;color:var(--text);">Choose from Gallery</span>
-              <span style="font-size:10px;color:var(--teal);font-weight:500;">GPS works ✓</span>
-            </button>
-            <button class="gpsbtn" onclick="const i=document.getElementById('efiCam');i.value='';i.click();" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:10px 6px;min-height:56px;">
-              <span style="font-size:18px;">📷</span>
-              <span style="font-size:12px;font-weight:600;color:var(--text);">Take Photo</span>
-              <span style="font-size:10px;color:var(--hint);font-weight:500;">GPS may not work</span>
-            </button>
+          <div style="margin-top:8px;">
+            <button class="gpsbtn" onclick="const i=document.getElementById('efiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
           </div>
           <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
-          <input type="file" id="efiCam" accept="image/*" capture="environment" onchange="handleEditPhoto(event)">
           <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         </div>
         <div class="sec" style="margin-bottom:10px;">
