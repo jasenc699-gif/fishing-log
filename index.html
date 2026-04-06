@@ -602,14 +602,18 @@ input[type=file]{display:none;}
           <div class="wx-b3">
             <div class="wx-b3-lbl">Wind</div>
             <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
-              <svg id="wxWindArrow" width="18" height="18" viewBox="0 0 20 20" style="flex-shrink:0;transition:transform 0.5s ease;" title="Wind direction">
+              <svg id="wxWindArrow" width="26" height="26" viewBox="0 0 20 20" style="flex-shrink:0;transition:transform 0.25s ease;" title="Wind direction">
                 <polygon points="10,1 15,15 10,12 5,15" fill="#4fc3a1"/>
-                <polygon points="10,19 5,5 10,8 15,5" fill="rgba(79,195,161,0.2)"/>
+                <polygon points="10,19 5,5 10,8 15,5" fill="rgba(79,195,161,0.25)"/>
               </svg>
               <span id="wxWindSpd" style="font-size:15px;font-weight:700;color:#fff;line-height:1;">—</span>
             </div>
             <div id="wxWindDir" style="font-size:10px;color:rgba(255,255,255,0.5);">—</div>
             <div id="wxGust" style="font-size:10px;color:rgba(255,255,255,0.32);margin-top:2px;">Gust —</div>
+            <button id="wxCompassBtn" onclick="toggleCompassArrow()"
+              style="margin-top:7px;background:none;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;color:rgba(255,255,255,0.38);font-size:9px;font-weight:700;padding:3px 6px;cursor:pointer;font-family:inherit;width:100%;letter-spacing:0.2px;">
+              🧭 Compass
+            </button>
           </div>
           <!-- Pressure -->
           <div class="wx-b3">
@@ -3158,6 +3162,87 @@ function weatherConditionOM(code, wspeed) {
   return '🟡 Fair conditions — check tide and solunar times for best bite windows.';
 }
 
+// ─────────────────────────────────────────────
+// COMPASS WIND ARROW
+// ─────────────────────────────────────────────
+let _windFromDeg          = null;  // met. "from" direction, degrees true north
+let _compassHeading       = null;  // device heading, degrees clockwise from true north
+let _compassActive        = false;
+let _compassListenerAdded = false;
+
+// Recalculate and apply arrow rotation whenever wind data or heading changes
+function _updateWindArrow() {
+  const el = document.getElementById('wxWindArrow');
+  if (!el || _windFromDeg == null) return;
+  let rot;
+  if (_compassActive && _compassHeading != null) {
+    // Point toward the wind source relative to where the phone is facing.
+    // If you turn to face into the wind the arrow points straight up (dead ahead).
+    rot = ((_windFromDeg - _compassHeading) % 360 + 360) % 360;
+  } else {
+    // Fixed north-up: arrow shows direction wind is blowing toward
+    rot = (_windFromDeg + 180) % 360;
+  }
+  el.style.transform = `rotate(${rot}deg)`;
+}
+
+function _onDeviceOrientation(e) {
+  let heading = null;
+  if (e.webkitCompassHeading != null) {
+    // iOS — true-north compass heading, clockwise
+    heading = e.webkitCompassHeading;
+  } else if (e.alpha != null) {
+    // Android absolute / standard: alpha is CCW from north → convert to CW
+    heading = (360 - e.alpha + 360) % 360;
+  }
+  if (heading == null) return;
+  _compassHeading = heading;
+  if (_compassActive) _updateWindArrow();
+}
+
+async function toggleCompassArrow() {
+  const btn = document.getElementById('wxCompassBtn');
+
+  if (_compassActive) {
+    // Switch off
+    _compassActive  = false;
+    _compassHeading = null;
+    if (btn) { btn.textContent = '🧭 Compass'; btn.style.color = 'rgba(255,255,255,0.38)'; btn.style.borderColor = 'rgba(255,255,255,0.18)'; }
+    _updateWindArrow();
+    return;
+  }
+
+  // iOS 13+ requires an explicit user-gesture permission call
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const perm = await DeviceOrientationEvent.requestPermission();
+      if (perm !== 'granted') {
+        showToast('Compass permission denied — check browser settings.', 'error');
+        return;
+      }
+    } catch(err) {
+      showToast('Could not access the compass.', 'error');
+      return;
+    }
+  }
+
+  // Attach listeners once only
+  if (!_compassListenerAdded) {
+    // Chrome Android fires 'deviceorientationabsolute' with true-north alpha
+    if ('ondeviceorientationabsolute' in window) {
+      window.addEventListener('deviceorientationabsolute', _onDeviceOrientation, true);
+    }
+    // iOS and others use standard 'deviceorientation' + webkitCompassHeading
+    window.addEventListener('deviceorientation', _onDeviceOrientation, true);
+    _compassListenerAdded = true;
+  }
+
+  _compassActive = true;
+  if (btn) { btn.textContent = '🧭 Live ●'; btn.style.color = '#4fc3a1'; btn.style.borderColor = 'rgba(79,195,161,0.5)'; }
+  showToast('Compass on — turn to face the wind! 🧭', 'success');
+}
+
 let _wxLastFetch = 0;
 const WX_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -3270,10 +3355,8 @@ async function fetchOpenMeteo(lat, lng, locName) {
     // ── Hero: Wind tile ──
     const wdirDegCur = cur.wind_direction_10m || 0;
     const gustVal    = cur.wind_gusts_10m != null ? Math.round(cur.wind_gusts_10m) : null;
-    // Arrow points toward where wind blows (opposite of source)
-    const arrowRot   = (wdirDegCur + 180) % 360;
-    const arrowEl = document.getElementById('wxWindArrow');
-    if (arrowEl) arrowEl.style.transform = `rotate(${arrowRot}deg)`;
+    _windFromDeg = wdirDegCur;   // stored globally so compass can re-use it
+    _updateWindArrow();           // applies fixed or compass-compensated rotation
     document.getElementById('wxWindSpd').textContent = wspeed + ' km/h';
     document.getElementById('wxWindDir').textContent = wdir;
     document.getElementById('wxGust').textContent = gustVal != null ? 'Gust ' + gustVal + ' km/h' : '';
