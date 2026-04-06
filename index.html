@@ -366,13 +366,13 @@ input,select,textarea{min-height:44px;}
 
       <!-- 1. PHOTO -->
       <div class="sec">
-        <div class="stitle">📸 Photo</div>
+        <div class="stitle">📸 Photo <span style="font-size:10px;font-weight:600;color:#e03c3c;letter-spacing:0;text-transform:none;">Required</span></div>
         <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
             <div class="pu-fish-cover"></div>
             <div class="pu-text-block">
               <div class="pu-add-text">Add a photo of your catch</div>
-              <div class="pu-add-sub">Tap to choose from your camera roll</div>
+              <div class="pu-add-sub">Tap to choose — date &amp; GPS auto-filled from photo</div>
             </div>
           </div>
         </div>
@@ -382,7 +382,7 @@ input,select,textarea{min-height:44px;}
           <span id="exifBadgeText">GPS &amp; time captured from photo</span>
         </div>
         <div style="margin-top:8px;">
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">🖼 Upload Photo</button>
+          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Upload Photo</button>
         </div>
         <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
@@ -424,7 +424,7 @@ input,select,textarea{min-height:44px;}
       </div>
 
       <!-- 3. DATE & TIME -->
-      <div class="sec">
+      <div class="sec" id="dateTimeSection" style="display:none;">
         <div class="stitle">📅 Date &amp; Time</div>
         <div class="r2">
           <div><label>Date</label><input type="date" id="cdate" style="min-height:44px;"></div>
@@ -641,14 +641,6 @@ input,select,textarea{min-height:44px;}
             <div id="wxl" style="font-size:11px;color:rgba(255,255,255,0.38);margin-top:2px;">Detecting location…</div>
           </div>
         </div>
-        <!-- Safe-to-fish status banner -->
-        <div id="wxSafeStatus" class="wx-safe wx-safe-loading">
-          <div id="wxSafeIcon" style="font-size:20px;flex-shrink:0;">⏳</div>
-          <div>
-            <div id="wxSafeLabel" style="font-size:13px;font-weight:700;color:#fff;line-height:1.2;">Loading conditions…</div>
-            <div id="wxSafeSub" style="font-size:11px;color:rgba(255,255,255,0.5);margin-top:2px;"></div>
-          </div>
-        </div>
         <!-- Big Three: Wind / Pressure / Sky -->
         <div class="wx-big3">
           <!-- Wind -->
@@ -690,12 +682,6 @@ input,select,textarea{min-height:44px;}
         </div>
       </div>
 
-      <!-- Marine swell strip (populated by JS when available) -->
-      <div id="wxSwellStrip" style="display:none;" class="sec" style="padding:10px 13px;">
-        <div class="stitle" style="margin-bottom:8px;">🌊 Marine</div>
-        <div id="wxSwellCards" class="wx-swell-strip"></div>
-      </div>
-
       <!-- ② 24-HOUR RIBBON -->
       <div class="sec" style="padding:10px 0 10px 13px;overflow:hidden;">
         <div class="stitle" style="padding-right:13px;margin-bottom:8px;">🕐 Next 24 Hours</div>
@@ -703,8 +689,8 @@ input,select,textarea{min-height:44px;}
           <div style="font-size:12px;color:var(--hint);padding:14px 0;">Loading…</div>
         </div>
         <div style="display:flex;gap:14px;margin-top:7px;padding-right:13px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#4fc3a1;flex-shrink:0;"></div>Major bite</div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#EF9F27;flex-shrink:0;"></div>Minor bite</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#4fc3a1;flex-shrink:0;"></div>🐟 Major bite</div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#EF9F27;flex-shrink:0;"></div>⭐ Minor bite</div>
           <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#e74c3c;flex-shrink:0;"></div>Strong wind</div>
         </div>
       </div>
@@ -1631,17 +1617,24 @@ async function handlePhoto(e) {
   // Show EXIF result — use the new green badge when data was found, small text otherwise
   const badge     = document.getElementById('exifBadge');
   const badgeText = document.getElementById('exifBadgeText');
+  const dtSection = document.getElementById('dateTimeSection');
   if (exifFilled.length) {
     if (badge && badgeText) {
       badgeText.textContent = exifFilled.join(' · ') + ' captured from photo';
       badge.classList.add('show');
     }
     exifEl.style.display = 'none'; // hide old small text — badge replaces it
+    // Hide date/time section — it was auto-filled from EXIF
+    if (dtSection && exifFilled.some(s => s.includes('Date'))) {
+      dtSection.style.display = 'none';
+    }
   } else {
     if (badge) badge.classList.remove('show');
     exifEl.style.display = 'block';
     exifEl.style.color = 'var(--hint)';
     exifEl.textContent = 'ℹ️ No location or date found in photo — please enter manually below';
+    // Show date/time section so user can fill it in
+    if (dtSection) dtSection.style.display = '';
   }
 
   // ── 2. Compress and display — retry once with same file before reopening gallery ──
@@ -1778,17 +1771,17 @@ function satelliteLayer() {
   });
 }
 const SPECIES_COLORS = {
-  'Snapper':    '#FF2020',  // vivid red
-  'Kingfish':   '#FFB300',  // deep amber
+  'Snapper':    '#FF1F2A',  // vivid red
+  'Kingfish':   '#00D4FF',  // electric cyan — bright, distinct on all backgrounds
   'Kahawai':    '#00C244',  // vivid green
   'Gurnard':    '#CC00FF',  // electric violet
-  'John Dory':  '#00C8FF',  // cyan-blue (distinct from royal blue)
-  'Blue Cod':   '#1A56FF',  // bright royal blue (distinct from cyan)
-  'Trevally':   '#FF5500',  // deep orange (distinct from red)
+  'John Dory':  '#1A56FF',  // bright royal blue
+  'Blue Cod':   '#0099CC',  // steel blue (distinct from royal blue)
+  'Trevally':   '#9B30FF',  // vivid purple — distinct from red Snapper
   'Tarakihi':   '#FF007A',  // hot magenta-pink
-  'Moki':       '#FF8C00',  // burnt orange (distinct from Trevally orange and Kingfish amber)
-  'Hapuka':     '#C6F000',  // vivid chartreuse (high contrast on dark)
-  'Crayfish':   '#9933FF',  // purple (distinct from violet)
+  'Moki':       '#FF8C00',  // burnt orange
+  'Hapuka':     '#C6F000',  // vivid chartreuse
+  'Crayfish':   '#FF5500',  // deep orange
 };
 function speciesColor(fish) {
   return SPECIES_COLORS[fish] || '#4fc3a1';
@@ -3411,27 +3404,6 @@ async function fetchOpenMeteo(lat, lng, locName) {
     document.getElementById('wxBadge').className='api-badge live-badge';
     document.getElementById('wxBadge').textContent='🌤 Live';
 
-    // ── Hero: Safe-to-fish banner ──
-    const condStr = weatherConditionOM(code, wspeed);
-    const safeEl  = document.getElementById('wxSafeStatus');
-    const safeIcon = document.getElementById('wxSafeIcon');
-    const safeLabel = document.getElementById('wxSafeLabel');
-    const safeSub   = document.getElementById('wxSafeSub');
-    if (condStr.startsWith('✅')) {
-      safeEl.className = 'wx-safe wx-safe-good';
-      safeIcon.textContent = '✅';
-      safeLabel.textContent = condStr.startsWith('✅ Excellent') ? 'Good Conditions' : 'Good Conditions';
-    } else if (condStr.startsWith('🟡')) {
-      safeEl.className = 'wx-safe wx-safe-caution';
-      safeIcon.textContent = '⚠️';
-      safeLabel.textContent = 'Caution';
-    } else {
-      safeEl.className = 'wx-safe wx-safe-danger';
-      safeIcon.textContent = '🚫';
-      safeLabel.textContent = wspeed > 40 ? 'Stay Ashore — Gale Warning' : 'Rough Conditions';
-    }
-    safeSub.textContent = condStr.replace(/^[✅🟡🟠🔴]\s*/,'');
-
     // ── Hero: Wind tile ──
     const wdirDegCur = cur.wind_direction_10m || 0;
     const gustVal    = cur.wind_gusts_10m != null ? Math.round(cur.wind_gusts_10m) : null;
@@ -3455,30 +3427,6 @@ async function fetchOpenMeteo(lat, lng, locName) {
     // ── Hero: Sky tile ──
     document.getElementById('wxFeels').textContent = feels + '°C';
     document.getElementById('wxRainNow').textContent = 'Rain ' + rainNow;
-
-    // ── Marine swell strip ──
-    if (marineRes && marineRes.ok) {
-      try {
-        const marineData = await marineRes.json();
-        const wh = marineData.current?.wave_height;
-        const wp = marineData.current?.wave_period;
-        const wd2 = marineData.current?.wave_direction;
-        if (wh != null) {
-          const swellStrip = document.getElementById('wxSwellStrip');
-          const swellCards = document.getElementById('wxSwellCards');
-          swellStrip.style.display = '';
-          const sst = marineData.current?.sea_surface_temperature;
-          const wdirLabel = wd2 != null ? windDir(wd2) : '—';
-          swellCards.innerHTML = `
-            <div class="wx-sw-card"><span style="font-size:18px;">🌊</span><span style="font-size:15px;font-weight:700;color:var(--text);">${wh.toFixed(1)} m</span><span style="font-size:10px;color:var(--muted);">Swell ht</span></div>
-            ${wp != null ? `<div class="wx-sw-card"><span style="font-size:18px;">⏱</span><span style="font-size:15px;font-weight:700;color:var(--text);">${Math.round(wp)}s</span><span style="font-size:10px;color:var(--muted);">Period</span></div>` : ''}
-            <div class="wx-sw-card"><span style="font-size:18px;">🧭</span><span style="font-size:15px;font-weight:700;color:var(--text);">${wdirLabel}</span><span style="font-size:10px;color:var(--muted);">Direction</span></div>
-            ${sst != null ? `<div class="wx-sw-card"><span style="font-size:18px;">🌡</span><span style="font-size:15px;font-weight:700;color:var(--text);">${sst.toFixed(1)}°C</span><span style="font-size:10px;color:var(--muted);">Sea temp</span></div>` : ''}`;
-          swellTxt = wh.toFixed(1) + ' m';
-        }
-      } catch(_) {}
-    }
-    document.getElementById('wxswell').textContent = swellTxt;
 
     // ── 24-Hour Ribbon ──
     const hourlyTemps  = land.hourly?.temperature_2m || [];
@@ -3703,6 +3651,7 @@ function _calcTideLabelForCatch(dt, portOverride) {
   } catch(e) { return '—'; }
 }
 async function saveCatch() {
+  if(!photo){showToast('Please upload a photo of your catch first.','error');vibrate(60);document.getElementById('puEl').scrollIntoView({behavior:'smooth',block:'center'});return;}
   const fish=document.getElementById('ftype').value==='Other'?document.getElementById('fcust').value:document.getElementById('ftype').value;
   if(!fish){showToast('Please select a fish species.','error');vibrate(60);return;}
   const d=document.getElementById('cdate').value, t=document.getElementById('ctime').value;
@@ -3770,6 +3719,9 @@ async function saveCatch() {
   photo=null;
   const pu=document.getElementById('puEl'),img=pu.querySelector('img');if(img)img.remove();
   document.getElementById('puInner').style.display='flex';
+  // Hide date/time section again — will be re-shown/hidden based on next photo's EXIF
+  const dtSec = document.getElementById('dateTimeSection');
+  if (dtSec) dtSec.style.display = 'none';
   // Refresh nickname + fly/col autocomplete suggestions
   _refreshNicknameSuggestions();
   _refreshFlyColSuggestions();
@@ -4311,9 +4263,9 @@ function renderStats() {
 
   // Species colour palette — matches SPECIES_COLORS map used on the map
   const SP_CHART_COLORS = {
-    'Snapper':'#FF2020','Kingfish':'#FFB300','Kahawai':'#00C244','Gurnard':'#CC00FF',
-    'John Dory':'#00C8FF','Blue Cod':'#1A56FF','Trevally':'#FF5500','Tarakihi':'#FF007A',
-    'Moki':'#FF8C00','Hapuka':'#C6F000','Crayfish':'#9933FF'
+    'Snapper':'#FF1F2A','Kingfish':'#00D4FF','Kahawai':'#00C244','Gurnard':'#CC00FF',
+    'John Dory':'#1A56FF','Blue Cod':'#0099CC','Trevally':'#9B30FF','Tarakihi':'#FF007A',
+    'Moki':'#FF8C00','Hapuka':'#C6F000','Crayfish':'#FF5500'
   };
   function spColor(sp) { return SP_CHART_COLORS[sp] || '#4fc3a1'; }
 
