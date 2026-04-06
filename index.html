@@ -366,13 +366,13 @@ input,select,textarea{min-height:44px;}
 
       <!-- 1. PHOTO -->
       <div class="sec">
-        <div class="stitle">📸 Photo <span style="font-size:10px;font-weight:600;color:#e03c3c;letter-spacing:0;text-transform:none;">Required</span></div>
+        <div class="stitle">📸 Photo</div>
         <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
             <div class="pu-fish-cover"></div>
             <div class="pu-text-block">
               <div class="pu-add-text">Add a photo of your catch</div>
-              <div class="pu-add-sub">Tap to choose — date &amp; GPS auto-filled from photo</div>
+              <div class="pu-add-sub">Tap to choose — date / time &amp; location auto filled if available</div>
             </div>
           </div>
         </div>
@@ -688,10 +688,16 @@ input,select,textarea{min-height:44px;}
         <div id="wxRibbon" class="wx-ribbon">
           <div style="font-size:12px;color:var(--hint);padding:14px 0;">Loading…</div>
         </div>
-        <div style="display:flex;gap:14px;margin-top:7px;padding-right:13px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#4fc3a1;flex-shrink:0;"></div>🐟 Major bite</div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#EF9F27;flex-shrink:0;"></div>⭐ Minor bite</div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);"><div style="width:7px;height:7px;border-radius:50%;background:#e74c3c;flex-shrink:0;"></div>Strong wind</div>
+        <div style="display:flex;gap:12px;margin-top:8px;padding:8px 13px 4px 0;flex-wrap:wrap;border-top:0.5px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--text);">
+            <div style="width:12px;height:12px;border-radius:3px;background:#4fc3a1;flex-shrink:0;"></div>Major bite window
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--text);">
+            <div style="width:12px;height:12px;border-radius:3px;background:#EF9F27;flex-shrink:0;"></div>Minor bite window
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--text);">
+            <div style="width:12px;height:12px;border-radius:3px;background:#e74c3c;flex-shrink:0;"></div>Strong wind warning
+          </div>
         </div>
       </div>
 
@@ -1513,31 +1519,10 @@ async function handlePhoto(e) {
       });
     } catch(err) { console.warn('EXIF primary parse failed:', err); }
 
-    // ── GPS extraction — four progressive fallback paths ──
+    // ── GPS extraction — five progressive fallback paths ──
     let lat = null, lng = null;
     if (parsed) {
-      // ── DEBUG: log all parsed EXIF keys so we can see what Samsung A36 returns ──
-      console.log('EXIF DEBUG — all keys:', Object.keys(parsed));
-      console.log('EXIF DEBUG — GPS-related fields:', JSON.stringify(
-        Object.fromEntries(Object.entries(parsed).filter(([k]) =>
-          /gps|lat|lon|lng|location|position/i.test(k)
-        ))
-      ));
-      // Show debug info on screen temporarily
-      const exifDbg = document.getElementById('exifInfo');
-      if (exifDbg) {
-        const gpsKeys = Object.keys(parsed).filter(k => /gps|lat|lon|lng/i.test(k));
-        exifDbg.style.display = 'block';
-        exifDbg.style.color = '#e07000';
-        exifDbg.textContent = gpsKeys.length
-          ? '🔍 GPS keys found: ' + gpsKeys.join(', ')
-          : '🔍 No GPS keys found in EXIF at all';
-      }
-
-      // Path A: exifr translated to decimal degrees — works on most devices including
-      // standard Android, iPhone, and Google Photos downloads (when GPS is present).
-      // Use Number() coercion instead of strict typeof check — exifr sometimes returns
-      // latitude/longitude as strings or other coercible types on certain devices.
+      // Path A: exifr translated to decimal degrees
       const rawLat = parsed.latitude;
       const rawLng = parsed.longitude;
       if (rawLat != null && rawLng != null) {
@@ -1550,8 +1535,6 @@ async function handlePhoto(e) {
       }
 
       // Path B: XMP decimal strings — Samsung newer firmware stores GPS as XMP
-      // properties 'GPSLatitude' / 'GPSLongitude' as plain decimal strings like
-      // "37.123456" / "176.654321". These can coexist with or replace standard EXIF GPS.
       if (lat == null) {
         const xLat = parsed.GPSLatitude  ?? parsed['exif:GPSLatitude'];
         const xLng = parsed.GPSLongitude ?? parsed['exif:GPSLongitude'];
@@ -1559,18 +1542,15 @@ async function handlePhoto(e) {
           const pLat = typeof xLat === 'number' ? xLat : parseFloat(String(xLat));
           const pLng = typeof xLng === 'number' ? xLng : parseFloat(String(xLng));
           if (isFinite(pLat) && isFinite(pLng)) {
-            // XMP decimal may lack hemisphere sign — apply ref tags if present
-            const latRef = parsed.GPSLatitudeRef  ?? parsed['exif:GPSLatitudeRef']  ?? 'N';
-            const lngRef = parsed.GPSLongitudeRef ?? parsed['exif:GPSLongitudeRef'] ?? 'E';
-            lat = (latRef === 'S') ? -Math.abs(pLat) : Math.abs(pLat);
-            lng = (lngRef === 'W') ? -Math.abs(pLng) : Math.abs(pLng);
+            const latRef = parsed.GPSLatitudeRef  ?? parsed['exif:GPSLatitudeRef']  ?? '';
+            const lngRef = parsed.GPSLongitudeRef ?? parsed['exif:GPSLongitudeRef'] ?? '';
+            lat = latRef === 'S' ? -Math.abs(pLat) : latRef === 'N' ? Math.abs(pLat) : pLat;
+            lng = lngRef === 'W' ? -Math.abs(pLng) : lngRef === 'E' ? Math.abs(pLng) : pLng;
           }
         }
       }
 
-      // Path C: raw DMS rational arrays — older Samsung / stock Android firmware
-      // writes GPS as [[deg,1],[min,1],[sec,100]] rational arrays that exifr sometimes
-      // doesn't fully translate even with translateValues:true.
+      // Path C: raw DMS rational arrays
       if (lat == null && Array.isArray(parsed.GPSLatitude) && Array.isArray(parsed.GPSLongitude)) {
         const rational2dec = v => Array.isArray(v) ? v[0] / (v[1] || 1) : Number(v);
         const dms2dd = (dms, ref) => {
@@ -1624,6 +1604,16 @@ async function handlePhoto(e) {
     }
 
     if (lat != null && lng != null) {
+      // ── NZ hemisphere sanity check ─────────────────────────────────────────
+      // NZ latitudes are always negative (34°S–48°S) and longitudes positive
+      // (165°E–178°E). Some firmware stores the absolute value without applying
+      // the hemisphere ref — detect and correct this automatically.
+      const absLat = Math.abs(lat), absLng = Math.abs(lng);
+      const looksNZ = absLat >= 34 && absLat <= 48 && absLng >= 165 && absLng <= 179;
+      if (looksNZ) {
+        if (lat > 0)  lat = -lat;   // must be Southern Hemisphere
+        if (lng < 0)  lng = -lng;   // must be Eastern Hemisphere
+      }
       document.getElementById('clat').value = lat.toFixed(6);
       document.getElementById('clng').value = lng.toFixed(6);
       if (logMap && logPin) { logPin.setLatLng([lat, lng]); logMap.setView([lat, lng], 14); }
