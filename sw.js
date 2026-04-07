@@ -1,4 +1,4 @@
-const CACHE = 'fishinglog-v4';
+const CACHE = 'fishinglog-v5';
 const CORE = ['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -27,9 +27,12 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Don't intercept cross-origin requests — API calls to open-meteo, nominatim,
-  // NIWA, leaflet CDN etc. must go straight to the network without a fallback.
-  if (!url.startsWith(self.location.origin)) return;
+  // Cross-origin API calls (open-meteo, nominatim, NIWA, CDNs etc.)
+  // Pass straight to network — no cache, no HTML fallback.
+  if (!url.startsWith(self.location.origin)) {
+    e.respondWith(fetch(e.request));
+    return;
+  }
 
   // Same-origin assets: cache-first, fall back to index.html for app shell routing
   e.respondWith(
