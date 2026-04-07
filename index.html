@@ -3369,8 +3369,10 @@ function autoWeather(force) {
 
   const doFetch = (lat, lng, locName) => {
     fetchOpenMeteo(lat, lng, locName).then(() => {
-      _wxLastFetch = Date.now(); // only set cooldown on SUCCESS
-    }).catch(() => {}); // errors already handled inside fetchOpenMeteo
+      _wxLastFetch = Date.now(); // success — full 5-min cooldown
+    }).catch(() => {
+      _wxLastFetch = Date.now() - WX_COOLDOWN_MS + 60000; // failure — retry in 1 min
+    });
   };
 
   const formLat = parseFloat(document.getElementById('clat')?.value) || wxLat;
@@ -3399,6 +3401,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
       locName ? Promise.resolve(null) : fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}}).catch(()=>null)
     ]);
 
+    if (landRes.status === 429) throw new Error('RATE_LIMITED');
     if (!landRes.ok) throw new Error(`Open-Meteo API error: ${landRes.status}`);
     const land = await landRes.json();
     const cur = land.current;
@@ -3586,11 +3589,13 @@ async function fetchOpenMeteo(lat, lng, locName) {
 
   } catch(err) {
     console.error('fetchOpenMeteo error:', err);
-    const isNetworkErr = err instanceof TypeError || err.message?.includes('fetch');
+    const isRateLimit  = err.message === 'RATE_LIMITED';
+    const isNetworkErr = !isRateLimit && (err instanceof TypeError || err.message?.includes('fetch'));
     const badge = document.getElementById('wxBadge');
-    if (badge) { badge.className='api-badge offline-badge'; badge.textContent='⚠️ Unavailable'; }
-    setText('wxd', isNetworkErr ? 'Network error — check connection' : 'Weather data unavailable');
-    setText('wxl', isNetworkErr ? 'Could not reach weather service' : 'Tap Refresh to try again');
+    if (badge) { badge.className='api-badge offline-badge'; badge.textContent= isRateLimit ? '⏳ Rate limited' : '⚠️ Unavailable'; }
+    setText('wxd', isRateLimit ? 'Too many requests — wait a few minutes' : isNetworkErr ? 'Network error — check connection' : 'Weather data unavailable');
+    setText('wxl', isRateLimit ? 'Open-Meteo rate limit hit. Tap Refresh in ~5 min.' : isNetworkErr ? 'Could not reach weather service' : 'Tap Refresh to try again');
+    if (isRateLimit) _wxLastFetch = Date.now() - WX_COOLDOWN_MS + 5 * 60 * 1000; // back off 5 min on rate limit
   }
 }
 
