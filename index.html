@@ -3394,7 +3394,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
 
   try {
     const [landRes, marineRes, geoRes] = await Promise.all([
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,visibility&hourly=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,precipitation_probability,surface_pressure&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=7&wind_speed_unit=kmh&timezone=auto`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,precipitation_probability,surface_pressure,visibility&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=7&wind_speed_unit=kmh&timezone=auto`),
       fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction,wave_period,sea_surface_temperature&forecast_days=1`).catch(()=>null),
       locName ? Promise.resolve(null) : fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}}).catch(()=>null)
     ]);
@@ -3410,7 +3410,8 @@ async function fetchOpenMeteo(lat, lng, locName) {
     const wspeed   = Math.round(cur.wind_speed_10m);
     const wdir     = windDir(cur.wind_direction_10m || 0);
     const pressure = Math.round(cur.surface_pressure);
-    const vis      = cur.visibility != null ? (cur.visibility / 1000).toFixed(1) + ' km' : '—';
+    const visM     = land.hourly?.visibility?.[nowHour];
+    const vis      = visM != null ? (visM / 1000).toFixed(1) + ' km' : '—';
     const code     = cur.weather_code ?? 3;
     const rainArr  = land.hourly?.precipitation_probability;
     const rainNow  = rainArr ? (rainArr[new Date().getHours()] ?? 0) + '%' : '—';
