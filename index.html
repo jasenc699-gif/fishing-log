@@ -3362,173 +3362,187 @@ const WX_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 function autoWeather(force) {
   const now = Date.now();
   if (!force && (now - _wxLastFetch) < WX_COOLDOWN_MS) return; // already fresh
-  _wxLastFetch = now;
+
   document.getElementById('wxBadge').className='api-badge offline-badge';
   document.getElementById('wxBadge').textContent='⏳ Loading...';
   document.getElementById('wxl').textContent='Detecting location...';
 
-  // Try GPS first, fall back to log form coords, then default
-  const doFetch = (lat, lng, locName) => fetchOpenMeteo(lat, lng, locName);
-  const formLat = parseFloat(document.getElementById('clat').value) || wxLat;
-  const formLng = parseFloat(document.getElementById('clng').value) || wxLng;
+  const doFetch = (lat, lng, locName) => {
+    fetchOpenMeteo(lat, lng, locName).then(() => {
+      _wxLastFetch = Date.now(); // only set cooldown on SUCCESS
+    }).catch(() => {}); // errors already handled inside fetchOpenMeteo
+  };
 
-  if(navigator.geolocation) {
+  const formLat = parseFloat(document.getElementById('clat')?.value) || wxLat;
+  const formLng = parseFloat(document.getElementById('clng')?.value) || wxLng;
+  const formLoc = document.getElementById('locname')?.value || 'Bay of Plenty, NZ';
+
+  if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       pos => doFetch(pos.coords.latitude, pos.coords.longitude, null),
-      () => doFetch(formLat, formLng, document.getElementById('locname').value || 'Bay of Plenty, NZ'),
-      { timeout: 6000 }
+      ()  => doFetch(formLat, formLng, formLoc),
+      { timeout: 10000, maximumAge: 60000 }   // 10s timeout, accept 1-min cached position
     );
   } else {
-    doFetch(formLat, formLng, document.getElementById('locname').value || 'Bay of Plenty, NZ');
+    doFetch(formLat, formLng, formLoc);
   }
 }
 
 async function fetchOpenMeteo(lat, lng, locName) {
+  // Helper: safely set element text without throwing if element missing
+  const setText = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+
   try {
-    // Fetch land weather + marine data in parallel — add daily vars for 7-day forecast
     const [landRes, marineRes, geoRes] = await Promise.all([
       fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure,visibility&hourly=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,precipitation_probability,surface_pressure&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=7&wind_speed_unit=kmh&timezone=auto`),
       fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction,wave_period,sea_surface_temperature&forecast_days=1`).catch(()=>null),
-      locName ? null : fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}}).catch(()=>null)
+      locName ? Promise.resolve(null) : fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}}).catch(()=>null)
     ]);
 
-    if(!landRes.ok) throw new Error('Weather fetch failed');
+    if (!landRes.ok) throw new Error(`Open-Meteo API error: ${landRes.status}`);
     const land = await landRes.json();
     const cur = land.current;
+    if (!cur) throw new Error('Unexpected API response — no current data');
 
-    const temp = Math.round(cur.temperature_2m);
-    const feels = Math.round(cur.apparent_temperature);
+    const temp     = Math.round(cur.temperature_2m);
+    const feels    = Math.round(cur.apparent_temperature);
     const humidity = cur.relative_humidity_2m;
-    const wspeed = Math.round(cur.wind_speed_10m);
-    const wdir = windDir(cur.wind_direction_10m||0);
+    const wspeed   = Math.round(cur.wind_speed_10m);
+    const wdir     = windDir(cur.wind_direction_10m || 0);
     const pressure = Math.round(cur.surface_pressure);
-    const vis = cur.visibility ? (cur.visibility/1000).toFixed(1)+' km' : '—';
-    const code = cur.weather_code;
-    const rainArr = land.hourly?.precipitation_probability;
-    const rainNow = rainArr ? rainArr[new Date().getHours()]+'%' : '—';
-    // Extract 3-hour pressure history for barometer
+    const vis      = cur.visibility != null ? (cur.visibility / 1000).toFixed(1) + ' km' : '—';
+    const code     = cur.weather_code ?? 3;
+    const rainArr  = land.hourly?.precipitation_probability;
+    const rainNow  = rainArr ? (rainArr[new Date().getHours()] ?? 0) + '%' : '—';
     const pressureHourly = land.hourly?.surface_pressure || [];
-    const nowHour = new Date().getHours();
+    const nowHour  = new Date().getHours();
     const pressureHistory = [nowHour-3, nowHour-2, nowHour-1, nowHour]
-      .map(h => pressureHourly[Math.max(0,h)] || null)
-      .filter(Boolean);
+      .map(h => pressureHourly[Math.max(0, h)] || null).filter(Boolean);
 
-    // Marine / swell — parsed later in the UI block
+    // ── Marine / swell (now actually parsed) ──────────────────────────────────
     let swellTxt = '—';
-
-    // Location name
-    let displayLoc = locName || 'Your location';
-    if(!locName && geoRes && geoRes.ok) {
-      const geo = await geoRes.json();
-      if(geo?.address) {
-        const a = geo.address;
-        displayLoc = [a.city||a.town||a.village||a.suburb||a.county, a.state||a.country].filter(Boolean).join(', ');
-      }
+    if (marineRes && marineRes.ok) {
+      try {
+        const marine = await marineRes.json();
+        const wh  = marine.current?.wave_height;
+        const wp  = marine.current?.wave_period;
+        const wd  = marine.current?.wave_direction;
+        const sst = marine.current?.sea_surface_temperature;
+        if (wh != null) swellTxt = wh.toFixed(1) + ' m';
+        // Update tide tab wave strip if visible
+        const waveEl = document.getElementById('tideWaveRow');
+        if (waveEl && waveEl.innerHTML === '') {
+          const dirLbl = wd != null ? windDir(wd) : '—';
+          waveEl.innerHTML = `<div style="display:flex;gap:9px;margin-bottom:8px;flex-wrap:wrap;">
+            <div class="wcard" style="flex:1;min-width:60px;padding:9px 10px;"><span class="wi" style="font-size:16px;">🌊</span><span class="wv" style="font-size:15px;">${wh!=null?wh.toFixed(1)+' m':'—'}</span><span class="wl">Swell ht</span></div>
+            <div class="wcard" style="flex:1;min-width:60px;padding:9px 10px;"><span class="wi" style="font-size:16px;">⏱</span><span class="wv" style="font-size:15px;">${wp!=null?Math.round(wp)+'s':'—'}</span><span class="wl">Period</span></div>
+            <div class="wcard" style="flex:1;min-width:60px;padding:9px 10px;"><span class="wi" style="font-size:16px;">🧭</span><span class="wv" style="font-size:15px;">${dirLbl}</span><span class="wl">Direction</span></div>
+            <div class="wcard" style="flex:1;min-width:60px;padding:9px 10px;"><span class="wi" style="font-size:16px;">🌡</span><span class="wv" style="font-size:15px;">${sst!=null?sst.toFixed(1)+'°C':'—'}</span><span class="wl">Sea temp</span></div>
+          </div>`;
+        }
+      } catch(e) { /* marine data optional — ignore parse errors */ }
     }
 
-    // Update UI
-    document.getElementById('wxi').textContent = omIcon(code);
-    document.getElementById('wxt').textContent = temp+'°C';
-    document.getElementById('wxd').textContent = omDesc(code);
-    document.getElementById('wxl').textContent = displayLoc;
-    // Legacy hidden elements (used by catch-logging weather field)
-    document.getElementById('wxwind').textContent = wspeed+' km/h';
-    document.getElementById('wxwdir').textContent = wdir;
-    document.getElementById('wxh').textContent = humidity+'%';
-    document.getElementById('wxf').textContent = feels+'°C';
-    document.getElementById('wxv').textContent = vis;
-    document.getElementById('wxp').textContent = pressure+' hPa';
-    document.getElementById('wxswell').textContent = swellTxt;
-    document.getElementById('wxrain').textContent = rainNow;
-    document.getElementById('wxcond').textContent = weatherConditionOM(code, wspeed);
-    document.getElementById('wxBadge').className='api-badge live-badge';
-    document.getElementById('wxBadge').textContent='🌤 Live';
+    // ── Location name ─────────────────────────────────────────────────────────
+    let displayLoc = locName || 'Your location';
+    if (!locName && geoRes && geoRes.ok) {
+      try {
+        const geo = await geoRes.json();
+        if (geo?.address) {
+          const a = geo.address;
+          displayLoc = [a.city||a.town||a.village||a.suburb||a.county, a.state||a.country].filter(Boolean).join(', ') || displayLoc;
+        }
+      } catch(e) { /* geocoding optional */ }
+    }
 
-    // ── Hero: Wind tile ──
+    // ── Update UI ─────────────────────────────────────────────────────────────
+    setText('wxi', omIcon(code));
+    setText('wxt', temp + '°C');
+    setText('wxd', omDesc(code));
+    setText('wxl', displayLoc);
+    // Legacy hidden elements used by catch-logging
+    setText('wxwind', wspeed + ' km/h');
+    setText('wxwdir', wdir);
+    setText('wxh', humidity + '%');
+    setText('wxf', feels + '°C');
+    setText('wxv', vis);
+    setText('wxp', pressure + ' hPa');
+    setText('wxswell', swellTxt);
+    setText('wxrain', rainNow);
+    setText('wxcond', weatherConditionOM(code, wspeed));
+    const badge = document.getElementById('wxBadge');
+    if (badge) { badge.className = 'api-badge live-badge'; badge.textContent = '🌤 Live'; }
+
+    // ── Wind tile ─────────────────────────────────────────────────────────────
     const wdirDegCur = cur.wind_direction_10m || 0;
     const gustVal    = cur.wind_gusts_10m != null ? Math.round(cur.wind_gusts_10m) : null;
-    _windFromDeg = wdirDegCur;   // stored globally so compass can re-use it
-    _updateWindArrow();           // applies fixed or compass-compensated rotation
-    document.getElementById('wxWindSpd').textContent = wspeed + ' km/h';
-    document.getElementById('wxWindDir').textContent = wdir;
-    document.getElementById('wxGust').textContent = gustVal != null ? 'Gust ' + gustVal + ' km/h' : '';
+    _windFromDeg = wdirDegCur;
+    _updateWindArrow();
+    setText('wxWindSpd', wspeed + ' km/h');
+    setText('wxWindDir', wdir);
+    setText('wxGust', gustVal != null ? 'Gust ' + gustVal + ' km/h' : '');
 
-    // ── Hero: Pressure tile ──
-    document.getElementById('wxPressVal').textContent = pressure;
+    // ── Pressure tile ─────────────────────────────────────────────────────────
+    setText('wxPressVal', pressure);
     const pressArrowEl = document.getElementById('wxPressTrendArrow');
     const pressTrendEl = document.getElementById('wxPressTrend');
-    if (pressureHistory.length >= 2) {
+    if (pressureHistory.length >= 2 && pressArrowEl && pressTrendEl) {
       const diff = pressure - pressureHistory[0];
-      if (diff > 2)       { pressArrowEl.textContent = '↑'; pressTrendEl.textContent = 'Rising'; }
+      if (diff > 2)       { pressArrowEl.textContent = '↑'; pressArrowEl.style.color = '#4fc3a1'; pressTrendEl.textContent = 'Rising'; }
       else if (diff < -2) { pressArrowEl.textContent = '↓'; pressArrowEl.style.color = '#e74c3c'; pressTrendEl.textContent = 'Falling'; }
       else                { pressArrowEl.textContent = '→'; pressArrowEl.style.color = 'rgba(255,255,255,0.4)'; pressTrendEl.textContent = 'Steady'; }
     }
 
-    // ── Hero: Sky tile ──
-    document.getElementById('wxFeels').textContent = feels + '°C';
-    document.getElementById('wxRainNow').textContent = 'Rain ' + rainNow;
+    // ── Sky tile ──────────────────────────────────────────────────────────────
+    setText('wxFeels', feels + '°C');
+    setText('wxRainNow', 'Rain ' + rainNow);
 
-    // ── 24-Hour Ribbon ──
-    const hourlyTemps  = land.hourly?.temperature_2m || [];
-    const hourlyCodes  = land.hourly?.weather_code   || [];
-    const hourlyWinds  = land.hourly?.wind_speed_10m || [];
-    const hourlyWdirs  = land.hourly?.wind_direction_10m || [];
-    const hourlyRain   = land.hourly?.precipitation_probability || [];
-    // Bite windows for today
+    // ── 24-Hour Ribbon ────────────────────────────────────────────────────────
+    const hourlyTemps = land.hourly?.temperature_2m || [];
+    const hourlyCodes = land.hourly?.weather_code   || [];
+    const hourlyWinds = land.hourly?.wind_speed_10m || [];
+    const hourlyRain  = land.hourly?.precipitation_probability || [];
     const todayDt = new Date(); todayDt.setHours(12,0,0,0);
     const sol = solunarAt(todayDt, lng);
     function biteWindow(hr) {
       const h = ((hr%24)+24)%24;
-      function inWin(start, dur) {
-        const s=((start%24)+24)%24, e=(s+dur)%24;
-        return e>s ? (h>=s&&h<e) : (h>=s||h<e);
-      }
+      function inWin(start, dur) { const s=((start%24)+24)%24, e=(s+dur)%24; return e>s?(h>=s&&h<e):(h>=s||h<e); }
       if(inWin(sol.m1,2)||inWin(sol.m2,2)) return 'major';
       if(inWin(sol.n1,1)||inWin(sol.n2,1)) return 'minor';
       return null;
     }
     const ribbonEl = document.getElementById('wxRibbon');
     if (ribbonEl && hourlyTemps.length) {
-      // Find the first hour index in the hourly array matching current hour of today
-      const nowH    = new Date().getHours();
-      // Hourly array starts at midnight today (index 0 = 00:00)
-      const startIdx = nowH;
-      const cells   = [];
+      const startIdx = nowHour;
+      const cells = [];
       for (let i = 0; i < 25; i++) {
-        const idx  = startIdx + i;
+        const idx = startIdx + i;
         if (idx >= hourlyTemps.length) break;
-        const hr   = (nowH + i) % 24;
+        const hr   = (nowHour + i) % 24;
         const t    = hourlyTemps[idx] != null ? Math.round(hourlyTemps[idx]) : '—';
-        const wc   = hourlyCodes[idx]  ?? 3;
-        const ws   = hourlyWinds[idx]  != null ? Math.round(hourlyWinds[idx]) : null;
-        const rain = hourlyRain[idx]   ?? 0;
+        const wc   = hourlyCodes[idx] ?? 3;
+        const ws   = hourlyWinds[idx] != null ? Math.round(hourlyWinds[idx]) : null;
+        const rain = hourlyRain[idx] ?? 0;
         const bite = biteWindow(hr);
         const isNow = i === 0;
-        const h12  = hr === 0 ? '12am' : hr < 12 ? hr+'am' : hr === 12 ? '12pm' : (hr-12)+'pm';
-        const windClass = ws == null ? '' : ws > 40 ? 'wx-wind-strong' : ws > 20 ? 'wx-wind-mod' : 'wx-wind-calm';
+        const h12  = hr===0?'12am':hr<12?hr+'am':hr===12?'12pm':(hr-12)+'pm';
+        const windClass = ws==null?'':ws>40?'wx-wind-strong':ws>20?'wx-wind-mod':'wx-wind-calm';
         const windLabel = ws != null ? ws + ' km/h' : '—';
-        let cellClass = 'wx-cell';
-        if (isNow) cellClass += ' wx-cell-now';
-        else if (bite === 'major') cellClass += ' wx-cell-major';
-        else if (bite === 'minor') cellClass += ' wx-cell-minor';
-        const bitePin = bite === 'major' ? '<div style="font-size:9px;line-height:1;margin-bottom:1px;">🐟</div>'
-                       : bite === 'minor' ? '<div style="font-size:9px;line-height:1;margin-bottom:1px;">⭐</div>' : '';
-        const timeColor = isNow ? '#fff' : 'var(--muted)';
-        const tempColor = isNow ? '#fff' : 'var(--text)';
+        let cellClass = 'wx-cell' + (isNow?' wx-cell-now':bite==='major'?' wx-cell-major':bite==='minor'?' wx-cell-minor':'');
+        const bitePin = bite==='major'?'<div style="font-size:9px;line-height:1;margin-bottom:1px;">🐟</div>':bite==='minor'?'<div style="font-size:9px;line-height:1;margin-bottom:1px;">⭐</div>':'';
         cells.push(`<div class="${cellClass}">
           ${bitePin}
-          <div style="font-size:9px;color:${timeColor};font-weight:${isNow?'700':'400'};">${isNow?'Now':h12}</div>
+          <div style="font-size:9px;color:${isNow?'#fff':'var(--muted)'};font-weight:${isNow?'700':'400'};">${isNow?'Now':h12}</div>
           <div style="font-size:18px;line-height:1.1;">${omIcon(wc)}</div>
-          <div style="font-size:11px;font-weight:600;color:${tempColor};">${t}°</div>
+          <div style="font-size:11px;font-weight:600;color:${isNow?'#fff':'var(--text)'};">${t}°</div>
           <div class="wx-wind-pill ${windClass}">${windLabel}</div>
           ${rain>0?`<div style="font-size:9px;color:var(--hint);margin-top:1px;">💧${rain}%</div>`:''}
         </div>`);
       }
       ribbonEl.innerHTML = cells.join('');
-      // Scroll ribbon to "Now" cell (already first, so no-op — but keep for future)
     }
 
-    // Update barometer
+    // ── Update barometer ──────────────────────────────────────────────────────
     updateBarometer(pressure, pressureHistory);
 
     // ── 7-day forecast ────────────────────────────────────────────────────────
@@ -3537,17 +3551,17 @@ async function fetchOpenMeteo(lat, lng, locName) {
     if (fcastEl && daily?.time?.length) {
       const DAY_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
       fcastEl.innerHTML = daily.time.map((dateStr, i) => {
-        const d       = new Date(dateStr + 'T12:00:00');
-        const dayLbl  = i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : DAY_SHORT[d.getDay()];
-        const code2   = daily.weather_code?.[i] ?? 3;
-        const hi      = daily.temperature_2m_max?.[i] != null ? Math.round(daily.temperature_2m_max[i]) : '—';
-        const lo      = daily.temperature_2m_min?.[i] != null ? Math.round(daily.temperature_2m_min[i]) : '—';
-        const rain    = daily.precipitation_probability_max?.[i] ?? 0;
-        const wnd     = daily.wind_speed_10m_max?.[i]  != null ? Math.round(daily.wind_speed_10m_max[i]) : '—';
-        const wdirDeg = daily.wind_direction_10m_dominant?.[i];
-        const wdirLbl = wdirDeg != null ? windDir(wdirDeg) : '—';
-        const fishBg  = weatherConditionOM(code2, typeof wnd==='number'?wnd:0);
-        const dot     = fishBg.startsWith('✅')?'#4fc3a1':fishBg.startsWith('🟡')?'#f39c12':'#e74c3c';
+        const d      = new Date(dateStr + 'T12:00:00');
+        const dayLbl = i===0?'Today':i===1?'Tomorrow':DAY_SHORT[d.getDay()];
+        const code2  = daily.weather_code?.[i] ?? 3;
+        const hi     = daily.temperature_2m_max?.[i] != null ? Math.round(daily.temperature_2m_max[i]) : '—';
+        const lo     = daily.temperature_2m_min?.[i] != null ? Math.round(daily.temperature_2m_min[i]) : '—';
+        const rain   = daily.precipitation_probability_max?.[i] ?? 0;
+        const wnd    = daily.wind_speed_10m_max?.[i] != null ? Math.round(daily.wind_speed_10m_max[i]) : '—';
+        const wdirDeg= daily.wind_direction_10m_dominant?.[i];
+        const wdirLbl= wdirDeg != null ? windDir(wdirDeg) : '—';
+        const fishBg = weatherConditionOM(code2, typeof wnd==='number'?wnd:0);
+        const dot    = fishBg.startsWith('✅')?'#4fc3a1':fishBg.startsWith('🟡')?'#f39c12':'#e74c3c';
         return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border);">
           <div style="width:52px;flex-shrink:0;">
             <div style="font-size:12px;font-weight:${i<2?'700':'400'};color:${i<2?'var(--text)':'var(--muted)'};">${dayLbl}</div>
@@ -3570,11 +3584,12 @@ async function fetchOpenMeteo(lat, lng, locName) {
     wxLat = lat; wxLng = lng;
 
   } catch(err) {
-    console.error(err);
-    document.getElementById('wxBadge').className='api-badge offline-badge';
-    document.getElementById('wxBadge').textContent='⚠️ Unavailable';
-    document.getElementById('wxd').textContent='Could not load weather';
-    document.getElementById('wxl').textContent='Check internet connection';
+    console.error('fetchOpenMeteo error:', err);
+    const isNetworkErr = err instanceof TypeError || err.message?.includes('fetch');
+    const badge = document.getElementById('wxBadge');
+    if (badge) { badge.className='api-badge offline-badge'; badge.textContent='⚠️ Unavailable'; }
+    setText('wxd', isNetworkErr ? 'Network error — check connection' : 'Weather data unavailable');
+    setText('wxl', isNetworkErr ? 'Could not reach weather service' : 'Tap Refresh to try again');
   }
 }
 
