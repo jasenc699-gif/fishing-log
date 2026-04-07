@@ -3410,7 +3410,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
     const wspeed   = Math.round(cur.wind_speed_10m);
     const wdir     = windDir(cur.wind_direction_10m || 0);
     const pressure = Math.round(cur.surface_pressure);
-    const visM     = land.hourly?.visibility?.[nowHour];
+    const visM     = land.hourly?.visibility?.[new Date().getHours()];
     const vis      = visM != null ? (visM / 1000).toFixed(1) + ' km' : '—';
     const code     = cur.weather_code ?? 3;
     const rainArr  = land.hourly?.precipitation_probability;
