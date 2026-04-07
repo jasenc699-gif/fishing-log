@@ -3590,8 +3590,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
     const badge = document.getElementById('wxBadge');
     if (badge) { badge.className='api-badge offline-badge'; badge.textContent='⚠️ Unavailable'; }
     setText('wxd', isNetworkErr ? 'Network error — check connection' : 'Weather data unavailable');
-    // DEBUG: show actual error so we can diagnose — remove once fixed
-    setText('wxl', '⚠️ ' + (err?.message || String(err)));
+    setText('wxl', isNetworkErr ? 'Could not reach weather service' : 'Tap Refresh to try again');
   }
 }
 
