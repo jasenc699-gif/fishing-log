@@ -749,6 +749,34 @@ input,select,textarea{min-height:44px;}
         </div>
       </div>
 
+      <!-- ⑥ SATELLITE / RADAR MAP -->
+      <div class="sec" style="margin-top:0;padding:12px 13px 13px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div class="stitle" style="margin-bottom:0;">🛰 Satellite &amp; Radar</div>
+          <div style="display:flex;gap:6px;">
+            <button id="wxSatBtn" onclick="setWindyLayer('satellite')"
+              style="padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;background:var(--dark);color:#fff;border:0.5px solid rgba(255,255,255,0.2);">
+              🛰 Satellite
+            </button>
+            <button id="wxRadarBtn" onclick="setWindyLayer('radar')"
+              style="padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;background:var(--surf);color:var(--muted);border:0.5px solid var(--border);">
+              🌧 Radar
+            </button>
+          </div>
+        </div>
+        <div style="position:relative;border-radius:10px;overflow:hidden;border:0.5px solid var(--border);background:#1a2a38;">
+          <iframe id="windyFrame"
+            src="https://embed.windy.com/embed2.html?lat=-37.69&lon=176.17&zoom=6&level=surface&overlay=satellite&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kn&metricTemp=%C2%B0C&radarRange=-1"
+            width="100%" height="280"
+            frameborder="0"
+            style="display:block;border-radius:10px;"
+            loading="lazy"
+            title="Weather satellite / radar map">
+          </iframe>
+        </div>
+        <div style="font-size:10px;color:var(--hint);margin-top:6px;text-align:center;">Powered by Windy · Tap map to interact · Updates on location</div>
+      </div>
+
       <!-- Hidden legacy elements (still updated by JS for catch-logging weather field) -->
       <div style="display:none;">
         <span id="wxwind">—</span><span id="wxwdir">—</span><span id="wxh">—</span>
@@ -3356,7 +3384,33 @@ async function toggleCompassArrow() {
   showToast('Compass on — turn to face the wind! 🧭', 'success');
 }
 
-let _wxLastFetch = 0;
+let _windyLayer = 'satellite';
+
+function setWindyLayer(layer) {
+  _windyLayer = layer;
+  const satBtn   = document.getElementById('wxSatBtn');
+  const radBtn   = document.getElementById('wxRadarBtn');
+  if (satBtn) {
+    satBtn.style.background    = layer === 'satellite' ? 'var(--dark)' : 'var(--surf)';
+    satBtn.style.color         = layer === 'satellite' ? '#fff' : 'var(--muted)';
+    satBtn.style.borderColor   = layer === 'satellite' ? 'rgba(255,255,255,0.2)' : 'var(--border)';
+  }
+  if (radBtn) {
+    radBtn.style.background    = layer === 'radar' ? 'var(--dark)' : 'var(--surf)';
+    radBtn.style.color         = layer === 'radar' ? '#fff' : 'var(--muted)';
+    radBtn.style.borderColor   = layer === 'radar' ? 'rgba(255,255,255,0.2)' : 'var(--border)';
+  }
+  updateWindyMap(wxLat, wxLng);
+}
+
+function updateWindyMap(lat, lng) {
+  const frame = document.getElementById('windyFrame');
+  if (!frame) return;
+  const zoom = 6;
+  frame.src = `https://embed.windy.com/embed2.html?lat=${lat.toFixed(4)}&lon=${lng.toFixed(4)}&zoom=${zoom}&level=surface&overlay=${_windyLayer}&product=ecmwf&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=kn&metricTemp=%C2%B0C&radarRange=-1`;
+}
+
+
 const WX_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
 function autoWeather(force) {
@@ -3584,8 +3638,9 @@ async function fetchOpenMeteo(lat, lng, locName) {
       }).join('');
     }
 
-    // Store coords for reuse
+    // Store coords for reuse and update satellite/radar map
     wxLat = lat; wxLng = lng;
+    updateWindyMap(lat, lng);
 
   } catch(err) {
     console.error('fetchOpenMeteo error:', err);
