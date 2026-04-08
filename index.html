@@ -906,6 +906,16 @@ input,select,textarea{min-height:44px;}
         </button>
       </div>
 
+      <!-- Status -->
+      <div class="sec" id="settingsStatusSec" style="display:none;">
+        <div class="stitle">Current Status</div>
+        <div id="settingsStatus" style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px;"></div>
+        <button onclick="forceRefreshTide()"
+                style="width:100%;padding:11px;background:var(--dark);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
+          🔄 Force Refresh Tide Data
+        </button>
+      </div>
+
       <!-- Works without key -->
       <div class="sec" style="background:var(--surf);border-color:transparent;">
         <p style="font-size:12px;color:var(--muted);text-align:center;line-height:1.6;">
@@ -1311,15 +1321,56 @@ function _applySettingsVisibility() {
 }
 
 function openSettings() {
-  // Pre-fill with existing key if any
   const input = document.getElementById('settingsApiInput');
-  if (input) input.value = getTidecheckKey();
+  const savedKey = getTidecheckKey();
+  if (input) input.value = savedKey;
   const msg = document.getElementById('settingsApiMsg');
   if (msg) msg.textContent = '';
-  // Temporarily show settings tab so go() can activate it
+
+  // Show status section if key already saved
+  const statusSec = document.getElementById('settingsStatusSec');
+  const statusEl  = document.getElementById('settingsStatus');
+  if (statusSec && statusEl) {
+    if (savedKey) {
+      statusSec.style.display = '';
+      const masked = savedKey.substring(0, 8) + '••••••••' + savedKey.slice(-4);
+      const cacheAge = _tideCache?.fetched
+        ? Math.round((Date.now() - _tideCache.fetched) / 60000) + ' min ago'
+        : 'not yet fetched';
+      statusEl.innerHTML =
+        '<strong>Key:</strong> ' + masked + '<br>' +
+        '<strong>Last fetch:</strong> ' + cacheAge + '<br>' +
+        '<strong>Mode:</strong> ' + (_tideCache?.series?.length ? '⚡ Live data' : '📐 Harmonic fallback');
+    } else {
+      statusSec.style.display = 'none';
+    }
+  }
+
   const settingsTab = document.getElementById('settingsTab');
   if (settingsTab) settingsTab.style.display = '';
   go('settings');
+}
+
+async function forceRefreshTide() {
+  const btn = document.querySelector('#settingsStatusSec button');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Refreshing…'; }
+  bustTideCache();
+  const ok = await fetchTidesFromAPI(appLat, appLng);
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Force Refresh Tide Data'; }
+  // Re-open settings to refresh status display
+  const savedKey = getTidecheckKey();
+  const statusEl = document.getElementById('settingsStatus');
+  if (statusEl && savedKey) {
+    const masked = savedKey.substring(0, 8) + '••••••••' + savedKey.slice(-4);
+    const cacheAge = _tideCache?.fetched
+      ? Math.round((Date.now() - _tideCache.fetched) / 60000) + ' min ago'
+      : 'not yet fetched';
+    statusEl.innerHTML =
+      (ok ? '✅ Fetch succeeded!<br>' : '❌ Fetch failed — check key/network<br>') +
+      '<strong>Key:</strong> ' + masked + '<br>' +
+      '<strong>Last fetch:</strong> ' + cacheAge + '<br>' +
+      '<strong>Mode:</strong> ' + (_tideCache?.series?.length ? '⚡ Live data' : '📐 Harmonic fallback');
+  }
 }
 
 async function saveApiKey() {
@@ -1370,8 +1421,7 @@ async function saveApiKey() {
   }
 
   localStorage.setItem('_tc_api_key', key);
-  localStorage.removeItem('_tc_cache');
-  _tideCache = null;
+  bustTideCache(); // clears _tideCache + localStorage from its own scope
   if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Activate'; }
 
   setTimeout(() => {
@@ -2638,6 +2688,12 @@ function _loadTideCache() {
   } catch(e) { _tideCache = null; }
 }
 _loadTideCache();
+
+// Called from saveApiKey() — defined here alongside _tideCache so scope is guaranteed
+function bustTideCache() {
+  _tideCache = null;
+  try { localStorage.removeItem('_tc_cache'); } catch(e) {}
+}
 
 function _saveTideCache(obj) {
   _tideCache = obj;
