@@ -683,6 +683,9 @@ input,select,textarea{min-height:44px;}
         </div>
       </div>
 
+      <!-- REFRESH BUTTON — directly under hero -->
+      <button class="sbtn teal-btn" style="margin-top:0;margin-bottom:10px;" onclick="autoWeather(true)">🔄 Refresh Weather</button>
+
       <!-- ② 24-HOUR RIBBON -->
       <div class="sec" style="padding:10px 0 10px 13px;overflow:hidden;">
         <div class="stitle" style="padding-right:13px;margin-bottom:8px;">🕐 Next 24 Hours</div>
@@ -785,7 +788,6 @@ input,select,textarea{min-height:44px;}
         <span id="wxswell">—</span><span id="wxrain">—</span>
       </div>
 
-      <button class="sbtn teal-btn" style="margin-top:4px;margin-bottom:10px;" onclick="autoWeather(true)">🔄 Refresh Weather</button>
     </div>
 
     <!-- ══ MAP ══ -->
@@ -1444,7 +1446,7 @@ function go(p) {
   if(p==='tide') { calcTide(); }
   if(p==='moon') calcMoon();
   if(p==='bite') calcBite();
-  if(p==='wx') autoWeather();
+  if(p==='wx') { /* weather loaded once on app open; use Refresh button to update */ }
   if(p==='map') setTimeout(initMainMap, 100);
   if(p==='list') renderList();
   if(p==='stats') renderStats();
@@ -3652,7 +3654,7 @@ function autoWeather(force) {
     navigator.geolocation.getCurrentPosition(
       pos => doFetch(pos.coords.latitude, pos.coords.longitude, null),
       ()  => doFetch(formLat, formLng, formLoc),
-      { timeout: 10000, maximumAge: 60000 }   // 10s timeout, accept 1-min cached position
+      { timeout: 4000, maximumAge: 60000 }   // 4s timeout, accept 1-min cached position
     );
   } else {
     doFetch(formLat, formLng, formLoc);
@@ -4807,7 +4809,7 @@ function renderStats() {
 // ─────────────────────────────────────────────
 calcTide(); calcMoon(); calcBite();
 setTimeout(initLogMap, 400);
-setTimeout(autoWeather, 800);
+setTimeout(autoWeather, 100);
 initStorage(); // async: migrates legacy photos + hydrates IDB photos into memory
 </script>
 </body>
