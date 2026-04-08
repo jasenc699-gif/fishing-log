@@ -1322,9 +1322,10 @@ function openSettings() {
   go('settings');
 }
 
-function saveApiKey() {
+async function saveApiKey() {
   const input = document.getElementById('settingsApiInput');
   const msg = document.getElementById('settingsApiMsg');
+  const btn = document.querySelector('#pg-settings button[onclick="saveApiKey()"]');
   const key = (input?.value || '').trim();
 
   if (!key) {
@@ -1332,25 +1333,52 @@ function saveApiKey() {
     msg.textContent = '⚠️ Please paste your API key first.';
     return;
   }
-  if (!key.startsWith('tc_')) {
+
+  // Live connection test before saving
+  msg.style.color = 'rgba(255,255,255,0.5)';
+  msg.textContent = '⏳ Testing connection…';
+  if (btn) { btn.disabled = true; btn.textContent = 'Testing…'; }
+
+  try {
+    const testRes = await fetch(
+      `https://tidecheck.com/api/stations/nearest?lat=${appLat}&lng=${appLng}`,
+      { headers: { 'X-API-Key': key } }
+    );
+    if (testRes.status === 401 || testRes.status === 403) {
+      msg.style.color = '#e74c3c';
+      msg.textContent = '❌ Key rejected — double-check you copied it correctly.';
+      if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Activate'; }
+      return;
+    }
+    if (testRes.status === 429) {
+      msg.style.color = '#f39c12';
+      msg.textContent = '⚠️ Key valid but daily limit reached — saved, will use live data tomorrow.';
+    } else if (!testRes.ok) {
+      msg.style.color = '#e74c3c';
+      msg.textContent = `❌ Connection failed (${testRes.status}) — check your internet and try again.`;
+      if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Activate'; }
+      return;
+    } else {
+      msg.style.color = '#4fc3a1';
+      msg.textContent = '✅ Connected! Loading live tides…';
+    }
+  } catch(e) {
     msg.style.color = '#e74c3c';
-    msg.textContent = '⚠️ That doesn\'t look like a TideCheck key — it should start with tc_';
+    msg.textContent = '❌ Network error — check your connection and try again.';
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Activate'; }
     return;
   }
 
   localStorage.setItem('_tc_api_key', key);
-  // Bust the tide cache so it re-fetches with the new key
   localStorage.removeItem('_tc_cache');
   _tideCache = null;
-
-  msg.style.color = '#4fc3a1';
-  msg.textContent = '✅ Key saved! Fetching live tides…';
+  if (btn) { btn.disabled = false; btn.textContent = '✅ Save & Activate'; }
 
   setTimeout(() => {
     _applySettingsVisibility();
-    currentTab = 'settings'; // ensure go() doesn't bail
+    currentTab = 'settings';
     go('log');
-  }, 800);
+  }, 1200);
 }
 
 
