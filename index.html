@@ -3636,28 +3636,30 @@ function autoWeather(force) {
 
   document.getElementById('wxBadge').className='api-badge offline-badge';
   document.getElementById('wxBadge').textContent='⏳ Loading...';
-  document.getElementById('wxl').textContent='Detecting location...';
-
-  const doFetch = (lat, lng, locName) => {
-    fetchOpenMeteo(lat, lng, locName).then(() => {
-      _wxLastFetch = Date.now(); // success — full 5-min cooldown
-    }).catch(() => {
-      _wxLastFetch = Date.now() - WX_COOLDOWN_MS + 60000; // failure — retry in 1 min
-    });
-  };
 
   const formLat = parseFloat(document.getElementById('clat')?.value) || wxLat;
   const formLng = parseFloat(document.getElementById('clng')?.value) || wxLng;
   const formLoc = document.getElementById('locname')?.value || 'Bay of Plenty, NZ';
 
+  // Fetch immediately with fallback coords — don't wait for GPS
+  fetchOpenMeteo(formLat, formLng, formLoc).then(() => {
+    _wxLastFetch = Date.now();
+  }).catch(() => {
+    _wxLastFetch = Date.now() - WX_COOLDOWN_MS + 60000;
+  });
+
+  // If GPS is available, silently update with accurate coords once it responds
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
-      pos => doFetch(pos.coords.latitude, pos.coords.longitude, null),
-      ()  => doFetch(formLat, formLng, formLoc),
-      { timeout: 4000, maximumAge: 60000 }   // 4s timeout, accept 1-min cached position
+      pos => {
+        const { latitude, longitude } = pos.coords;
+        // Only re-fetch if GPS gave meaningfully different coords
+        const dist = Math.abs(latitude - formLat) + Math.abs(longitude - formLng);
+        if (dist > 0.05) fetchOpenMeteo(latitude, longitude, null).then(() => { _wxLastFetch = Date.now(); });
+      },
+      () => { /* GPS failed — already loaded with fallback, nothing to do */ },
+      { timeout: 10000, maximumAge: 60000 }
     );
-  } else {
-    doFetch(formLat, formLng, formLoc);
   }
 }
 
