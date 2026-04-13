@@ -219,6 +219,22 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
 input[type=file]{display:none;}
+/* ── SPECIES TILES ─────────────────────────────────────────────────────── */
+.sp-tiles-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+.sp-tile{background:var(--white);border-radius:14px;border:0.5px solid var(--border);overflow:hidden;cursor:pointer;position:relative;-webkit-tap-highlight-color:transparent;transition:transform 0.12s,box-shadow 0.12s;}
+.sp-tile:active{transform:scale(0.97);}
+.sp-tile-band{height:5px;width:100%;flex-shrink:0;}
+.sp-tile-body{padding:13px 14px 14px;}
+.sp-tile-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.25;}
+.sp-tile-count{font-size:32px;font-weight:800;color:var(--text);line-height:1;}
+.sp-tile-lbl{font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;}
+.sp-tile-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+.sp-tile-thumb{width:100%;height:72px;object-fit:cover;display:block;background:#e0e0e0;}
+.sp-tile-thumb-ph{width:100%;height:72px;display:flex;align-items:center;justify-content:center;font-size:30px;}
+.sp-back-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:var(--white);border-radius:12px;border:0.5px solid var(--border);}
+.sp-back-btn{background:none;border:none;cursor:pointer;font-size:22px;padding:0 2px 0 0;line-height:1;color:var(--teal);flex-shrink:0;}
+.sp-back-label{font-size:16px;font-weight:700;color:var(--text);flex:1;}
+.sp-back-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;font-size:11px;font-weight:700;color:#fff;padding:0 6px;}
 .install-bar{background:#383838;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;flex-shrink:0;}
 .install-bar button{background:var(--teal);border:none;border-radius:8px;color:#fff;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .ix{background:none!important;color:rgba(255,255,255,0.4)!important;font-size:18px!important;padding:0!important;}
@@ -824,7 +840,7 @@ input,select,textarea{min-height:44px;}
 
     <!-- ══ CATCHES ══ -->
     <div class="pg" id="pg-list">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div id="catchSortRow" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <div id="tstats" style="font-size:13px;font-weight:600;color:var(--text);">0 catches</div>
         <select id="sortby" onchange="renderList()" style="width:auto;padding:6px 10px;font-size:12px;">
           <option value="newest">Newest first</option>
@@ -835,7 +851,7 @@ input,select,textarea{min-height:44px;}
         </select>
       </div>
       <!-- Filter bar -->
-      <div style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;">
+      <div id="catchFilterRow" style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;">
         <select id="filterMonth" onchange="renderList()" style="flex:1;min-width:110px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
           <option value="">All months</option>
           <option>January</option><option>February</option><option>March</option><option>April</option>
@@ -847,7 +863,7 @@ input,select,textarea{min-height:44px;}
         </select>
       </div>
       <!-- Backup / Restore bar -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div id="catchBackupRow" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
         <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="exportBackup()">💾 Backup Data</button>
         <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="document.getElementById('importFile').click()">📂 Import Backup</button>
       </div>
@@ -1099,7 +1115,15 @@ function idbOpen() {
   _idbPromise = new Promise((res, rej) => {
     const req = indexedDB.open(IDB_NAME, IDB_VER);
     req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
-    req.onsuccess  = e => res(e.target.result);
+    req.onsuccess  = e => {
+      const db = e.target.result;
+      // KEY FIX: if the browser silently closes the IDB connection (common on iOS
+      // after the app is backgrounded), reset the cached promise so the next
+      // operation re-opens a fresh connection instead of failing on a closed db.
+      db.onclose = () => { _idbPromise = null; };
+      db.onerror = () => { _idbPromise = null; };
+      res(db);
+    };
     req.onerror    = e => { _idbPromise = null; rej(e.target.error); };
   });
   return _idbPromise;
@@ -1221,6 +1245,27 @@ _refreshFlyColSuggestions();
 // ─────────────────────────────────────────────
 async function initStorage() {
   try {
+    // ── 0. IDB-restore guard ─────────────────────────────────────────────────
+    // If catches is empty it could mean first launch OR that iOS evicted
+    // localStorage (common for PWAs not opened in ~7 days). Check if IDB has a
+    // metadata backup and restore it before doing anything else.
+    if (catches.length === 0) {
+      try {
+        const backup = await idbGet('__catches__');
+        if (backup) {
+          const restored = JSON.parse(backup);
+          if (Array.isArray(restored) && restored.length > 0) {
+            catches = restored;
+            try { localStorage.setItem('fishinglog', backup); } catch(e) {}
+            updateHeader();
+            _refreshNicknameSuggestions();
+            _refreshFlyColSuggestions();
+            showToast(`✅ Restored ${restored.length} catch${restored.length !== 1 ? 'es' : ''} from backup`, 'success');
+          }
+        }
+      } catch(e) { console.warn('IDB backup restore failed:', e); }
+    }
+
     // 1. Migrate: any catch that still has a base64 photo in localStorage
     //    (from a previous app version) gets moved into IDB and stripped from LS.
     let migrated = false;
@@ -4040,6 +4085,7 @@ async function saveCatch() {
   updateHeader();
   vibrate([40,20,40]);
   showToast('Your catch has been logged! 🎣', 'success');
+  _catchView = 'tiles'; _tileSpecies = null; // reset so Catches tab shows fresh tile grid
   // Clear catch-specific fields but keep location + nickname for multi-catch sessions
   ['ftype','fcust','flen','fwt','method','platform','fly','flycol','rig','notes'].forEach(fieldId=>document.getElementById(fieldId).value='');
   // Reset date/time back to now so the next catch doesn't inherit an old EXIF date
@@ -4068,8 +4114,9 @@ async function saveCatch() {
 async function exportBackup() {
   try {
     showToast('Preparing backup…', 'success');
-    // Grab all photos from IndexedDB
-    const photos = await idbGetAll();
+    // Grab all photos from IndexedDB (exclude the metadata backup key)
+    const allData = await idbGetAll();
+    const { '__catches__': _metaBak, ...photos } = allData;
     // Build combined backup object
     const backup = {
       version: 1,
@@ -4153,11 +4200,16 @@ function persist() {
   // This keeps localStorage small (a few KB per catch) regardless of how
   // many photos have been taken. Photos live in IndexedDB instead.
   const lite = catches.map(({ photo, ...rest }) => rest);
+  const json = JSON.stringify(lite);
   try {
-    localStorage.setItem('fishinglog', JSON.stringify(lite));
+    localStorage.setItem('fishinglog', json);
   } catch(e) {
     showToast('⚠️ Could not save catch data. Try freeing up device storage.', 'error');
   }
+  // DUAL-WRITE: mirror catch metadata to IndexedDB as a backup.
+  // If iOS evicts localStorage (happens for PWAs not used in ~7 days),
+  // initStorage() will detect the empty localStorage and restore from here.
+  idbPut('__catches__', json).catch(() => {});
 }
 
 let _pendingDelId = null;
@@ -4177,6 +4229,7 @@ function confirmDelCatch() {
   if(cmaps[id]){try{cmaps[id].remove();}catch(e){}delete cmaps[id];}
   persist();
   idbDel(id).catch(() => {});
+  _catchView = 'tiles'; _tileSpecies = null;
   updateHeader(); renderList();
   showToast('Catch deleted.', 'error');
 }
@@ -4195,26 +4248,133 @@ const DEFAULT_SVG_HTML = `
     <img src="icon-192.png" style="width:56px;height:56px;border-radius:12px;opacity:0.75;" alt="">
   </div>`;
 
+// ─────────────────────────────────────────────
+// CATCHES TAB — Species tile view + list view
+// ─────────────────────────────────────────────
+// State: 'tiles' shows the species grid; 'list' shows catch cards
+// (either all, or filtered to _tileSpecies when drilled in from a tile).
+let _catchView  = 'tiles'; // 'tiles' | 'list'
+let _tileSpecies = null;   // null = all, string = selected species
+
+function openSpecies(species) {
+  _catchView   = 'list';
+  _tileSpecies = species;
+  // Pre-set the species filter dropdown to match
+  const ff = document.getElementById('filterFish');
+  if (ff) ff.value = species || '';
+  renderList();
+}
+
+function showSpeciesTiles() {
+  _catchView   = 'tiles';
+  _tileSpecies = null;
+  const ff = document.getElementById('filterFish');
+  if (ff) ff.value = '';
+  renderList();
+}
+
 function renderList() {
   // FIX: destroy stale Leaflet instances before rebuilding to prevent memory leaks
   Object.keys(cmaps).forEach(id => { try { cmaps[id].remove(); } catch(e) {} });
   cmaps = {};
 
+  const allSpecies = [...new Set(catches.map(c => c.fish).filter(Boolean))];
+
+  // ── Show/hide the sort/filter/backup rows based on view mode ──
+  const sortRow   = document.getElementById('catchSortRow');
+  const filterRow = document.getElementById('catchFilterRow');
+  const backupRow = document.getElementById('catchBackupRow');
+  const inTiles   = _catchView === 'tiles' && catches.length > 0;
+
+  if (sortRow)   sortRow.style.display   = inTiles ? 'none' : '';
+  if (filterRow) filterRow.style.display = inTiles ? 'none' : '';
+  if (backupRow) backupRow.style.display = inTiles ? 'none' : '';
+
+  // ── TILES VIEW ────────────────────────────────────────────────────────────
+  if (inTiles) {
+    // Show a loading placeholder immediately, then async-fill with thumbs
+    document.getElementById('clist').innerHTML =
+      `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
+        ${allSpecies.length} Species · ${catches.length} Total Catch${catches.length !== 1 ? 'es' : ''}
+      </div>
+      <div class="sp-tiles-grid">
+        ${allSpecies.sort((a, b) =>
+            catches.filter(c => c.fish === b).length -
+            catches.filter(c => c.fish === a).length
+          ).map(sp => {
+            const cnt = catches.filter(c => c.fish === sp).length;
+            const col = speciesColor(sp);
+            return `<div class="sp-tile" id="sptile-${sp.replace(/\s+/g,'_')}" onclick="openSpecies('${sp.replace(/'/g,"\\'")}')">
+              <div class="sp-tile-thumb-ph" style="background:${col}22;" id="spthumb-${sp.replace(/\s+/g,'_')}">🐟</div>
+              <div class="sp-tile-band" style="background:${col};"></div>
+              <div class="sp-tile-body">
+                <div class="sp-tile-name">${sp}</div>
+                <div class="sp-tile-count">${cnt}</div>
+                <div class="sp-tile-lbl">catch${cnt !== 1 ? 'es' : ''}</div>
+              </div>
+            </div>`;
+          }).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
+        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="exportBackup()">💾 Backup Data</button>
+        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="document.getElementById('importFile').click()">📂 Import Backup</button>
+      </div>`;
+
+    // Async: inject real thumbnails after initial paint
+    (async () => {
+      for (const sp of allSpecies) {
+        const recent = catches
+          .filter(c => c.fish === sp)
+          .sort((a, b) => new Date((b.date||'1970-01-01')+'T'+(b.time||'00:00')) - new Date((a.date||'1970-01-01')+'T'+(a.time||'00:00')))[0];
+        if (!recent) continue;
+        const phEl = document.getElementById('spthumb-' + sp.replace(/\s+/g,'_'));
+        if (!phEl) continue;
+        // Use in-memory photo first, fall back to IDB
+        const src = recent.photo || (recent.id ? await idbGet(recent.id).catch(() => null) : null);
+        if (src) {
+          phEl.outerHTML = `<img class="sp-tile-thumb" src="${src}" alt="${sp}" loading="lazy">`;
+        } else {
+          // No photo — enrich placeholder with best weight if available
+          const weights = catches.filter(c => c.fish === sp).map(c => parseFloat(c.weight)).filter(w => !isNaN(w) && w > 0);
+          if (weights.length) {
+            const best = Math.max(...weights);
+            const tileBody = phEl.closest('.sp-tile')?.querySelector('.sp-tile-body');
+            if (tileBody && !tileBody.querySelector('.sp-tile-sub')) {
+              tileBody.insertAdjacentHTML('beforeend', `<div class="sp-tile-sub">🏆 Best: ${best.toFixed(1)} kg</div>`);
+            }
+          }
+        }
+      }
+    })();
+    return;
+  }
+
+  // ── LIST VIEW ─────────────────────────────────────────────────────────────
+
+  // Update stats header
+  document.getElementById('tstats').textContent =
+    (_tileSpecies ? _tileSpecies + ' · ' : '') +
+    catches.length + ' catch' + (catches.length !== 1 ? 'es' : '') +
+    (catches.filter(c=>c.weight).length
+      ? ' · Best: ' + Math.max(...catches.filter(c=>c.weight).map(c=>parseFloat(c.weight)||0)).toFixed(1) + 'kg'
+      : '');
+
   // ── Populate fish filter dropdown with unique species (no duplicates) ──
   const fishFilter = document.getElementById('filterFish');
   if (fishFilter) {
-    const currentFish = fishFilter.value;
-    const allFish = [...new Set(catches.map(c => c.fish).filter(Boolean))].sort();
+    const currentFish = _tileSpecies || fishFilter.value;
+    allSpecies.sort().forEach(f => { /* ensure options exist */ });
     fishFilter.innerHTML = '<option value="">All species</option>' +
-      allFish.map(f => `<option value="${f}"${f===currentFish?' selected':''}>${f}</option>`).join('');
+      allSpecies.sort().map(f => `<option value="${f}"${f===currentFish?' selected':''}>${f}</option>`).join('');
+    if (_tileSpecies) fishFilter.value = _tileSpecies;
   }
 
   const sort        = document.getElementById('sortby').value;
   const filterMonth = document.getElementById('filterMonth')?.value || '';
-  const filterFish2 = document.getElementById('filterFish')?.value  || '';
+  const filterFish2 = _tileSpecies || document.getElementById('filterFish')?.value || '';
   const MONTHS_ALL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  // Filter first
+  // Filter
   let s = catches.filter(c => {
     if (filterMonth) {
       const parts = (c.date || '').split('-');
@@ -4233,9 +4393,6 @@ function renderList() {
   else if(sort==='location') s.sort((a,b)=>(a.nickname||a.location||'').localeCompare(b.nickname||b.location||''));
   else if(sort==='fish') s.sort((a,b)=>(a.fish||'').localeCompare(b.fish||''));
 
-  const wts=catches.filter(c=>c.weight).map(c=>parseFloat(c.weight)||0);
-  const filtered = s.length !== catches.length ? ` · ${s.length} shown` : '';
-  document.getElementById('tstats').textContent=catches.length+' catch'+(catches.length!==1?'es':'')+(wts.length?' · Best: '+Math.max(...wts).toFixed(1)+'kg':'')+filtered;
   if(!catches.length){
     document.getElementById('clist').innerHTML=`<div class="empty">
       <img src="icon-192.png" style="width:80px;height:80px;border-radius:18px;opacity:0.35;margin-bottom:4px;mix-blend-mode:normal;" alt="">
@@ -4244,7 +4401,17 @@ function renderList() {
     </div>`;
     return;
   }
-  document.getElementById('clist').innerHTML=s.map(c=>`
+
+  // Back bar (shown when drilling in from a species tile)
+  const backBar = _tileSpecies
+    ? `<div class="sp-back-bar">
+        <button class="sp-back-btn" onclick="showSpeciesTiles()">←</button>
+        <span class="sp-back-label">${_tileSpecies}</span>
+        <span class="sp-back-badge" style="background:${speciesColor(_tileSpecies)};">${s.length}</span>
+      </div>`
+    : '';
+
+  document.getElementById('clist').innerHTML = backBar + s.map(c=>`
     <div class="ccard" id="card-${c.id}">
       <div class="ctop">
         ${c.photo
