@@ -862,11 +862,6 @@ input,select,textarea{min-height:44px;}
           <option value="">All species</option>
         </select>
       </div>
-      <!-- Backup / Restore bar -->
-      <div id="catchBackupRow" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="exportBackup()">💾 Backup Data</button>
-        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="document.getElementById('importFile').click()">📂 Import Backup</button>
-      </div>
       <input type="file" id="importFile" accept=".json,application/json" onchange="importBackup(event)">
       <div id="clist">
         <div class="empty">
@@ -940,6 +935,19 @@ input,select,textarea{min-height:44px;}
           🧭 <strong>No key? No problem.</strong><br>
           The app uses a built-in harmonic tide model as a fallback — accurate to within 10–20 minutes. Adding a key upgrades to live station data.
         </p>
+      </div>
+
+      <!-- Backup & Restore -->
+      <div class="sec">
+        <div class="stitle">💾 Backup &amp; Restore</div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">
+          Save a full backup of your catches and photos to a file, or restore from a previous backup. Your data stays on your device.
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button class="sbtn teal-btn" style="padding:13px;font-size:14px;display:flex;align-items:center;justify-content:center;gap:7px;" onclick="exportBackup()">💾 Backup Data</button>
+          <button class="sbtn" style="padding:13px;font-size:14px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:7px;" onclick="document.getElementById('importFile').click()">📂 Import Backup</button>
+        </div>
+        <p style="font-size:11px;color:var(--hint);text-align:center;margin-top:10px;line-height:1.5;">Backup includes all catch data &amp; photos · Import merges without duplicates</p>
       </div>
 
     </div><!-- /pg-settings -->
@@ -4283,12 +4291,10 @@ function renderList() {
   // ── Show/hide the sort/filter/backup rows based on view mode ──
   const sortRow   = document.getElementById('catchSortRow');
   const filterRow = document.getElementById('catchFilterRow');
-  const backupRow = document.getElementById('catchBackupRow');
   const inTiles   = _catchView === 'tiles' && catches.length > 0;
 
   if (sortRow)   sortRow.style.display   = inTiles ? 'none' : '';
   if (filterRow) filterRow.style.display = inTiles ? 'none' : '';
-  if (backupRow) backupRow.style.display = inTiles ? 'none' : '';
 
   // ── TILES VIEW ────────────────────────────────────────────────────────────
   if (inTiles) {
@@ -4314,10 +4320,6 @@ function renderList() {
               </div>
             </div>`;
           }).join('')}
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;">
-        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="exportBackup()">💾 Backup Data</button>
-        <button class="sbtn" style="padding:11px;font-size:13px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:6px;" onclick="document.getElementById('importFile').click()">📂 Import Backup</button>
       </div>`;
 
     // Async: inject real thumbnails after initial paint
@@ -4404,10 +4406,12 @@ function renderList() {
 
   // Back bar (shown when drilling in from a species tile)
   const backBar = _tileSpecies
-    ? `<div class="sp-back-bar">
-        <button class="sp-back-btn" onclick="showSpeciesTiles()">←</button>
-        <span class="sp-back-label">${_tileSpecies}</span>
-        <span class="sp-back-badge" style="background:${speciesColor(_tileSpecies)};">${s.length}</span>
+    ? `<div style="margin-bottom:12px;">
+        <button onclick="showSpeciesTiles()" style="display:flex;align-items:center;gap:10px;width:100%;padding:13px 16px;background:var(--dark);border:none;border-radius:12px;cursor:pointer;font-family:inherit;text-align:left;">
+          <span style="font-size:20px;color:var(--teal);line-height:1;">←</span>
+          <span style="flex:1;font-size:15px;font-weight:700;color:#fff;">${_tileSpecies}</span>
+          <span style="display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:13px;font-size:12px;font-weight:700;color:#fff;padding:0 7px;background:${speciesColor(_tileSpecies)};">${s.length}</span>
+        </button>
       </div>`
     : '';
 
