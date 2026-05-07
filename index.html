@@ -852,6 +852,9 @@ input,select,textarea{min-height:44px;}
       </div>
       <!-- Filter bar -->
       <div id="catchFilterRow" style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;">
+        <select id="filterYear" onchange="renderList()" style="flex:1;min-width:90px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
+          <option value="">All years</option>
+        </select>
         <select id="filterMonth" onchange="renderList()" style="flex:1;min-width:110px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
           <option value="">All months</option>
           <option>January</option><option>February</option><option>March</option><option>April</option>
@@ -2578,13 +2581,19 @@ function refreshMainMap() {
   }).join('');
 }
 
-function initCatchMap(id, lat, lng, lbl, fish) {
+function initCatchMap(id, lat, lng, lbl, fish, nickname) {
   if(cmaps[id]) return;
   setTimeout(() => {
     const el=document.getElementById('cm-'+id); if(!el||cmaps[id]) return;
     const m=L.map('cm-'+id,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,tap:false}).setView([lat,lng],13);
     streetLayer().addTo(m);
-    L.marker([lat,lng],{icon:leafIcon(20,speciesColor(fish||lbl))}).bindPopup(lbl).addTo(m);
+    const popupHtml = nickname
+      ? `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;padding:2px 0;">
+          <div style="font-weight:700;font-size:13px;color:#1a1a1a;">📌 ${nickname}</div>
+          <div style="font-size:11px;color:#666;margin-top:2px;">${lbl}</div>
+        </div>`
+      : lbl;
+    L.marker([lat,lng],{icon:leafIcon(20,speciesColor(fish||lbl))}).bindPopup(popupHtml).addTo(m);
     cmaps[id]=m;
   },200);
 }
@@ -4281,6 +4290,20 @@ function showSpeciesTiles() {
   renderList();
 }
 
+function toggleNote(id) {
+  const el = document.getElementById('notewrap-' + id);
+  if (!el) return;
+  const full = el.dataset.full || '';
+  const expanded = el.dataset.exp === '1';
+  if (expanded) {
+    el.innerHTML = '"' + full.slice(0, 100) + '…" <button class="notes-more-btn" onclick="toggleNote(\'' + id + '\')" style="background:none;border:none;color:var(--teal);font-size:10px;cursor:pointer;padding:0;font-style:normal;">more ›</button>';
+    el.dataset.exp = '0';
+  } else {
+    el.innerHTML = '"' + full + '" <button class="notes-more-btn" onclick="toggleNote(\'' + id + '\')" style="background:none;border:none;color:var(--teal);font-size:10px;cursor:pointer;padding:0;font-style:normal;">‹ less</button>';
+    el.dataset.exp = '1';
+  }
+}
+
 function renderList() {
   // FIX: destroy stale Leaflet instances before rebuilding to prevent memory leaks
   Object.keys(cmaps).forEach(id => { try { cmaps[id].remove(); } catch(e) {} });
@@ -4371,13 +4394,27 @@ function renderList() {
     if (_tileSpecies) fishFilter.value = _tileSpecies;
   }
 
+  // ── Populate year filter dropdown with unique years from catches ──
+  const yearFilter = document.getElementById('filterYear');
+  if (yearFilter) {
+    const currentYear = yearFilter.value;
+    const allYears = [...new Set(catches.map(c => (c.date||'').split('-')[0]).filter(y => y && y.length === 4))].sort((a,b)=>b-a);
+    yearFilter.innerHTML = '<option value="">All years</option>' +
+      allYears.map(y => `<option value="${y}"${y===currentYear?' selected':''}>${y}</option>`).join('');
+  }
+
   const sort        = document.getElementById('sortby').value;
+  const filterYear2 = document.getElementById('filterYear')?.value || '';
   const filterMonth = document.getElementById('filterMonth')?.value || '';
   const filterFish2 = _tileSpecies || document.getElementById('filterFish')?.value || '';
   const MONTHS_ALL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
   // Filter
   let s = catches.filter(c => {
+    if (filterYear2) {
+      const y = (c.date || '').split('-')[0];
+      if (y !== filterYear2) return false;
+    }
     if (filterMonth) {
       const parts = (c.date || '').split('-');
       if (parts.length < 2) return false;
@@ -4433,7 +4470,8 @@ function renderList() {
           <div class="cmeta">${[c.length?c.length+'cm':'',c.weight?c.weight+'kg':''].filter(Boolean).join(' · ')||'Size not recorded'}</div>
           <div class="cmeta" style="font-size:11px;">${c.date} ${c.time} · ${c.location}</div>
           ${(c.method||c.platform)?`<div class="cmeta" style="font-size:11px;color:var(--hint);">${[c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · ')}</div>`:''}
-          ${c.notes?`<div class="cmeta" style="font-size:11px;font-style:italic;color:var(--hint);">"${c.notes.slice(0,60)}${c.notes.length>60?'…':''}"</div>`:''}
+          ${c.notes?`<div class="cmeta notes-preview" style="font-size:11px;font-style:italic;color:var(--hint);" id="notewrap-${c.id}" data-full="${c.notes.replace(/"/g,'&quot;').replace(/\\/g,'\\\\')}">"${c.notes.slice(0,100)}${c.notes.length>100?'…':''}"${c.notes.length>100?` <button class="notes-more-btn" onclick="toggleNote('${c.id}')" style="background:none;border:none;color:var(--teal);font-size:10px;cursor:pointer;padding:0;font-style:normal;">more ›</button>`:''}</div>`:''}
+
           <div class="ctags">
             <span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':c.tide||'—'}</span>
             <span class="tag tp">${c.moon||'—'}</span>
@@ -4443,7 +4481,7 @@ function renderList() {
       </div>
       <div class="cmap" id="cm-${c.id}"></div>
     </div>`).join('');
-  s.forEach(c=>{if(c.lat&&c.lng)initCatchMap(c.id,c.lat,c.lng,c.fish+(c.location?' — '+c.location:''),c.fish);});
+  s.forEach(c=>{if(c.lat&&c.lng)initCatchMap(c.id,c.lat,c.lng,c.fish+(c.location?' — '+c.location:''),c.fish,c.nickname||'');});
 }
 
 // ─────────────────────────────────────────────
