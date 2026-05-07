@@ -2611,7 +2611,6 @@ function initCatchMap(id, lat, lng, lbl, fish, nickname) {
         </div>`
       : lbl;
     const mkr = L.marker([lat,lng],{icon:leafIcon(20,speciesColor(fish||lbl))}).bindPopup(popupHtml);
-    if (nickname) mkr.bindTooltip(nickname, {permanent:true, direction:'top', className:'catch-nick-tip'});
     mkr.addTo(m);
     cmaps[id]=m;
   },200);
