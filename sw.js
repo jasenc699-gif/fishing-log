@@ -1,4 +1,6 @@
-const CACHE = 'fishinglog-v5';
+const CACHE      = 'fishinglog-v6';          // app shell — bump to force reinstall
+const TILE_CACHE = 'fishinglog-tiles-v1';    // map tiles — separate, bounded
+const MAX_TILES  = 300;                      // ~15 MB max tile storage
 const CORE = ['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -7,34 +9,54 @@ self.addEventListener('install', e => {
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(k => k !== CACHE && k !== TILE_CACHE)
+          .map(k => caches.delete(k))
+      )
+    )
+  );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
 
-  // Cache map tiles (cross-origin, but safe to cache)
-  if (url.includes('tile.openstreetmap.org') || url.includes('sat.') || url.includes('tiles.')) {
+  // ── Map tiles: separate bounded cache ──────────────────────────────────────
+  if (url.includes('tile.openstreetmap.org') || url.includes('tiles.')) {
     e.respondWith(
-      caches.open(CACHE).then(c =>
-        c.match(e.request).then(r =>
-          r || fetch(e.request).then(res => { c.put(e.request, res.clone()); return res; })
-            .catch(() => new Response('', { status: 503 }))
-        )
-      )
+      caches.open(TILE_CACHE).then(async c => {
+        const cached = await c.match(e.request);
+        if (cached) return cached;
+
+        try {
+          const res = await fetch(e.request);
+          // Enforce size limit: evict oldest entries when over MAX_TILES
+          const keys = await c.keys();
+          if (keys.length >= MAX_TILES) {
+            // Delete the oldest ~10% to avoid thrashing on every new tile
+            const evict = Math.max(1, Math.floor(MAX_TILES * 0.1));
+            await Promise.all(keys.slice(0, evict).map(k => c.delete(k)));
+          }
+          c.put(e.request, res.clone());
+          return res;
+        } catch {
+          return new Response('', { status: 503 });
+        }
+      })
     );
     return;
   }
 
-  // Cross-origin API calls (open-meteo, nominatim, NIWA, CDNs etc.)
-  // Pass straight to network — no cache, no HTML fallback.
+  // ── Cross-origin API calls: straight to network, never cached ──────────────
   if (!url.startsWith(self.location.origin)) {
-    e.respondWith(fetch(e.request));
+    e.respondWith(fetch(e.request).catch(() => new Response('', { status: 503 })));
     return;
   }
 
-  // Same-origin assets: cache-first, fall back to index.html for app shell routing
+  // ── Same-origin app shell: cache-first ─────────────────────────────────────
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('./index.html')))
   );
