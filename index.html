@@ -4559,9 +4559,9 @@ function renderList() {
 
           <div class="ctags">
             <span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':c.tide||'—'}</span>
+            ${c.seatemp?`<span class="tag tb">🌡 ${c.seatemp}</span>`:''}
             <span class="tag tp">${c.moon||'—'}</span>
             ${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${c.bite}</span>`:''}
-            ${c.seatemp?`<span class="tag tb">🌡 ${c.seatemp}</span>`:''}
           </div>
         </div>
       </div>
@@ -4862,6 +4862,17 @@ function renderStats() {
   const seatempMin  = seatempVals.length ? Math.min(...seatempVals).toFixed(1) : null;
   const seatempMax  = seatempVals.length ? Math.max(...seatempVals).toFixed(1) : null;
 
+  // ── Best water temperature range (1°C buckets — which temp produced most catches) ──
+  const tempBuckets = {};
+  catches.forEach(c => {
+    const t = parseFloat(c.seatemp);
+    if (isNaN(t) || t <= 0) return;
+    const bucket = Math.floor(t);
+    const key = `${bucket}–${bucket+1}°C`;
+    tempBuckets[key] = (tempBuckets[key] || 0) + 1;
+  });
+  const topTempRange = Object.entries(tempBuckets).sort((a,b) => b[1]-a[1])[0];
+
   // ── Top fly/bait patterns ──
   const flyCount = {};
   catches.forEach(c => { if(c.fly) flyCount[c.fly]=(flyCount[c.fly]||0)+1; });
@@ -5067,7 +5078,7 @@ function renderStats() {
         ${topMethod?`<div class="insight-tile"><div class="it-icon">🎣</div><div class="it-title">Best Method</div><div class="it-val">${topMethod[0]}</div><div class="it-sub">${topMethod[1]} catch${topMethod[1]!==1?'es':''}</div></div>`:''}
         ${topPlatform?`<div class="insight-tile"><div class="it-icon">${topPlatform[0]==='Wading'?'🚶':topPlatform[0]==='Kayak'?'🚣':'⛵'}</div><div class="it-title">Best Platform</div><div class="it-val">${topPlatform[0]}</div><div class="it-sub">${topPlatform[1]} catch${topPlatform[1]!==1?'es':''}</div></div>`:''}
         ${topMoon?`<div class="insight-tile"><div class="it-icon">🌙</div><div class="it-title">Best Moon</div><div class="it-val">${topMoon[0]}</div><div class="it-sub">${topMoon[1]} catch${topMoon[1]!==1?'es':''}</div></div>`:''}
-        ${seatempAvg?`<div class="insight-tile"><div class="it-icon">🌡</div><div class="it-title">Sea Temp</div><div class="it-val">${seatempAvg}°C avg</div><div class="it-sub">${seatempMin}° – ${seatempMax}°C range</div></div>`:''}
+        ${topTempRange?`<div class="insight-tile"><div class="it-icon">🌡️</div><div class="it-title">Best Water Temp</div><div class="it-val">${topTempRange[0]}</div><div class="it-sub">${topTempRange[1]} catch${topTempRange[1]!==1?'es':''}${seatempAvg?' · avg '+seatempAvg+'°C':''}</div></div>`:(seatempAvg?`<div class="insight-tile"><div class="it-icon">🌡️</div><div class="it-title">Sea Temp</div><div class="it-val">${seatempAvg}°C avg</div><div class="it-sub">${seatempMin}° – ${seatempMax}°C range</div></div>`:'')} 
       </div>
     </div>
 
