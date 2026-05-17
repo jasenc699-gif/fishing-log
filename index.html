@@ -851,19 +851,15 @@ input,select,textarea{min-height:44px;}
         </select>
       </div>
       <!-- Filter bar -->
-      <div id="catchFilterRow" style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;">
-        <select id="filterYear" onchange="renderList()" style="flex:1;min-width:90px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
-          <option value="">All years</option>
-        </select>
-        <select id="filterMonth" onchange="renderList()" style="flex:1;min-width:110px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
-          <option value="">All months</option>
-          <option>January</option><option>February</option><option>March</option><option>April</option>
-          <option>May</option><option>June</option><option>July</option><option>August</option>
-          <option>September</option><option>October</option><option>November</option><option>December</option>
-        </select>
-        <select id="filterFish" onchange="renderList()" style="flex:1;min-width:110px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
-          <option value="">All species</option>
-        </select>
+      <div id="catchFilterRow">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
+          <button id="catchFilterBtn" onclick="toggleCatchFilterPanel()" style="display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:8px;border:0.5px solid var(--border);background:var(--white);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;min-height:34px;">
+            ⚙️ Filter<span id="catchFilterBadge" class="mf-badge" style="display:none;margin-left:3px;"></span>
+          </button>
+          <div id="catchActiveChips" style="flex:1;display:flex;flex-wrap:wrap;gap:4px;min-width:0;overflow:hidden;"></div>
+          <button id="catchClearBtn" onclick="clearCatchFilters()" style="display:none;background:none;border:none;font-size:11px;font-weight:700;color:#e74c3c;cursor:pointer;padding:0;white-space:nowrap;font-family:inherit;flex-shrink:0;">✕ Clear</button>
+        </div>
+        <div id="catchFilterPanel" style="display:none;"></div>
       </div>
       <input type="file" id="importFile" accept=".json,application/json" onchange="importBackup(event)">
       <div id="clist">
@@ -4357,22 +4353,98 @@ const DEFAULT_SVG_HTML = `
 // (either all, or filtered to _tileSpecies when drilled in from a tile).
 let _catchView  = 'tiles'; // 'tiles' | 'list'
 let _tileSpecies = null;   // null = all, string = selected species
+let _catchFilters    = { years: new Set(), months: new Set(), species: new Set() };
+let _catchFilterOpen = false;
+const _ALL_MONTHS    = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function openSpecies(species) {
   _catchView   = 'list';
   _tileSpecies = species;
-  // Pre-set the species filter dropdown to match
-  const ff = document.getElementById('filterFish');
-  if (ff) ff.value = species || '';
   renderList();
 }
 
 function showSpeciesTiles() {
   _catchView   = 'tiles';
   _tileSpecies = null;
-  const ff = document.getElementById('filterFish');
-  if (ff) ff.value = '';
   renderList();
+}
+
+function toggleCatchFilterPanel() {
+  _catchFilterOpen = !_catchFilterOpen;
+  const panel = document.getElementById('catchFilterPanel');
+  const btn   = document.getElementById('catchFilterBtn');
+  if (panel) panel.style.display = _catchFilterOpen ? 'block' : 'none';
+  if (btn) {
+    btn.style.background  = _catchFilterOpen ? 'var(--dark)' : 'var(--white)';
+    btn.style.color       = _catchFilterOpen ? '#fff'        : 'var(--muted)';
+    btn.style.borderColor = _catchFilterOpen ? 'var(--dark)' : 'var(--border)';
+  }
+  if (_catchFilterOpen) buildCatchFilterPanel();
+}
+
+function buildCatchFilterPanel() {
+  const el = document.getElementById('catchFilterPanel');
+  if (!el) return;
+  const allYears   = [...new Set(catches.map(c => (c.date||'').split('-')[0]).filter(y => y && y.length===4))].sort((a,b)=>b-a);
+  const allSpecies = [...new Set(catches.map(c => c.fish).filter(Boolean))].sort();
+  let html = '<div class="map-filter-panel" style="margin-bottom:0;">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--text);">Filter Catches</div>';
+  html += '<button onclick="clearCatchFilters()" style="background:none;border:none;font-size:11px;color:var(--teal);font-weight:600;cursor:pointer;padding:0;font-family:inherit;">Clear all</button>';
+  html += '</div>';
+  if (allYears.length > 1) {
+    html += '<div class="mf-section-lbl">Year</div><div class="mf-pills" style="margin-bottom:10px;">';
+    allYears.forEach(y => {
+      html += `<button class="mf-pill${_catchFilters.years.has(y)?' on':''}" onclick="toggleCatchFilter('years','${y}')"><span class="mf-pill-check">✓</span>${y}</button>`;
+    });
+    html += '</div>';
+  }
+  html += '<div class="mf-section-lbl">Month</div><div class="mf-pills" style="margin-bottom:10px;">';
+  _ALL_MONTHS.forEach(m => {
+    html += `<button class="mf-pill${_catchFilters.months.has(m)?' on':''}" onclick="toggleCatchFilter('months','${m}')"><span class="mf-pill-check">✓</span>${m.slice(0,3)}</button>`;
+  });
+  html += '</div>';
+  if (allSpecies.length >= 1 && !_tileSpecies) {
+    html += '<div class="mf-section-lbl">Species</div><div class="mf-pills">';
+    allSpecies.forEach(sp => {
+      html += `<button class="mf-pill${_catchFilters.species.has(sp)?' on':''}" onclick="toggleCatchFilter('species','${sp.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"><span class="mf-pill-check">✓</span>${sp}</button>`;
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function toggleCatchFilter(type, val) {
+  if (_catchFilters[type].has(val)) _catchFilters[type].delete(val);
+  else _catchFilters[type].add(val);
+  buildCatchFilterPanel();
+  renderList();
+}
+
+function clearCatchFilters() {
+  _catchFilters = { years: new Set(), months: new Set(), species: new Set() };
+  if (_catchFilterOpen) buildCatchFilterPanel();
+  renderList();
+}
+
+function _updateCatchFilterUI() {
+  const total = _catchFilters.years.size + _catchFilters.months.size + _catchFilters.species.size;
+  const badge    = document.getElementById('catchFilterBadge');
+  const clearBtn = document.getElementById('catchClearBtn');
+  const chips    = document.getElementById('catchActiveChips');
+  if (badge)    { badge.style.display = total > 0 ? 'inline-flex' : 'none'; badge.textContent = total; }
+  if (clearBtn) clearBtn.style.display = total > 0 ? 'block' : 'none';
+  if (chips) {
+    const all = [
+      ...[..._catchFilters.years  ].map(v => ({ type:'years',   val:v, label:v })),
+      ...[..._catchFilters.months ].map(v => ({ type:'months',  val:v, label:v.slice(0,3) })),
+      ...[..._catchFilters.species].map(v => ({ type:'species', val:v, label:v })),
+    ];
+    chips.innerHTML = all.map(({type,val,label}) =>
+      `<span class="mf-chip">${label}<button class="mf-chip-x" onclick="toggleCatchFilter('${type}','${val.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">✕</button></span>`
+    ).join('');
+  }
 }
 
 function toggleNote(id) {
@@ -4461,54 +4533,39 @@ function renderList() {
 
   // ── LIST VIEW ─────────────────────────────────────────────────────────────
 
+  // ── Update filter chips/badge ──
+  _updateCatchFilterUI();
+
+  const sort = document.getElementById('sortby').value;
+
+  // ── Multi-select filter ──
+  let s = catches.filter(c => {
+    if (_tileSpecies && c.fish !== _tileSpecies) return false;
+    if (_catchFilters.years.size > 0) {
+      const y = (c.date || '').split('-')[0];
+      if (!_catchFilters.years.has(y)) return false;
+    }
+    if (_catchFilters.months.size > 0) {
+      const parts = (c.date || '').split('-');
+      if (parts.length < 2) return false;
+      const mIdx = parseInt(parts[1], 10) - 1;
+      if (!_catchFilters.months.has(_ALL_MONTHS[mIdx])) return false;
+    }
+    if (!_tileSpecies && _catchFilters.species.size > 0) {
+      if (!_catchFilters.species.has(c.fish)) return false;
+    }
+    return true;
+  });
+
   // Update stats header
+  const _activeFilterCount = _catchFilters.years.size + _catchFilters.months.size + _catchFilters.species.size;
   document.getElementById('tstats').textContent =
     (_tileSpecies ? _tileSpecies + ' · ' : '') +
+    (_activeFilterCount > 0 ? s.length + ' of ' : '') +
     catches.length + ' catch' + (catches.length !== 1 ? 'es' : '') +
     (catches.filter(c=>c.weight).length
       ? ' · Best: ' + Math.max(...catches.filter(c=>c.weight).map(c=>parseFloat(c.weight)||0)).toFixed(1) + 'kg'
       : '');
-
-  // ── Populate fish filter dropdown with unique species (no duplicates) ──
-  const fishFilter = document.getElementById('filterFish');
-  if (fishFilter) {
-    const currentFish = _tileSpecies || fishFilter.value;
-    allSpecies.sort().forEach(f => { /* ensure options exist */ });
-    fishFilter.innerHTML = '<option value="">All species</option>' +
-      allSpecies.sort().map(f => `<option value="${f}"${f===currentFish?' selected':''}>${f}</option>`).join('');
-    if (_tileSpecies) fishFilter.value = _tileSpecies;
-  }
-
-  // ── Populate year filter dropdown with unique years from catches ──
-  const yearFilter = document.getElementById('filterYear');
-  if (yearFilter) {
-    const currentYear = yearFilter.value;
-    const allYears = [...new Set(catches.map(c => (c.date||'').split('-')[0]).filter(y => y && y.length === 4))].sort((a,b)=>b-a);
-    yearFilter.innerHTML = '<option value="">All years</option>' +
-      allYears.map(y => `<option value="${y}"${y===currentYear?' selected':''}>${y}</option>`).join('');
-  }
-
-  const sort        = document.getElementById('sortby').value;
-  const filterYear2 = document.getElementById('filterYear')?.value || '';
-  const filterMonth = document.getElementById('filterMonth')?.value || '';
-  const filterFish2 = _tileSpecies || document.getElementById('filterFish')?.value || '';
-  const MONTHS_ALL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-  // Filter
-  let s = catches.filter(c => {
-    if (filterYear2) {
-      const y = (c.date || '').split('-')[0];
-      if (y !== filterYear2) return false;
-    }
-    if (filterMonth) {
-      const parts = (c.date || '').split('-');
-      if (parts.length < 2) return false;
-      const mIdx = parseInt(parts[1], 10) - 1;
-      if (MONTHS_ALL[mIdx] !== filterMonth) return false;
-    }
-    if (filterFish2 && c.fish !== filterFish2) return false;
-    return true;
-  });
 
   // Sort
   if(sort==='newest') s.sort((a,b)=>{const da=new Date((a.date||'1970-01-01')+'T'+(a.time||'00:00')),db=new Date((b.date||'1970-01-01')+'T'+(b.time||'00:00'));return db-da;});
@@ -4522,6 +4579,16 @@ function renderList() {
       <img src="icon-192.png" style="width:80px;height:80px;border-radius:18px;opacity:0.35;margin-bottom:4px;mix-blend-mode:normal;" alt="">
       <div style="font-size:15px;font-weight:600;color:var(--muted);">No catches yet</div>
       <div style="font-size:13px;color:var(--hint);margin-top:2px;">Let's Go Fishing! 🎣</div>
+    </div>`;
+    return;
+  }
+
+  if(!s.length){
+    document.getElementById('clist').innerHTML=`<div class="empty">
+      <div style="font-size:36px;opacity:0.4;margin-bottom:4px;">🔍</div>
+      <div style="font-size:15px;font-weight:600;color:var(--muted);">No catches match</div>
+      <div style="font-size:13px;color:var(--hint);margin-top:2px;">Try removing some filters</div>
+      <button onclick="clearCatchFilters()" style="margin-top:12px;padding:9px 18px;border-radius:8px;background:var(--teal);border:none;color:#003520;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Clear filters</button>
     </div>`;
     return;
   }
