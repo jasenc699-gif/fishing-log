@@ -218,6 +218,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .mf-chip-x{background:none;border:none;cursor:pointer;color:#0a5c43;font-size:11px;padding:0 0 0 2px;line-height:1;font-weight:700;}
 
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
+/* ── SPECIES QUICK-FILTER PILLS ───────────────────────────────────────────── */
+.sp-qpill{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;color:var(--muted);}
+.sp-qpill.on{color:#fff;border-color:transparent;}
+.sp-qpill-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 input[type=file]{display:none;}
 /* ── SPECIES TILES ─────────────────────────────────────────────────────── */
 .sp-tiles-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
@@ -436,6 +440,19 @@ input,select,textarea{min-height:44px;}
               <input type="number" id="fwt" step="0.1" placeholder="kg" inputmode="decimal">
               <button type="button" onclick="adjustVal('fwt',0.1)">+</button>
             </div>
+          </div>
+        </div>
+        <div class="r2" style="margin-top:10px;">
+          <div>
+            <label>🌡 Water Temp (°C)</label>
+            <div class="stepper">
+              <button type="button" onclick="adjustVal('watertemp',-0.5)">−</button>
+              <input type="number" id="watertemp" step="0.5" placeholder="°C" inputmode="decimal">
+              <button type="button" onclick="adjustVal('watertemp',0.5)">+</button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;justify-content:flex-end;">
+            <div id="watertempHint" style="font-size:10px;color:var(--hint);line-height:1.4;padding-bottom:4px;">Actual temp at your spot (sea surface temp auto-recorded from weather)</div>
           </div>
         </div>
       </div>
@@ -859,6 +876,10 @@ input,select,textarea{min-height:44px;}
           <div id="catchActiveChips" style="flex:1;display:flex;flex-wrap:wrap;gap:4px;min-width:0;overflow:hidden;"></div>
           <button id="catchClearBtn" onclick="clearCatchFilters()" style="display:none;background:none;border:none;font-size:11px;font-weight:700;color:#e74c3c;cursor:pointer;padding:0;white-space:nowrap;font-family:inherit;flex-shrink:0;">✕ Clear</button>
         </div>
+        <!-- Species quick-filter pills -->
+        <div id="speciesQuickFilter" style="display:none;margin-bottom:8px;">
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px;" class="wx-ribbon" id="speciesQuickPills"></div>
+        </div>
         <div id="catchFilterPanel" style="display:none;"></div>
       </div>
       <input type="file" id="importFile" accept=".json,application/json" onchange="importBackup(event)">
@@ -1056,6 +1077,10 @@ input,select,textarea{min-height:44px;}
           <div class="r2">
             <div><label>Length (cm)</label><input type="number" id="elen" placeholder="42" inputmode="decimal"></div>
             <div><label>Weight (kg)</label><input type="number" id="ewt" step="0.1" placeholder="1.8" inputmode="decimal"></div>
+          </div>
+          <div class="r2" style="margin-top:0;">
+            <div><label>🌡 Water Temp (°C)</label><input type="number" id="ewatertemp" step="0.5" placeholder="e.g. 18.5" inputmode="decimal"></div>
+            <div style="display:flex;align-items:flex-end;"><div style="font-size:10px;color:var(--hint);padding-bottom:12px;line-height:1.4;">Actual temp at your spot</div></div>
           </div>
         </div>
         <div class="sec" style="margin-bottom:10px;">
@@ -4156,6 +4181,7 @@ async function saveCatch() {
   catches.unshift({id,fish,
     length:document.getElementById('flen').value,
     weight:document.getElementById('fwt').value,
+    watertemp:document.getElementById('watertemp').value||null,
     method:document.getElementById('method').value,
     platform:document.getElementById('platform').value,
     fly:document.getElementById('fly').value,
@@ -4185,7 +4211,7 @@ async function saveCatch() {
   showToast('Your catch has been logged! 🎣', 'success');
   _catchView = 'tiles'; _tileSpecies = null; // reset so Catches tab shows fresh tile grid
   // Clear catch-specific fields but keep location + nickname for multi-catch sessions
-  ['ftype','fcust','flen','fwt','method','platform','fly','flycol','rig','notes'].forEach(fieldId=>document.getElementById(fieldId).value='');
+  ['ftype','fcust','flen','fwt','watertemp','method','platform','fly','flycol','rig','notes'].forEach(fieldId=>document.getElementById(fieldId).value='');
   // Reset date/time back to now so the next catch doesn't inherit an old EXIF date
   const resetNow = new Date();
   document.getElementById('cdate').value = resetNow.toISOString().split('T')[0];
@@ -4419,12 +4445,32 @@ function toggleCatchFilter(type, val) {
   if (_catchFilters[type].has(val)) _catchFilters[type].delete(val);
   else _catchFilters[type].add(val);
   buildCatchFilterPanel();
+  renderSpeciesQuickFilter();
   renderList();
+}
+
+function renderSpeciesQuickFilter() {
+  const wrap  = document.getElementById('speciesQuickFilter');
+  const pills = document.getElementById('speciesQuickPills');
+  if (!wrap || !pills) return;
+  const allSpecies = [...new Set(catches.map(c => c.fish).filter(Boolean))].sort();
+  if (allSpecies.length < 2 || _tileSpecies) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  pills.innerHTML = allSpecies.map(sp => {
+    const col    = speciesColor(sp);
+    const active = _catchFilters.species.has(sp);
+    const bg     = active ? col : 'var(--white)';
+    return `<button class="sp-qpill${active?' on':''}" style="background:${bg};border-color:${active?col:''};color:${active?'#fff':'var(--muted)'};"
+      onclick="toggleCatchFilter('species','${sp.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
+      <span class="sp-qpill-dot" style="background:${col};${active?'opacity:0.6':''}"></span>${sp}
+    </button>`;
+  }).join('');
 }
 
 function clearCatchFilters() {
   _catchFilters = { years: new Set(), months: new Set(), species: new Set() };
   if (_catchFilterOpen) buildCatchFilterPanel();
+  renderSpeciesQuickFilter();
   renderList();
 }
 
@@ -4535,6 +4581,7 @@ function renderList() {
 
   // ── Update filter chips/badge ──
   _updateCatchFilterUI();
+  renderSpeciesQuickFilter();
 
   const sort = document.getElementById('sortby').value;
 
@@ -4626,7 +4673,7 @@ function renderList() {
 
           <div class="ctags">
             <span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':c.tide||'—'}</span>
-            ${c.seatemp?`<span class="tag tb">🌡 ${c.seatemp}</span>`:''}
+            ${c.watertemp?`<span class="tag tb">🌡 ${c.watertemp}°C water</span>`:c.seatemp?`<span class="tag tb">🌡 ${c.seatemp}</span>`:''}
             <span class="tag tp">${c.moon||'—'}</span>
             ${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${c.bite}</span>`:''}
           </div>
@@ -4673,6 +4720,7 @@ function editCatch(id) {
   }
   document.getElementById('elen').value      = c.length   || '';
   document.getElementById('ewt').value       = c.weight   || '';
+  document.getElementById('ewatertemp').value = c.watertemp || '';
   document.getElementById('emethod').value   = c.method   || '';
   document.getElementById('eplatform').value = c.platform || '';
   document.getElementById('efly').value      = c.fly      || '';
@@ -4800,6 +4848,7 @@ function saveEdit() {
     fish,
     length:   document.getElementById('elen').value,
     weight:   document.getElementById('ewt').value,
+    watertemp: document.getElementById('ewatertemp').value || null,
     method:   document.getElementById('emethod').value,
     platform: document.getElementById('eplatform').value,
     fly:      document.getElementById('efly').value,
