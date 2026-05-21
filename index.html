@@ -218,10 +218,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .mf-chip-x{background:none;border:none;cursor:pointer;color:#0a5c43;font-size:11px;padding:0 0 0 2px;line-height:1;font-weight:700;}
 
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
-/* ── SPECIES QUICK-FILTER PILLS ───────────────────────────────────────────── */
-.sp-qpill{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1.5px solid var(--border);background:var(--white);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;color:var(--muted);}
-.sp-qpill.on{color:#fff;border-color:transparent;}
-.sp-qpill-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+/* Permanent nickname tooltip on catch-card mini-maps */
+.catch-nick-tip{background:rgba(30,30,30,0.82)!important;border:none!important;border-radius:5px!important;color:#fff!important;font-size:10px!important;font-weight:600!important;padding:2px 6px!important;box-shadow:0 1px 4px rgba(0,0,0,0.35)!important;white-space:nowrap!important;}
+.catch-nick-tip::before{border-top-color:rgba(30,30,30,0.82)!important;}
 input[type=file]{display:none;}
 /* ── SPECIES TILES ─────────────────────────────────────────────────────── */
 .sp-tiles-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
@@ -570,15 +569,29 @@ input,select,textarea{min-height:44px;}
       <!-- Today & Tomorrow day cards -->
       <div id="tideSchedule" class="tide-day-grid"></div>
 
-      <!-- 24-hour curve -->
-      <div class="sec">
-        <div class="stitle">📊 24-Hour Tide Curve</div>
-        <canvas id="tcurve" width="360" height="110" style="width:100%;height:110px;display:block;"></canvas>
-        <div style="display:flex;justify-content:space-between;margin-top:4px;">
-          <span style="font-size:9px;color:var(--hint);">-12h</span>
-          <span style="font-size:9px;color:var(--hint);">now</span>
-          <span style="font-size:9px;color:var(--hint);">+12h</span>
+      <!-- Date picker — look up any date -->
+      <div class="sec" style="margin-bottom:10px;">
+        <div class="stitle">📅 Check Any Date</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="date" id="tideCheckDate"
+            style="flex:1;padding:9px 12px;font-size:15px;border:0.5px solid #d0d0cc;border-radius:8px;background:var(--white);color:var(--text);font-family:inherit;min-height:44px;"
+            onchange="runTideCheck()">
+          <button onclick="document.getElementById('tideCheckDate').value='';document.getElementById('tideCheckResult').innerHTML='';"
+            style="flex-shrink:0;padding:9px 12px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit;min-height:44px;">
+            Clear
+          </button>
         </div>
+        <div id="tideCheckResult" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- 24-hour curve — shown when a day tile is tapped -->
+      <div class="sec" id="tideCurveSection" style="display:none;margin-bottom:10px;">
+        <div class="stitle" style="justify-content:space-between;align-items:center;">
+          <span id="tideCurveLabel">📊 Tide Curve</span>
+          <button onclick="document.getElementById('tideCurveSection').style.display='none';_activeTideTile=null;_highlightTideTile();"
+            style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--hint);padding:0;line-height:1;">✕</button>
+        </div>
+        <canvas id="tcurve" width="360" height="130" style="width:100%;height:130px;display:block;margin-top:4px;"></canvas>
       </div>
 
     </div>
@@ -805,7 +818,7 @@ input,select,textarea{min-height:44px;}
       <div style="display:none;">
         <span id="wxwind">—</span><span id="wxwdir">—</span><span id="wxh">—</span>
         <span id="wxf">—</span><span id="wxv">—</span><span id="wxp">—</span>
-        <span id="wxswell">—</span><span id="wxrain">—</span><span id="wxseatemp">—</span>
+        <span id="wxswell">—</span><span id="wxrain">—</span>
       </div>
 
     </div>
@@ -855,21 +868,19 @@ input,select,textarea{min-height:44px;}
         </select>
       </div>
       <!-- Filter bar -->
-      <div id="catchFilterRow">
-        <div id="catchListControls" style="display:none;">
-          <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
-            <button id="catchFilterBtn" onclick="toggleCatchFilterPanel()" style="display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:8px;border:0.5px solid var(--border);background:var(--white);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;min-height:34px;">
-              ⚙️ Filter<span id="catchFilterBadge" class="mf-badge" style="display:none;margin-left:3px;"></span>
-            </button>
-            <div id="catchActiveChips" style="flex:1;display:flex;flex-wrap:wrap;gap:4px;min-width:0;overflow:hidden;"></div>
-            <button id="catchClearBtn" onclick="clearCatchFilters()" style="display:none;background:none;border:none;font-size:11px;font-weight:700;color:#e74c3c;cursor:pointer;padding:0;white-space:nowrap;font-family:inherit;flex-shrink:0;">✕ Clear</button>
-          </div>
-          <div id="catchFilterPanel" style="display:none;"></div>
-        </div>
-        <!-- Species quick-filter pills — always visible when 2+ species logged -->
-        <div id="speciesQuickFilter" style="display:none;margin-top:6px;margin-bottom:8px;">
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;display:flex;gap:6px;" id="speciesQuickPills"></div>
-        </div>
+      <div id="catchFilterRow" style="display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;">
+        <select id="filterYear" onchange="renderList()" style="flex:1;min-width:90px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
+          <option value="">All years</option>
+        </select>
+        <select id="filterMonth" onchange="renderList()" style="flex:1;min-width:110px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
+          <option value="">All months</option>
+          <option>January</option><option>February</option><option>March</option><option>April</option>
+          <option>May</option><option>June</option><option>July</option><option>August</option>
+          <option>September</option><option>October</option><option>November</option><option>December</option>
+        </select>
+        <select id="filterFish" onchange="_tileSpecies=null;renderList()" style="flex:1;min-width:110px;padding:6px 8px;font-size:12px;border:0.5px solid var(--border);border-radius:8px;background:var(--white);">
+          <option value="">All species</option>
+        </select>
       </div>
       <input type="file" id="importFile" accept=".json,application/json" onchange="importBackup(event)">
       <div id="clist">
@@ -944,19 +955,6 @@ input,select,textarea{min-height:44px;}
           🧭 <strong>No key? No problem.</strong><br>
           The app uses a built-in harmonic tide model as a fallback — accurate to within 10–20 minutes. Adding a key upgrades to live station data.
         </p>
-      </div>
-
-      <!-- Storage Usage -->
-      <div class="sec" id="storageUsageSec">
-        <div class="stitle">📦 Storage Usage</div>
-        <div id="storageUsageContent" style="font-size:13px;color:var(--muted);line-height:1.7;">
-          <span style="color:var(--hint);">Calculating…</span>
-        </div>
-        <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-          <button onclick="refreshStorageDisplay()" style="padding:10px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;">🔄 Refresh</button>
-          <button onclick="clearTileCache()" style="padding:10px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:13px;font-weight:600;color:#e74c3c;cursor:pointer;font-family:inherit;">🗺 Clear Map Cache</button>
-        </div>
-        <p style="font-size:11px;color:var(--hint);margin-top:8px;line-height:1.5;">Map tiles are cached for offline use. Clearing them won't delete any catch data — tiles re-download automatically when you open the map.</p>
       </div>
 
       <!-- Backup & Restore -->
@@ -1159,36 +1157,17 @@ function idbOpen() {
   return _idbPromise;
 }
 function idbPut(id, dataUrl) {
-  // __catches__ metadata stays as a JSON string; photos are stored as Blobs (33% smaller than base64)
-  const storeVal = (id === '__catches__' || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:'))
-    ? Promise.resolve(dataUrl)
-    : fetch(dataUrl).then(r => r.blob());           // base64 → Blob: removes the 33% base64 overhead
-
-  return storeVal.then(val =>
-    idbOpen().then(db => new Promise((res, rej) => {
-      const tx = db.transaction(IDB_STORE, 'readwrite');
-      tx.objectStore(IDB_STORE).put(val, id);
-      tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
-    }))
-  );
+  return idbOpen().then(db => new Promise((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(dataUrl, id);
+    tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+  }));
 }
 function idbGet(id) {
   return idbOpen().then(db => new Promise((res, rej) => {
     const req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(id);
-    req.onsuccess = e => {
-      const val = e.target.result;
-      if (!val) return res(null);
-      if (val instanceof Blob) {
-        // Blob → data URL (transparent to all callers)
-        const reader = new FileReader();
-        reader.onload  = ev => res(ev.target.result);
-        reader.onerror = () => res(null);
-        reader.readAsDataURL(val);
-      } else {
-        res(val); // string (__catches__ backup) or legacy base64
-      }
-    };
-    req.onerror = e => rej(e.target.error);
+    req.onsuccess = e => res(e.target.result || null);
+    req.onerror   = e => rej(e.target.error);
   }));
 }
 function idbDel(id) {
@@ -1203,24 +1182,7 @@ function idbGetAll() {
     const out = {}, req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).openCursor();
     req.onsuccess = e => {
       const cur = e.target.result;
-      if (cur) { out[cur.key] = cur.value; cur.continue(); }
-      else {
-        // Convert any Blobs to data URLs (needed for backup export and in-memory hydration)
-        const promises = Object.entries(out).map(([key, val]) => {
-          if (!(val instanceof Blob)) return Promise.resolve([key, val]);
-          return new Promise(bRes => {
-            const reader = new FileReader();
-            reader.onload  = ev => bRes([key, ev.target.result]);
-            reader.onerror = () => bRes([key, null]);
-            reader.readAsDataURL(val);
-          });
-        });
-        Promise.all(promises).then(entries => {
-          const result = {};
-          entries.forEach(([k, v]) => { if (v) result[k] = v; });
-          res(result);
-        });
-      }
+      if (cur) { out[cur.key] = cur.value; cur.continue(); } else res(out);
     };
     req.onerror = e => rej(e.target.error);
   }));
@@ -1350,44 +1312,12 @@ async function initStorage() {
     const allPhotos = await idbGetAll();
     catches.forEach(c => { if (allPhotos[c.id]) c.photo = allPhotos[c.id]; });
 
-    // 3. Blob migration: convert any legacy base64 strings still in IDB to Blobs (one-time, background)
-    _migrateIDBToBlob().catch(() => {});
-
-    // 4. Refresh any tab that's already visible
+    // 3. Refresh any tab that's already visible
     if (currentTab === 'list')  renderList();
     if (currentTab === 'stats') renderStats();
   } catch(e) {
     console.warn('Photo storage init error:', e);
   }
-}
-
-// Convert any remaining legacy base64 strings in IDB to Blobs (background, one-time migration).
-// Runs silently — a failure here just means those photos remain as base64 until next launch.
-async function _migrateIDBToBlob() {
-  try {
-    const db = await idbOpen();
-    const keys = await new Promise((res, rej) => {
-      const req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).getAllKeys();
-      req.onsuccess = e => res(e.target.result);
-      req.onerror   = e => rej(e.target.error);
-    });
-    for (const key of keys) {
-      if (key === '__catches__') continue;
-      const raw = await new Promise((res, rej) => {
-        const req = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(key);
-        req.onsuccess = e => res(e.target.result);
-        req.onerror   = e => rej(e.target.error);
-      });
-      if (typeof raw === 'string' && raw.startsWith('data:')) {
-        const blob = await fetch(raw).then(r => r.blob());
-        await new Promise((res, rej) => {
-          const tx = db.transaction(IDB_STORE, 'readwrite');
-          tx.objectStore(IDB_STORE).put(blob, key);
-          tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
-        });
-      }
-    }
-  } catch(e) { console.warn('IDB blob migration:', e); }
 }
 
 // ─────────────────────────────────────────────
@@ -1593,7 +1523,6 @@ function go(p) {
   if(p==='map') setTimeout(initMainMap, 100);
   if(p==='list') renderList();
   if(p==='stats') renderStats();
-  if(p==='settings') setTimeout(refreshStorageDisplay, 200);
 }
 
 // On load: hide/show settings tab based on whether a key is saved,
@@ -1644,10 +1573,10 @@ document.addEventListener('DOMContentLoaded', function() {
 //   6. Reduce binary-search iterations from 8 to 6.
 //   7. Slightly larger target (300 KB vs 250 KB) — reduces compression work.
 // ─────────────────────────────────────────────
-const PHOTO_TARGET_BYTES = 100 * 1024; // 100 KB — optimised for storage efficiency
-const PHOTO_MAX_PX       = 800;        // max dimension in pixels
+const PHOTO_TARGET_BYTES = 150 * 1024; // 150 KB — optimised for storage efficiency
+const PHOTO_MAX_PX       = 960;        // max dimension in pixels (reduced from 1280)
 const PHOTO_MIN_QUALITY  = 0.30;       // quality floor
-const PHOTO_MAX_QUALITY  = 0.75;       // quality ceiling (lowered to aid compression)
+const PHOTO_MAX_QUALITY  = 0.80;       // quality ceiling
 
 // ── Probe image dimensions using a small createImageBitmap ────────────────────
 // Returns { w, h } at the probed size. We use this ratio to compute the final
@@ -2681,7 +2610,8 @@ function initCatchMap(id, lat, lng, lbl, fish, nickname) {
           <div style="font-size:11px;color:#666;margin-top:2px;">${lbl}</div>
         </div>`
       : lbl;
-    L.marker([lat,lng],{icon:leafIcon(20,speciesColor(fish||lbl))}).bindPopup(popupHtml).addTo(m);
+    const mkr = L.marker([lat,lng],{icon:leafIcon(20,speciesColor(fish||lbl))}).bindPopup(popupHtml);
+    mkr.addTo(m);
     cmaps[id]=m;
   },200);
 }
@@ -2824,6 +2754,7 @@ function getTidecheckKey() {
 }
 
 let _tideCache = null; // in-memory; also persisted to localStorage
+let _curveDateMs = null; // null = live ±12h view; ms timestamp = selected date's midnight NZ
 
 function _loadTideCache() {
   try {
@@ -3375,7 +3306,7 @@ function _renderDayCard(dateStr, events, isToday) {
         }).join('')
       : `<div style="padding:12px 10px;font-size:11px;color:var(--hint);text-align:center;">No data</div>`;
 
-    return `<div class="tide-day-card">
+    return `<div class="tide-day-card" id="tidecard-${dateStr}" onclick="showTideCurveForDate('${dateStr}')" style="cursor:pointer;">
       <div class="tide-day-head">
         ${isToday?`<div class="tide-today-dot">● TODAY</div>`:''}
         <div class="tide-day-datestr">${dayName}, ${d} ${monStr} ${y}</div>
@@ -3387,6 +3318,7 @@ function _renderDayCard(dateStr, events, isToday) {
         </div>
       </div>
       <div>${rows}</div>
+      <div style="padding:6px 10px;border-top:0.5px solid var(--border);font-size:9px;color:var(--hint);text-align:center;letter-spacing:0.3px;">TAP FOR TIDE CURVE</div>
     </div>`;
   } catch(e) {
     console.error('_renderDayCard error:', e, dateStr);
@@ -3400,43 +3332,182 @@ function _renderDayCard(dateStr, events, isToday) {
 
 function drawCurve(cd) { _drawTideCurve(cd); } // keep old call-site working
 
+let _activeTideTile = null; // dateStr of the currently shown curve tile
+
+function showTideCurveForDate(dateStr) {
+  _curveDateMs = new Date(`${dateStr}T00:00:00${_nzISOOffset()}`).getTime();
+  _activeTideTile = dateStr;
+
+  // Label — show day name
+  const nzNoon = new Date(`${dateStr}T12:00:00${_nzISOOffset()}`);
+  const dayName = new Intl.DateTimeFormat('en-NZ',{weekday:'long',timeZone:'Pacific/Auckland'}).format(nzNoon);
+  const monStr  = new Intl.DateTimeFormat('en-NZ',{day:'numeric',month:'short',year:'numeric',timeZone:'Pacific/Auckland'}).format(nzNoon);
+  const lbl = document.getElementById('tideCurveLabel');
+  if (lbl) lbl.textContent = `📊 Tide Curve — ${dayName}, ${monStr}`;
+
+  // Show the section and draw
+  const sec = document.getElementById('tideCurveSection');
+  if (sec) sec.style.display = '';
+  _drawTideCurve(new Date());
+
+  // Highlight selected card, scroll curve into view
+  _highlightTideTile();
+  setTimeout(() => { if (sec) sec.scrollIntoView({ behavior:'smooth', block:'nearest' }); }, 80);
+}
+
+function _highlightTideTile() {
+  // Reset all tide-day-cards across both the schedule grid and the date-checker result
+  ['tideSchedule', 'tideCheckResult'].forEach(pid => {
+    const grid = document.getElementById(pid);
+    if (!grid) return;
+    grid.querySelectorAll('.tide-day-card').forEach(card => {
+      card.style.outline = '';
+      card.style.outlineOffset = '';
+    });
+  });
+  if (_activeTideTile) {
+    const active = document.getElementById('tidecard-' + _activeTideTile);
+    if (active) { active.style.outline = '2px solid var(--teal)'; active.style.outlineOffset = '-2px'; }
+  }
+}
+
 function _drawTideCurve(cd) {
   const c = document.getElementById('tcurve'); if (!c) return;
   const ctx = c.getContext('2d'), W = c.width, H = c.height;
   ctx.clearRect(0, 0, W, H);
-  const now  = cd || new Date();
-  const s0   = now.getTime() - 12 * 3600000;
-  const e0   = now.getTime() + 12 * 3600000;
-  const bounds = portBounds(activePort);
+  const now = cd || new Date();
+
+  // Window: date-picker mode = full day; live mode = ±12h from now
+  let s0, e0, isDateMode = false;
+  if (_curveDateMs != null) {
+    s0 = _curveDateMs;
+    e0 = _curveDateMs + 24 * 3600000;
+    isDateMode = true;
+  } else {
+    s0 = now.getTime() - 12 * 3600000;
+    e0 = now.getTime() + 12 * 3600000;
+  }
+
+  // Bounds for normalisation
+  let lo, hi;
+  const hasSeries = _tideCache?.series?.length > 1;
+  if (hasSeries) {
+    const hs = _tideCache.series.map(p => p.h).filter(isFinite);
+    lo = Math.min(...hs) - 0.05; hi = Math.max(...hs) + 0.05;
+  } else {
+    const pb = portBounds(activePort);
+    lo = pb.lo; hi = pb.hi;
+  }
+  const range = hi - lo || 1;
+
+  // Compute actual min/max heights over the displayed window (for depth labels)
+  let minH = Infinity, maxH = -Infinity, minX = 0, maxX = 0;
+  const STEPS = 288; // 5-min resolution over 24h
+  for (let i = 0; i <= STEPS; i++) {
+    const ms = s0 + (i / STEPS) * (e0 - s0);
+    let h = hasSeries ? _tideHeightFromCache(ms) : null;
+    if (h == null) h = tideHeightAt(new Date(ms), activePort);
+    if (isFinite(h)) {
+      if (h > maxH) { maxH = h; maxX = i; }
+      if (h < minH) { minH = h; minX = i; }
+    }
+  }
+
+  // Layout
+  const PAD_L = 30, PAD_T = 14, PAD_B = 16;
+  const cW = W - PAD_L, cH = H - PAD_T - PAD_B;
 
   // Grid lines
   ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 0.5;
   for (let i = 0; i <= 4; i++) {
-    const y = (i / 4) * (H - 20) + 10;
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    const y = PAD_T + (i / 4) * cH;
+    ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W, y); ctx.stroke();
   }
 
-  // Tide curve — prefer API time series, fall back to harmonic
-  const hasSeries = _tideCache?.series?.length > 1;
-  ctx.beginPath(); ctx.strokeStyle = '#4fc3a1'; ctx.lineWidth = 2;
-  let first = true;
-  for (let i = 0; i < W; i++) {
-    const ms = s0 + (i / W) * (e0 - s0);
+  // Filled area under the curve
+  ctx.beginPath();
+  let firstPt = true;
+  for (let i = 0; i <= cW; i++) {
+    const ms = s0 + (i / cW) * (e0 - s0);
     let h = hasSeries ? _tideHeightFromCache(ms) : null;
     if (h == null) h = tideHeightAt(new Date(ms), activePort);
-    // Normalize to canvas using harmonic bounds (stable reference)
-    const y = H - 10 - ((h - bounds.lo) / (bounds.hi - bounds.lo)) * (H - 20);
-    if (first) { ctx.moveTo(i, y); first = false; } else ctx.lineTo(i, y);
+    const y = PAD_T + cH - ((h - lo) / range) * cH;
+    if (firstPt) { ctx.moveTo(PAD_L + i, y); firstPt = false; } else ctx.lineTo(PAD_L + i, y);
+  }
+  ctx.lineTo(W, PAD_T + cH); ctx.lineTo(PAD_L, PAD_T + cH); ctx.closePath();
+  ctx.fillStyle = 'rgba(79,195,161,0.10)'; ctx.fill();
+
+  // Tide curve line
+  ctx.beginPath(); ctx.strokeStyle = '#4fc3a1'; ctx.lineWidth = 2; firstPt = true;
+  for (let i = 0; i <= cW; i++) {
+    const ms = s0 + (i / cW) * (e0 - s0);
+    let h = hasSeries ? _tideHeightFromCache(ms) : null;
+    if (h == null) h = tideHeightAt(new Date(ms), activePort);
+    const y = PAD_T + cH - ((h - lo) / range) * cH;
+    if (firstPt) { ctx.moveTo(PAD_L + i, y); firstPt = false; } else ctx.lineTo(PAD_L + i, y);
   }
   ctx.stroke();
 
-  // "Now" line
-  const nx = (now.getTime() - s0) / (e0 - s0) * W;
-  ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
-  ctx.beginPath(); ctx.moveTo(nx, 0); ctx.lineTo(nx, H); ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.font = '9px system-ui';
-  ctx.fillText('-12h', 2, H - 2); ctx.fillText('now', nx - 10, H - 2); ctx.fillText('+12h', W - 30, H - 2);
+  // "Now" marker — shown whenever today's time falls within the window
+  if (now.getTime() >= s0 && now.getTime() <= e0) {
+    const nx = PAD_L + ((now.getTime() - s0) / (e0 - s0)) * cW;
+    ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(nx, PAD_T); ctx.lineTo(nx, PAD_T + cH); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#e74c3c'; ctx.font = 'bold 8px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('NOW', nx, PAD_T - 2);
+  }
+
+  // ── Depth labels on the curve (high and low water marks) ──────────────────
+  if (isFinite(maxH) && isFinite(minH)) {
+    const maxY = PAD_T + cH - ((maxH - lo) / range) * cH;
+    const minY = PAD_T + cH - ((minH - lo) / range) * cH;
+    const maxXpx = PAD_L + (maxX / STEPS) * cW;
+    const minXpx = PAD_L + (minX / STEPS) * cW;
+
+    // High water label
+    const hiLabel = '↑ ' + maxH.toFixed(2) + 'm';
+    ctx.font = 'bold 9px system-ui';
+    const hiW = ctx.measureText(hiLabel).width;
+    const hiLx = Math.min(Math.max(maxXpx - hiW / 2, PAD_L + 1), W - hiW - 2);
+    const hiLy = Math.max(maxY - 5, PAD_T + 9);
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillRect(hiLx - 2, hiLy - 9, hiW + 4, 12);
+    ctx.fillStyle = '#0a5c43'; ctx.textAlign = 'left';
+    ctx.fillText(hiLabel, hiLx, hiLy);
+
+    // Low water label
+    const loLabel = '↓ ' + minH.toFixed(2) + 'm';
+    const loW = ctx.measureText(loLabel).width;
+    const loLx = Math.min(Math.max(minXpx - loW / 2, PAD_L + 1), W - loW - 2);
+    const loLy = Math.min(minY + 13, PAD_T + cH - 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.fillRect(loLx - 2, loLy - 9, loW + 4, 12);
+    ctx.fillStyle = '#5a5a5a'; ctx.textAlign = 'left';
+    ctx.fillText(loLabel, loLx, loLy);
+  }
+
+  // ── Left axis depth scale ──────────────────────────────────────────────────
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.font = '8px system-ui'; ctx.textAlign = 'right';
+  ctx.fillText((hi - 0.05).toFixed(1), PAD_L - 3, PAD_T + 7);
+  ctx.fillText(((hi + lo) / 2).toFixed(1), PAD_L - 3, PAD_T + cH / 2 + 3);
+  ctx.fillText((lo + 0.05).toFixed(1), PAD_L - 3, PAD_T + cH);
+
+  // ── Bottom time axis ───────────────────────────────────────────────────────
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.font = '8px system-ui';
+  if (isDateMode) {
+    const marks = [{hr:0,lbl:'12am'},{hr:6,lbl:'6am'},{hr:12,lbl:'12pm'},{hr:18,lbl:'6pm'},{hr:24,lbl:'12am'}];
+    marks.forEach(({hr, lbl}) => {
+      const x = PAD_L + (hr / 24) * cW;
+      ctx.textAlign = hr === 0 ? 'left' : hr === 24 ? 'right' : 'center';
+      ctx.fillText(lbl, x, H - 2);
+    });
+  } else {
+    ctx.textAlign = 'left';  ctx.fillText('-12h', PAD_L, H - 2);
+    ctx.textAlign = 'center'; ctx.fillText('now', PAD_L + cW / 2, H - 2);
+    ctx.textAlign = 'right';  ctx.fillText('+12h', W, H - 2);
+  }
+  ctx.textAlign = 'left';
 }
 
 // ─────────────────────────────────────────────
@@ -3560,7 +3631,7 @@ function runTideCheck() {
     }).join('');
 
     el.innerHTML = `
-      <div class="tide-day-card" style="margin-bottom:0;">
+      <div class="tide-day-card" id="tidecard-${dateVal}" style="margin-bottom:0;">
         <div class="tide-day-head">
           <div class="tide-day-datestr">${dayName}, ${dateDisp}</div>
           <div class="tide-day-meta" style="margin-top:6px;">
@@ -3571,6 +3642,8 @@ function runTideCheck() {
         </div>
         <div>${rows}</div>
       </div>`;
+
+    showTideCurveForDate(dateVal);
   } catch(e) {
     if(el) el.innerHTML = '<div style="font-size:12px;color:var(--hint);">Could not calculate tides.</div>';
   }
@@ -3856,8 +3929,6 @@ async function fetchOpenMeteo(lat, lng, locName) {
         const wd  = marine.current?.wave_direction;
         const sst = marine.current?.sea_surface_temperature;
         if (wh != null) swellTxt = wh.toFixed(1) + ' m';
-        // Store sea surface temperature for catch logging
-        if (sst != null) setText('wxseatemp', sst.toFixed(1) + '°C');
         // Update tide tab wave strip if visible
         const waveEl = document.getElementById('tideWaveRow');
         if (waveEl && waveEl.innerHTML === '') {
@@ -4178,7 +4249,6 @@ async function saveCatch() {
     lng:parseFloat(document.getElementById('clng').value)||176.1651,
     date:d,time:t,tide:ti,moon:mi,bite:bi,
     weather:document.getElementById('wxd').textContent||'—',
-    seatemp:(document.getElementById('wxseatemp').textContent||'').replace('—','').trim()||null,
     photo: catchPhoto  // kept in-memory for this session
   });
   persist(); // saves metadata only to localStorage
@@ -4363,118 +4433,22 @@ const DEFAULT_SVG_HTML = `
 // (either all, or filtered to _tileSpecies when drilled in from a tile).
 let _catchView  = 'tiles'; // 'tiles' | 'list'
 let _tileSpecies = null;   // null = all, string = selected species
-let _catchFilters    = { years: new Set(), months: new Set(), species: new Set() };
-let _catchFilterOpen = false;
-const _ALL_MONTHS    = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function openSpecies(species) {
   _catchView   = 'list';
   _tileSpecies = species;
+  // Pre-set the species filter dropdown to match
+  const ff = document.getElementById('filterFish');
+  if (ff) ff.value = species || '';
   renderList();
 }
 
 function showSpeciesTiles() {
   _catchView   = 'tiles';
   _tileSpecies = null;
+  const ff = document.getElementById('filterFish');
+  if (ff) ff.value = '';
   renderList();
-}
-
-function toggleCatchFilterPanel() {
-  _catchFilterOpen = !_catchFilterOpen;
-  const panel = document.getElementById('catchFilterPanel');
-  const btn   = document.getElementById('catchFilterBtn');
-  if (panel) panel.style.display = _catchFilterOpen ? 'block' : 'none';
-  if (btn) {
-    btn.style.background  = _catchFilterOpen ? 'var(--dark)' : 'var(--white)';
-    btn.style.color       = _catchFilterOpen ? '#fff'        : 'var(--muted)';
-    btn.style.borderColor = _catchFilterOpen ? 'var(--dark)' : 'var(--border)';
-  }
-  if (_catchFilterOpen) buildCatchFilterPanel();
-}
-
-function buildCatchFilterPanel() {
-  const el = document.getElementById('catchFilterPanel');
-  if (!el) return;
-  const allYears   = [...new Set(catches.map(c => (c.date||'').split('-')[0]).filter(y => y && y.length===4))].sort((a,b)=>b-a);
-  const allSpecies = [...new Set(catches.map(c => c.fish).filter(Boolean))].sort();
-  let html = '<div class="map-filter-panel" style="margin-bottom:0;">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">';
-  html += '<div style="font-size:12px;font-weight:700;color:var(--text);">Filter Catches</div>';
-  html += '<button onclick="clearCatchFilters()" style="background:none;border:none;font-size:11px;color:var(--teal);font-weight:600;cursor:pointer;padding:0;font-family:inherit;">Clear all</button>';
-  html += '</div>';
-  if (allYears.length > 1) {
-    html += '<div class="mf-section-lbl">Year</div><div class="mf-pills" style="margin-bottom:10px;">';
-    allYears.forEach(y => {
-      html += `<button class="mf-pill${_catchFilters.years.has(y)?' on':''}" onclick="toggleCatchFilter('years','${y}')"><span class="mf-pill-check">✓</span>${y}</button>`;
-    });
-    html += '</div>';
-  }
-  html += '<div class="mf-section-lbl">Month</div><div class="mf-pills" style="margin-bottom:10px;">';
-  _ALL_MONTHS.forEach(m => {
-    html += `<button class="mf-pill${_catchFilters.months.has(m)?' on':''}" onclick="toggleCatchFilter('months','${m}')"><span class="mf-pill-check">✓</span>${m.slice(0,3)}</button>`;
-  });
-  html += '</div>';
-  if (allSpecies.length >= 1 && !_tileSpecies) {
-    html += '<div class="mf-section-lbl">Species</div><div class="mf-pills">';
-    allSpecies.forEach(sp => {
-      html += `<button class="mf-pill${_catchFilters.species.has(sp)?' on':''}" onclick="toggleCatchFilter('species','${sp.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"><span class="mf-pill-check">✓</span>${sp}</button>`;
-    });
-    html += '</div>';
-  }
-  html += '</div>';
-  el.innerHTML = html;
-}
-
-function toggleCatchFilter(type, val) {
-  if (_catchFilters[type].has(val)) _catchFilters[type].delete(val);
-  else _catchFilters[type].add(val);
-  buildCatchFilterPanel();
-  renderSpeciesQuickFilter();
-  renderList();
-}
-
-function renderSpeciesQuickFilter() {
-  const wrap  = document.getElementById('speciesQuickFilter');
-  const pills = document.getElementById('speciesQuickPills');
-  if (!wrap || !pills) return;
-  const allSpecies = [...new Set(catches.map(c => c.fish).filter(Boolean))].sort();
-  if (allSpecies.length < 2) { wrap.style.display = 'none'; return; }
-  wrap.style.display = '';
-  pills.innerHTML = allSpecies.map(sp => {
-    const col    = speciesColor(sp);
-    const active = _catchFilters.species.has(sp);
-    const bg     = active ? col : 'var(--white)';
-    return `<button class="sp-qpill${active?' on':''}" style="background:${bg};border-color:${active?col:''};color:${active?'#fff':'var(--muted)'};"
-      onclick="toggleCatchFilter('species','${sp.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
-      <span class="sp-qpill-dot" style="background:${col};${active?'opacity:0.55':''}"></span>${sp}
-    </button>`;
-  }).join('');
-}
-
-function clearCatchFilters() {
-  _catchFilters = { years: new Set(), months: new Set(), species: new Set() };
-  if (_catchFilterOpen) buildCatchFilterPanel();
-  renderSpeciesQuickFilter();
-  renderList();
-}
-
-function _updateCatchFilterUI() {
-  const total = _catchFilters.years.size + _catchFilters.months.size + _catchFilters.species.size;
-  const badge    = document.getElementById('catchFilterBadge');
-  const clearBtn = document.getElementById('catchClearBtn');
-  const chips    = document.getElementById('catchActiveChips');
-  if (badge)    { badge.style.display = total > 0 ? 'inline-flex' : 'none'; badge.textContent = total; }
-  if (clearBtn) clearBtn.style.display = total > 0 ? 'block' : 'none';
-  if (chips) {
-    const all = [
-      ...[..._catchFilters.years  ].map(v => ({ type:'years',   val:v, label:v })),
-      ...[..._catchFilters.months ].map(v => ({ type:'months',  val:v, label:v.slice(0,3) })),
-      ...[..._catchFilters.species].map(v => ({ type:'species', val:v, label:v })),
-    ];
-    chips.innerHTML = all.map(({type,val,label}) =>
-      `<span class="mf-chip">${label}<button class="mf-chip-x" onclick="toggleCatchFilter('${type}','${val.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">✕</button></span>`
-    ).join('');
-  }
 }
 
 function toggleNote(id) {
@@ -4499,33 +4473,22 @@ function renderList() {
   const allSpecies = [...new Set(catches.map(c => c.fish).filter(Boolean))];
 
   // ── Show/hide the sort/filter/backup rows based on view mode ──
-  const sortRow     = document.getElementById('catchSortRow');
-  const listCtrls   = document.getElementById('catchListControls');
-  const inTiles     = _catchView === 'tiles' && catches.length > 0;
+  const sortRow   = document.getElementById('catchSortRow');
+  const filterRow = document.getElementById('catchFilterRow');
+  const inTiles   = _catchView === 'tiles' && catches.length > 0;
 
   if (sortRow)   sortRow.style.display   = inTiles ? 'none' : '';
-  if (listCtrls) listCtrls.style.display = inTiles ? 'none' : '';
-
-  // ── Always render species quick-filter pills (visible in both views) ──
-  renderSpeciesQuickFilter();
+  if (filterRow) filterRow.style.display = inTiles ? 'none' : '';
 
   // ── TILES VIEW ────────────────────────────────────────────────────────────
   if (inTiles) {
-    // Apply species quick-filter to tile list
-    const visibleSpecies = allSpecies.filter(sp =>
-      _catchFilters.species.size === 0 || _catchFilters.species.has(sp)
-    );
-    const filteredCatches = _catchFilters.species.size > 0
-      ? catches.filter(c => _catchFilters.species.has(c.fish))
-      : catches;
-
     // Show a loading placeholder immediately, then async-fill with thumbs
     document.getElementById('clist').innerHTML =
       `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
-        ${visibleSpecies.length} Species · ${filteredCatches.length} Total Catch${filteredCatches.length !== 1 ? 'es' : ''}
+        ${allSpecies.length} Species · ${catches.length} Total Catch${catches.length !== 1 ? 'es' : ''}
       </div>
       <div class="sp-tiles-grid">
-        ${visibleSpecies.sort((a, b) =>
+        ${allSpecies.sort((a, b) =>
             catches.filter(c => c.fish === b).length -
             catches.filter(c => c.fish === a).length
           ).map(sp => {
@@ -4545,7 +4508,7 @@ function renderList() {
 
     // Async: inject real thumbnails after initial paint
     (async () => {
-      for (const sp of visibleSpecies) {
+      for (const sp of allSpecies) {
         const recent = catches
           .filter(c => c.fish === sp)
           .sort((a, b) => new Date((b.date||'1970-01-01')+'T'+(b.time||'00:00')) - new Date((a.date||'1970-01-01')+'T'+(a.time||'00:00')))[0];
@@ -4574,40 +4537,54 @@ function renderList() {
 
   // ── LIST VIEW ─────────────────────────────────────────────────────────────
 
-  // ── Update filter chips/badge ──
-  _updateCatchFilterUI();
-  renderSpeciesQuickFilter();
-
-  const sort = document.getElementById('sortby').value;
-
-  // ── Multi-select filter ──
-  let s = catches.filter(c => {
-    if (_tileSpecies && c.fish !== _tileSpecies) return false;
-    if (_catchFilters.years.size > 0) {
-      const y = (c.date || '').split('-')[0];
-      if (!_catchFilters.years.has(y)) return false;
-    }
-    if (_catchFilters.months.size > 0) {
-      const parts = (c.date || '').split('-');
-      if (parts.length < 2) return false;
-      const mIdx = parseInt(parts[1], 10) - 1;
-      if (!_catchFilters.months.has(_ALL_MONTHS[mIdx])) return false;
-    }
-    if (!_tileSpecies && _catchFilters.species.size > 0) {
-      if (!_catchFilters.species.has(c.fish)) return false;
-    }
-    return true;
-  });
-
   // Update stats header
-  const _activeFilterCount = _catchFilters.years.size + _catchFilters.months.size + _catchFilters.species.size;
   document.getElementById('tstats').textContent =
     (_tileSpecies ? _tileSpecies + ' · ' : '') +
-    (_activeFilterCount > 0 ? s.length + ' of ' : '') +
     catches.length + ' catch' + (catches.length !== 1 ? 'es' : '') +
     (catches.filter(c=>c.weight).length
       ? ' · Best: ' + Math.max(...catches.filter(c=>c.weight).map(c=>parseFloat(c.weight)||0)).toFixed(1) + 'kg'
       : '');
+
+  // ── Populate fish filter dropdown with unique species (no duplicates) ──
+  const fishFilter = document.getElementById('filterFish');
+  if (fishFilter) {
+    const currentFish = _tileSpecies || fishFilter.value;
+    allSpecies.sort().forEach(f => { /* ensure options exist */ });
+    fishFilter.innerHTML = '<option value="">All species</option>' +
+      allSpecies.sort().map(f => `<option value="${f}"${f===currentFish?' selected':''}>${f}</option>`).join('');
+    if (_tileSpecies) fishFilter.value = _tileSpecies;
+  }
+
+  // ── Populate year filter dropdown with unique years from catches ──
+  const yearFilter = document.getElementById('filterYear');
+  if (yearFilter) {
+    const currentYear = yearFilter.value;
+    const allYears = [...new Set(catches.map(c => (c.date||'').split('-')[0]).filter(y => y && y.length === 4))].sort((a,b)=>b-a);
+    yearFilter.innerHTML = '<option value="">All years</option>' +
+      allYears.map(y => `<option value="${y}"${y===currentYear?' selected':''}>${y}</option>`).join('');
+  }
+
+  const sort        = document.getElementById('sortby').value;
+  const filterYear2 = document.getElementById('filterYear')?.value || '';
+  const filterMonth = document.getElementById('filterMonth')?.value || '';
+  const filterFish2 = _tileSpecies || document.getElementById('filterFish')?.value || '';
+  const MONTHS_ALL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+  // Filter
+  let s = catches.filter(c => {
+    if (filterYear2) {
+      const y = (c.date || '').split('-')[0];
+      if (y !== filterYear2) return false;
+    }
+    if (filterMonth) {
+      const parts = (c.date || '').split('-');
+      if (parts.length < 2) return false;
+      const mIdx = parseInt(parts[1], 10) - 1;
+      if (MONTHS_ALL[mIdx] !== filterMonth) return false;
+    }
+    if (filterFish2 && c.fish !== filterFish2) return false;
+    return true;
+  });
 
   // Sort
   if(sort==='newest') s.sort((a,b)=>{const da=new Date((a.date||'1970-01-01')+'T'+(a.time||'00:00')),db=new Date((b.date||'1970-01-01')+'T'+(b.time||'00:00'));return db-da;});
@@ -4621,16 +4598,6 @@ function renderList() {
       <img src="icon-192.png" style="width:80px;height:80px;border-radius:18px;opacity:0.35;margin-bottom:4px;mix-blend-mode:normal;" alt="">
       <div style="font-size:15px;font-weight:600;color:var(--muted);">No catches yet</div>
       <div style="font-size:13px;color:var(--hint);margin-top:2px;">Let's Go Fishing! 🎣</div>
-    </div>`;
-    return;
-  }
-
-  if(!s.length){
-    document.getElementById('clist').innerHTML=`<div class="empty">
-      <div style="font-size:36px;opacity:0.4;margin-bottom:4px;">🔍</div>
-      <div style="font-size:15px;font-weight:600;color:var(--muted);">No catches match</div>
-      <div style="font-size:13px;color:var(--hint);margin-top:2px;">Try removing some filters</div>
-      <button onclick="clearCatchFilters()" style="margin-top:12px;padding:9px 18px;border-radius:8px;background:var(--teal);border:none;color:#003520;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Clear filters</button>
     </div>`;
     return;
   }
@@ -4668,7 +4635,6 @@ function renderList() {
 
           <div class="ctags">
             <span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':c.tide||'—'}</span>
-            ${c.seatemp?`<span class="tag tb">🌡 ${c.seatemp}</span>`:''}
             <span class="tag tp">${c.moon||'—'}</span>
             ${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${c.bite}</span>`:''}
           </div>
@@ -4965,23 +4931,6 @@ function renderStats() {
   });
   const topMoon = Object.entries(moonCount).sort((a,b)=>b[1]-a[1])[0];
 
-  // ── Sea temperature stats ──
-  const seatempVals = catches.map(c => parseFloat(c.seatemp)).filter(v => !isNaN(v) && v > 0);
-  const seatempAvg  = seatempVals.length ? (seatempVals.reduce((a,b)=>a+b,0)/seatempVals.length).toFixed(1) : null;
-  const seatempMin  = seatempVals.length ? Math.min(...seatempVals).toFixed(1) : null;
-  const seatempMax  = seatempVals.length ? Math.max(...seatempVals).toFixed(1) : null;
-
-  // ── Best water temperature range (1°C buckets — which temp produced most catches) ──
-  const tempBuckets = {};
-  catches.forEach(c => {
-    const t = parseFloat(c.seatemp);
-    if (isNaN(t) || t <= 0) return;
-    const bucket = Math.floor(t);
-    const key = `${bucket}–${bucket+1}°C`;
-    tempBuckets[key] = (tempBuckets[key] || 0) + 1;
-  });
-  const topTempRange = Object.entries(tempBuckets).sort((a,b) => b[1]-a[1])[0];
-
   // ── Top fly/bait patterns ──
   const flyCount = {};
   catches.forEach(c => { if(c.fly) flyCount[c.fly]=(flyCount[c.fly]||0)+1; });
@@ -5187,7 +5136,6 @@ function renderStats() {
         ${topMethod?`<div class="insight-tile"><div class="it-icon">🎣</div><div class="it-title">Best Method</div><div class="it-val">${topMethod[0]}</div><div class="it-sub">${topMethod[1]} catch${topMethod[1]!==1?'es':''}</div></div>`:''}
         ${topPlatform?`<div class="insight-tile"><div class="it-icon">${topPlatform[0]==='Wading'?'🚶':topPlatform[0]==='Kayak'?'🚣':'⛵'}</div><div class="it-title">Best Platform</div><div class="it-val">${topPlatform[0]}</div><div class="it-sub">${topPlatform[1]} catch${topPlatform[1]!==1?'es':''}</div></div>`:''}
         ${topMoon?`<div class="insight-tile"><div class="it-icon">🌙</div><div class="it-title">Best Moon</div><div class="it-val">${topMoon[0]}</div><div class="it-sub">${topMoon[1]} catch${topMoon[1]!==1?'es':''}</div></div>`:''}
-        ${topTempRange?`<div class="insight-tile"><div class="it-icon">🌡️</div><div class="it-title">Best Water Temp</div><div class="it-val">${topTempRange[0]}</div><div class="it-sub">${topTempRange[1]} catch${topTempRange[1]!==1?'es':''}${seatempAvg?' · avg '+seatempAvg+'°C':''}</div></div>`:(seatempAvg?`<div class="insight-tile"><div class="it-icon">🌡️</div><div class="it-title">Sea Temp</div><div class="it-val">${seatempAvg}°C avg</div><div class="it-sub">${seatempMin}° – ${seatempMax}°C range</div></div>`:'')} 
       </div>
     </div>
 
@@ -5226,77 +5174,6 @@ function renderStats() {
         </div>`).join('')}
     </div>
   `;
-}
-
-// ─────────────────────────────────────────────
-// STORAGE USAGE + TILE CACHE
-// ─────────────────────────────────────────────
-function _fmtBytes(b) {
-  if (b < 1024)         return b + ' B';
-  if (b < 1024 * 1024)  return (b / 1024).toFixed(1) + ' KB';
-  return (b / 1024 / 1024).toFixed(1) + ' MB';
-}
-
-async function refreshStorageDisplay() {
-  const el = document.getElementById('storageUsageContent');
-  if (!el) return;
-  el.innerHTML = '<span style="color:var(--hint);">Calculating…</span>';
-  try {
-    let usageHtml = '';
-
-    // Quota API
-    if (navigator.storage?.estimate) {
-      const { usage, quota } = await navigator.storage.estimate();
-      const pct = quota ? Math.round(usage / quota * 100) : 0;
-      const barCol = pct > 80 ? '#e74c3c' : pct > 50 ? '#f39c12' : '#4fc3a1';
-      usageHtml += `
-        <div style="margin-bottom:10px;">
-          <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-            <span>Total app storage</span>
-            <span style="font-weight:600;color:var(--text);">${_fmtBytes(usage)} / ${_fmtBytes(quota)}</span>
-          </div>
-          <div style="background:var(--surf);border-radius:6px;height:8px;overflow:hidden;border:0.5px solid var(--border);">
-            <div style="height:100%;width:${pct}%;background:${barCol};border-radius:6px;transition:width 0.3s;"></div>
-          </div>
-          <div style="font-size:11px;color:var(--hint);margin-top:3px;">${pct}% of available space used</div>
-        </div>`;
-    }
-
-    // Per-catch breakdown
-    const photoCount = catches.filter(c => c.photo).length;
-    const metaBytes  = new Blob([localStorage.getItem('fishinglog') || '']).size;
-    usageHtml += `
-      <div style="border-top:0.5px solid var(--border);padding-top:8px;margin-top:4px;">
-        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;"><span>Catch metadata</span><span style="font-weight:600;">${_fmtBytes(metaBytes)}</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;"><span>Photos (${photoCount})</span><span style="font-weight:600;color:var(--muted);">In device storage</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;"><span>Avg photo size</span><span style="font-weight:600;">≈ 100 KB each</span></div>
-        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;border-top:0.5px solid var(--border);margin-top:4px;"><span>Map tile cache</span><span style="font-weight:600;color:var(--muted);">Max 300 tiles</span></div>
-      </div>`;
-
-    el.innerHTML = usageHtml;
-  } catch(e) {
-    el.innerHTML = '<span style="color:var(--hint);">Storage info not available on this browser.</span>';
-  }
-}
-
-async function clearTileCache() {
-  const btn = event.target;
-  btn.disabled = true; btn.textContent = '⏳ Clearing…';
-  try {
-    const deleted = await caches.delete('fishinglog-tiles-v1');
-    // Also clear any old-format map tiles from the main cache
-    const mainCache = await caches.open('fishinglog-v6');
-    const keys = await mainCache.keys();
-    const tileKeys = keys.filter(r => r.url.includes('tile.openstreetmap') || r.url.includes('tiles.'));
-    await Promise.all(tileKeys.map(k => mainCache.delete(k)));
-    btn.textContent = '✅ Cleared!';
-    setTimeout(() => { btn.disabled = false; btn.textContent = '🗺 Clear Map Cache'; }, 2000);
-    refreshStorageDisplay();
-    showToast('Map tile cache cleared.', 'success');
-  } catch(e) {
-    btn.disabled = false; btn.textContent = '🗺 Clear Map Cache';
-    showToast('Could not clear cache.', 'error');
-  }
 }
 
 // ─────────────────────────────────────────────
