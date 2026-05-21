@@ -856,10 +856,6 @@ input,select,textarea{min-height:44px;}
       </div>
       <!-- Filter bar -->
       <div id="catchFilterRow">
-        <!-- Species quick-filter pills — always visible when 2+ species logged -->
-        <div id="speciesQuickFilter" style="display:none;margin-bottom:8px;">
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;display:flex;gap:6px;" id="speciesQuickPills"></div>
-        </div>
         <div id="catchListControls" style="display:none;">
           <div style="display:flex;align-items:center;gap:7px;margin-bottom:6px;">
             <button id="catchFilterBtn" onclick="toggleCatchFilterPanel()" style="display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:8px;border:0.5px solid var(--border);background:var(--white);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;min-height:34px;">
@@ -869,6 +865,10 @@ input,select,textarea{min-height:44px;}
             <button id="catchClearBtn" onclick="clearCatchFilters()" style="display:none;background:none;border:none;font-size:11px;font-weight:700;color:#e74c3c;cursor:pointer;padding:0;white-space:nowrap;font-family:inherit;flex-shrink:0;">✕ Clear</button>
           </div>
           <div id="catchFilterPanel" style="display:none;"></div>
+        </div>
+        <!-- Species quick-filter pills — always visible when 2+ species logged -->
+        <div id="speciesQuickFilter" style="display:none;margin-top:6px;margin-bottom:8px;">
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;display:flex;gap:6px;" id="speciesQuickPills"></div>
         </div>
       </div>
       <input type="file" id="importFile" accept=".json,application/json" onchange="importBackup(event)">
