@@ -569,21 +569,6 @@ input,select,textarea{min-height:44px;}
       <!-- Today & Tomorrow day cards -->
       <div id="tideSchedule" class="tide-day-grid"></div>
 
-      <!-- Date picker — look up any date -->
-      <div class="sec" style="margin-bottom:10px;">
-        <div class="stitle">📅 Check Any Date</div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="date" id="tideCheckDate"
-            style="flex:1;padding:9px 12px;font-size:15px;border:0.5px solid #d0d0cc;border-radius:8px;background:var(--white);color:var(--text);font-family:inherit;min-height:44px;"
-            onchange="runTideCheck()">
-          <button onclick="document.getElementById('tideCheckDate').value='';document.getElementById('tideCheckResult').innerHTML='';"
-            style="flex-shrink:0;padding:9px 12px;background:var(--surf);border:0.5px solid var(--border);border-radius:8px;font-size:13px;color:var(--muted);cursor:pointer;font-family:inherit;min-height:44px;">
-            Clear
-          </button>
-        </div>
-        <div id="tideCheckResult" style="margin-top:10px;"></div>
-      </div>
-
       <!-- 24-hour curve — shown when a day tile is tapped -->
       <div class="sec" id="tideCurveSection" style="display:none;margin-bottom:10px;">
         <div class="stitle" style="justify-content:space-between;align-items:center;">
