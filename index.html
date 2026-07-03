@@ -943,13 +943,13 @@ input,select,textarea{min-height:44px;}
 
       <!-- Step 1 -->
       <div class="sec">
-        <div class="stitle">Step 1 — Request API access</div>
+        <div class="stitle">Step 1 — Join the beta waitlist</div>
         <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
-          MetService's Tide API is provisioned via a manual request — there's no instant self-serve signup. Request a key and they'll issue one for evaluation/trial use.
+          The Tide API is in early access — there's no instant self-serve signup yet. Join the waitlist and MetService will issue a key when the beta opens.
         </p>
-        <a href="https://data.metservice.com/request-key" target="_blank" rel="noopener"
+        <a href="https://data.metservice.com/early-access" target="_blank" rel="noopener"
            style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--teal);color:#fff;font-size:14px;font-weight:600;padding:13px 16px;border-radius:10px;text-decoration:none;letter-spacing:0.1px;">
-          🔗 Request a key at data.metservice.com
+          🔗 Join the waitlist at data.metservice.com
         </a>
         <p style="font-size:11px;color:var(--hint);text-align:center;margin-top:8px;">Opens in your browser — then come back here</p>
       </div>
@@ -1499,7 +1499,7 @@ async function saveApiKey() {
 
   try {
     const testRes = await fetch(
-      `${METSERVICE_BASE}/stations?latitude=${appLat}&longitude=${appLng}&radius=50000`,
+      `${METSERVICE_BASE}/models/${MS_MODEL_ID}/tidetimes/points?latitudes=${appLat}&longitudes=${appLng}`,
       { headers: { 'Authorization': 'ApiKey ' + key } }
     );
     if (testRes.status === 401 || testRes.status === 403) {
@@ -2770,13 +2770,16 @@ function nearestPort(lat, lng) {
 // ─────────────────────────────────────────────────────────────────────────────
 // METSERVICE TIDE API — automatic real-data tide predictions
 //
-// Access is provisioned manually by MetService (request a key at
-// data.metservice.com/request-key) — paste it below once in Settings,
-// end users never touch anything after that.
+// Access is early access/beta — join the waitlist at data.metservice.com to
+// be issued a key. Paste it below once in Settings, end users never touch
+// anything after that.
 // If the key is missing or the request fails the harmonic model
 // takes over silently, so offline use always works.
 //
 // Auth: `Authorization: ApiKey <key>` header (MetService "Core API" scheme).
+// Uses the Models endpoint (not Stations) — MetService's own docs recommend
+// Models for arbitrary coordinates like fishing spots; Stations are only
+// accurate at the exact physical gauge location.
 // Datum: LAT (Lowest Astronomical Tide) — matches NZ tide tables, same
 // convention the old integration used, so heights stay positive.
 // Times: MetService returns full ISO-8601 with a timezone/Z suffix, so
@@ -2787,7 +2790,7 @@ function nearestPort(lat, lng) {
 // function (e.g. Cloudflare Worker, Netlify Function) so the key is
 // never exposed. For personal/private use this is fine.
 // ─────────────────────────────────────────────────────────────────────────────
-const METSERVICE_BASE = 'https://test-api.marine.metservice.com/tide/v4';
+const METSERVICE_BASE = 'https://api.marine.metservice.com/tide/v4'; // production — only base URL MetService's docs document
 
 // API key is stored by the user in Settings — read dynamically so changes take effect immediately
 function getMetserviceKey() {
@@ -2840,7 +2843,14 @@ function _cacheValid(lat, lng) {
   return true;
 }
 
-// Fetch 3 days of tide data from MetService for the nearest station to (lat, lng).
+// NZ-coverage tidal model. MetService's docs explicitly recommend Models (not
+// Stations) for arbitrary coordinates like fishing spots — Stations are only
+// valid at the *exact* gauge location ("do not use a station prediction for a
+// beach 20km away"), whereas Models predict tides for any lat/lng. Swap this
+// if you ever fish outside NZ waters — see GET /models for other coverage.
+const MS_MODEL_ID = 'tpxo9v4_nz';
+
+// Fetch 3 days of tide data from MetService's tide model for (lat, lng).
 // Returns true on success, false on any failure (key missing, network, auth, etc).
 async function fetchTidesFromAPI(lat, lng) {
   const MS_API_KEY = getMetserviceKey();
@@ -2849,40 +2859,29 @@ async function fetchTidesFromAPI(lat, lng) {
 
   const H = { 'Authorization': 'ApiKey ' + MS_API_KEY };
   try {
-    // 1. Find the nearest station within 50km (list is returned nearest-first)
-    const nRes = await fetch(
-      `${METSERVICE_BASE}/stations?latitude=${lat}&longitude=${lng}&radius=50000`,
-      { headers: H }
-    );
-    if (nRes.status === 401 || nRes.status === 403) {
+    // Build a 3-day ISO-8601 time_range starting now
+    const fromDate = new Date();
+    const toDate   = new Date(fromDate.getTime() + 3 * 86400000);
+    const timeRange = `${fromDate.toISOString()}--${toDate.toISOString()}`;
+    const qs = `latitudes=${lat}&longitudes=${lng}&time_range=${encodeURIComponent(timeRange)}`;
+
+    // Fetch high/low turning points (tidetimes) and the 15-min curve (timeseries) in parallel
+    const [ttRes, tsRes] = await Promise.all([
+      fetch(`${METSERVICE_BASE}/models/${MS_MODEL_ID}/tidetimes/points?${qs}`, { headers: H }),
+      fetch(`${METSERVICE_BASE}/models/${MS_MODEL_ID}/timeseries/points?${qs}&time_interval=15min`, { headers: H })
+    ]);
+    if (ttRes.status === 401 || ttRes.status === 403 || tsRes.status === 401 || tsRes.status === 403) {
       console.warn('MetService: API key rejected — using harmonic fallback');
       const badge = document.getElementById('tideBadge');
       if (badge) { badge.textContent = '⚠️ Key rejected'; badge.className = 'api-badge offline-badge'; }
       return false;
     }
-    if (nRes.status === 429) {
+    if (ttRes.status === 429 || tsRes.status === 429) {
       console.warn('MetService: rate limit reached — using harmonic fallback');
       const badge = document.getElementById('tideBadge');
       if (badge) { badge.textContent = '⚠️ API limit'; badge.className = 'api-badge offline-badge'; }
       return false;
     }
-    if (!nRes.ok) return false;
-    const stations = await nRes.json();
-    const list = Array.isArray(stations) ? stations : (stations?.stations || stations?.data || []);
-    const st = list[0];
-    const stationId = st?.id || st?.station_id;
-    if (!stationId) return false; // no station within range — harmonic fallback takes over
-
-    // 2. Build a 3-day ISO-8601 time_range starting now
-    const fromDate = new Date();
-    const toDate   = new Date(fromDate.getTime() + 3 * 86400000);
-    const timeRange = `${fromDate.toISOString()}--${toDate.toISOString()}`;
-
-    // 3. Fetch high/low turning points (tidetimes) and the 15-min curve (timeseries)
-    const [ttRes, tsRes] = await Promise.all([
-      fetch(`${METSERVICE_BASE}/stations/${stationId}/tidetimes?time_range=${encodeURIComponent(timeRange)}`, { headers: H }),
-      fetch(`${METSERVICE_BASE}/stations/${stationId}/timeseries?time_range=${encodeURIComponent(timeRange)}&time_interval=15min`, { headers: H })
-    ]);
     if (!ttRes.ok || !tsRes.ok) return false;
     const ttData = await ttRes.json();
     const tsData = await tsRes.json();
@@ -2890,7 +2889,7 @@ async function fetchTidesFromAPI(lat, lng) {
     _saveTideCache({
       lat, lng,
       fetched: Date.now(),
-      stationName: st.name || st.station_name || stationId,
+      stationName: 'NZ Tide Model',
       timezone: 'Pacific/Auckland',
       extremes: (ttData.predictions || []).map(p => ({
         ms: +new Date(p.time), type: p.tidal_stage, h: p.sea_surface_height_above_mean_sea_level
