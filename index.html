@@ -220,7 +220,15 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .spot-chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:8px 12px;border-radius:20px;background:var(--surf);border:0.5px solid var(--border);font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;}
 .spot-chip:active{background:#e2e2de;}
 .spot-chip-add{background:rgba(79,195,161,0.1);border:1px dashed rgba(79,195,161,0.55);color:#0a5c43;}
-.legal-box{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12.5px;line-height:1.5;display:flex;gap:9px;align-items:flex-start;}
+.legal-summary{display:flex;align-items:center;gap:7px;margin-top:10px;padding:8px 11px;border-radius:9px;cursor:pointer;font-size:12.5px;font-weight:600;user-select:none;}
+.legal-summary-ok{background:rgba(79,195,161,0.1);border:0.5px solid rgba(79,195,161,0.35);color:#0a5c43;}
+.legal-summary-bad{background:rgba(231,76,60,0.1);border:0.5px solid rgba(231,76,60,0.35);color:#a5301f;}
+.legal-summary-warn{background:rgba(243,156,18,0.1);border:0.5px solid rgba(243,156,18,0.35);color:#8a5a00;}
+.legal-summary-icon{font-size:15px;flex-shrink:0;}
+.legal-summary-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.legal-chevron{font-size:11px;flex-shrink:0;transition:transform 0.15s;color:inherit;opacity:0.6;}
+.legal-chevron.open{transform:rotate(90deg);}
+.legal-box{border-radius:10px;padding:10px 12px;margin-top:6px;font-size:12.5px;line-height:1.5;display:flex;gap:9px;align-items:flex-start;}
 .legal-ok{background:rgba(79,195,161,0.12);border:0.5px solid rgba(79,195,161,0.4);}
 .legal-bad{background:rgba(231,76,60,0.12);border:0.5px solid rgba(231,76,60,0.4);}
 .legal-warn{background:rgba(243,156,18,0.12);border:0.5px solid rgba(243,156,18,0.4);}
@@ -451,7 +459,14 @@ input,select,textarea{min-height:44px;}
             </div>
           </div>
         </div>
-        <div id="legalSizeBox" class="legal-box" style="display:none;"></div>
+        <div id="legalSizeWrap" style="display:none;">
+          <div id="legalSizeSummary" class="legal-summary" onclick="toggleLegalDetails()">
+            <span class="legal-summary-icon" id="legalSummaryIcon">ℹ️</span>
+            <span class="legal-summary-text" id="legalSummaryText">Size &amp; bag limit info</span>
+            <span class="legal-chevron" id="legalChevron">▸</span>
+          </div>
+          <div id="legalSizeBox" class="legal-box" style="display:none;"></div>
+        </div>
       </div>
 
       <!-- 3. DATE & TIME -->
@@ -715,6 +730,9 @@ input,select,textarea{min-height:44px;}
           </div>
         </div>
       </div>
+
+      <!-- REFRESH BUTTON — directly under hero -->
+      <button class="sbtn teal-btn" style="margin-top:0;margin-bottom:10px;" onclick="autoWeather(true)">🔄 Refresh Weather</button>
 
       <!-- ② 24-HOUR RIBBON -->
       <div class="sec" style="padding:10px 0 10px 13px;overflow:hidden;">
@@ -2448,39 +2466,73 @@ function setFishingRegion(region) {
 }
 
 // Live legal-size check shown under the Length/Weight fields on the Log tab.
-// Reads the currently selected species + length; renders nothing if there's
-// not enough info to say something meaningful.
-function checkLegalSize() {
+// Renders as a compact clickable summary; tap to expand the full detail.
+// Reads the currently selected species + length; hides itself entirely if
+// there's not enough info to say something meaningful.
+let _legalBoxExpanded = false;
+
+function toggleLegalDetails() {
+  _legalBoxExpanded = !_legalBoxExpanded;
   const box = document.getElementById('legalSizeBox');
-  if (!box) return;
+  const chev = document.getElementById('legalChevron');
+  if (box) box.style.display = _legalBoxExpanded ? 'flex' : 'none';
+  if (chev) chev.classList.toggle('open', _legalBoxExpanded);
+}
+
+function checkLegalSize() {
+  const wrap = document.getElementById('legalSizeWrap');
+  const summary = document.getElementById('legalSizeSummary');
+  const summaryIcon = document.getElementById('legalSummaryIcon');
+  const summaryText = document.getElementById('legalSummaryText');
+  const box = document.getElementById('legalSizeBox');
+  const chev = document.getElementById('legalChevron');
+  if (!wrap || !box) return;
   const species = document.getElementById('ftype')?.value;
   const lenVal  = parseFloat(document.getElementById('flen')?.value);
   const region  = getFishingRegion();
 
-  if (!species) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const render = (cls, icon, summaryTxt, detailHTML) => {
+    wrap.style.display = 'block';
+    summary.className = 'legal-summary legal-summary-' + cls;
+    summaryIcon.textContent = icon;
+    summaryText.textContent = summaryTxt;
+    box.className = 'legal-box legal-' + cls;
+    box.innerHTML = detailHTML;
+    box.style.display = _legalBoxExpanded ? 'flex' : 'none';
+    if (chev) chev.classList.toggle('open', _legalBoxExpanded);
+  };
+
+  if (!species) { wrap.style.display = 'none'; return; }
 
   if (species === 'Crayfish') {
-    box.className = 'legal-box legal-warn';
-    box.style.display = 'flex';
-    box.innerHTML = `<div class="legal-icon">ℹ️</div><div><div>Rock lobster (crayfish) rules are a separate system from finfish — size, bag limits and tail-clipping requirements vary by CRA area and change often (including seasonal closures).</div><div style="margin-top:6px;font-size:11px;color:var(--hint);">Check the NZ Fishing Rules app or mpi.govt.nz for current crayfish rules before keeping this catch.</div></div>`;
+    render('warn', 'ℹ️', 'Crayfish — tap for size/bag info',
+      `<div class="legal-icon">ℹ️</div><div><div>Rock lobster (crayfish) rules are a separate system from finfish — size, bag limits and tail-clipping requirements vary by CRA area and change often (including seasonal closures).</div><div style="margin-top:6px;font-size:11px;color:var(--hint);">Check the NZ Fishing Rules app or mpi.govt.nz for current crayfish rules before keeping this catch.</div></div>`);
     return;
   }
 
   const rules = NZ_SIZE_LIMITS[region]?.species?.[species];
-  if (!rules) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  if (!rules) { wrap.style.display = 'none'; return; }
 
   const parts = [];
-  let cls = 'legal-ok', icon = '✅';
+  let cls = 'ok', icon = '✅', summaryTxt = `${species} — looks OK, tap for details`;
 
   if (rules.size != null) {
     if (!isNaN(lenVal)) {
-      if (lenVal < rules.size) { cls = 'legal-bad'; icon = '⛔'; parts.push(`Undersize — ${lenVal}cm is below the ${rules.size}cm minimum for ${species} in ${region}. This fish must be released immediately.`); }
-      else { parts.push(`${lenVal}cm meets the ${rules.size}cm minimum for ${species} in ${region}.`); }
+      if (lenVal < rules.size) {
+        cls = 'bad'; icon = '⛔';
+        summaryTxt = `⛔ Undersize ${species} — tap for details`;
+        parts.push(`Undersize — ${lenVal}cm is below the ${rules.size}cm minimum for ${species} in ${region}. This fish must be released immediately.`);
+      } else {
+        summaryTxt = `✅ ${species} ${lenVal}cm — legal size, tap for details`;
+        parts.push(`${lenVal}cm meets the ${rules.size}cm minimum for ${species} in ${region}.`);
+      }
     } else {
+      cls = 'warn'; icon = 'ℹ️';
+      summaryTxt = `${species} — min ${rules.size}cm, tap for details`;
       parts.push(`Minimum size for ${species} in ${region}: ${rules.size}cm. Enter a length above to check this catch.`);
-      cls = 'legal-warn'; icon = 'ℹ️';
     }
   } else {
+    summaryTxt = `${species} — no min size, tap for bag limit`;
     parts.push(`No minimum size for ${species} in ${region}.`);
   }
 
@@ -2489,9 +2541,8 @@ function checkLegalSize() {
 
   if (rules.note) parts.push(rules.note);
 
-  box.className = 'legal-box ' + cls;
-  box.style.display = 'flex';
-  box.innerHTML = `<div class="legal-icon">${icon}</div><div><div>${parts.join(' ')}</div><div style="margin-top:6px;font-size:11px;color:var(--hint);">Reference only — rules vary by exact location and change over time. Always verify with the NZ Fishing Rules app or mpi.govt.nz before keeping a catch.</div></div>`;
+  render(cls, icon, summaryTxt,
+    `<div class="legal-icon">${icon}</div><div><div>${parts.join(' ')}</div><div style="margin-top:6px;font-size:11px;color:var(--hint);">Reference only — rules vary by exact location and change over time. Always verify with the NZ Fishing Rules app or mpi.govt.nz before keeping a catch.</div></div>`);
 }
 
 

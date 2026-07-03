@@ -1,4 +1,4 @@
-const CACHE      = 'fishinglog-v9';          // app shell — bump to force reinstall
+const CACHE      = 'fishinglog-v11';          // app shell — bump to force reinstall
 const TILE_CACHE = 'fishinglog-tiles-v1';    // map tiles — separate, bounded
 const MAX_TILES  = 300;                      // ~15 MB max tile storage
 const CORE = ['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
