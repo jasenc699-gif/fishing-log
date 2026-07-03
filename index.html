@@ -3884,13 +3884,90 @@ function updateWindyMap(lat, lng) {
 
 
 const WX_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
+const WX_CACHE_KEY = 'fishinglog_wx_cache';
+let _wxPaintedFromCache = false;
+
+// Snapshot the currently-rendered weather DOM into localStorage so next
+// app open can paint instantly while a fresh fetch runs in the background.
+function saveWeatherCache(pressure, pressureHistory, lat, lng) {
+  try {
+    const grab = id => document.getElementById(id)?.textContent ?? '';
+    const cache = {
+      savedAt: Date.now(), lat, lng, pressure, pressureHistory,
+      wxi: grab('wxi'), wxt: grab('wxt'), wxd: grab('wxd'), wxl: grab('wxl'),
+      wxwind: grab('wxwind'), wxwdir: grab('wxwdir'), wxh: grab('wxh'), wxf: grab('wxf'),
+      wxv: grab('wxv'), wxp: grab('wxp'), wxswell: grab('wxswell'), wxrain: grab('wxrain'),
+      wxcond: grab('wxcond'), wxWindSpd: grab('wxWindSpd'), wxWindDir: grab('wxWindDir'),
+      wxGust: grab('wxGust'), wxPressVal: grab('wxPressVal'), wxFeels: grab('wxFeels'),
+      wxRainNow: grab('wxRainNow'),
+      ribbonHTML: document.getElementById('wxRibbon')?.innerHTML || '',
+      forecastHTML: document.getElementById('wxforecast')?.innerHTML || '',
+      waveRowHTML: document.getElementById('tideWaveRow')?.innerHTML || ''
+    };
+    localStorage.setItem(WX_CACHE_KEY, JSON.stringify(cache));
+  } catch(e) { /* cache is best-effort — never block the real render on it */ }
+}
+
+// Paint the last-known weather instantly on app open (stale-but-labeled),
+// so the person sees something immediately instead of a blank loading state
+// while autoWeather(true) fetches a fresh copy in the background.
+function paintWeatherFromCache() {
+  try {
+    const raw = localStorage.getItem(WX_CACHE_KEY);
+    if (!raw) return;
+    const c = JSON.parse(raw);
+    const setText = (id, val) => { const el = document.getElementById(id); if (el && val) el.textContent = val; };
+    ['wxi','wxt','wxd','wxl','wxwind','wxwdir','wxh','wxf','wxv','wxp','wxswell','wxrain',
+     'wxcond','wxWindSpd','wxWindDir','wxGust','wxPressVal','wxFeels','wxRainNow']
+      .forEach(id => setText(id, c[id]));
+    const ribbonEl = document.getElementById('wxRibbon');
+    if (ribbonEl && c.ribbonHTML) ribbonEl.innerHTML = c.ribbonHTML;
+    const fcastEl = document.getElementById('wxforecast');
+    if (fcastEl && c.forecastHTML) fcastEl.innerHTML = c.forecastHTML;
+    const waveEl = document.getElementById('tideWaveRow');
+    if (waveEl && c.waveRowHTML && waveEl.innerHTML === '') waveEl.innerHTML = c.waveRowHTML;
+    if (c.pressure != null) updateBarometer(c.pressure, c.pressureHistory);
+    if (c.lat != null) { wxLat = c.lat; wxLng = c.lng; updateWindyMap(c.lat, c.lng); }
+
+    const badge = document.getElementById('wxBadge');
+    if (badge) {
+      badge.className = 'api-badge offline-badge';
+      const mins = Math.round((Date.now() - c.savedAt) / 60000);
+      const ageTxt = mins < 1 ? 'just now' : mins < 60 ? mins + 'm ago' : Math.round(mins/60) + 'h ago';
+      badge.textContent = `🕓 Cached · ${ageTxt}`;
+    }
+  } catch(e) { /* corrupt cache — ignore, fresh fetch will overwrite */ }
+}
+
+// Tap-to-retry: when weather is in an error state, tapping the message
+// retries instead of requiring a full app reopen (no persistent button).
+function setWeatherRetryable(retryable) {
+  const el = document.getElementById('wxl');
+  if (!el) return;
+  if (retryable) {
+    el.style.cursor = 'pointer';
+    el.style.textDecoration = 'underline';
+    el.onclick = () => autoWeather(true);
+  } else {
+    el.style.cursor = '';
+    el.style.textDecoration = '';
+    el.onclick = null;
+  }
+}
 
 function autoWeather(force) {
   const now = Date.now();
   if (!force && (now - _wxLastFetch) < WX_COOLDOWN_MS) return; // already fresh
 
-  document.getElementById('wxBadge').className='api-badge offline-badge';
-  document.getElementById('wxBadge').textContent='⏳ Loading...';
+  const hasCache = !_wxPaintedFromCache && !!localStorage.getItem(WX_CACHE_KEY);
+  if (hasCache) { paintWeatherFromCache(); _wxPaintedFromCache = true; }
+  setWeatherRetryable(false);
+
+  const badge = document.getElementById('wxBadge');
+  if (badge) {
+    badge.className = 'api-badge offline-badge';
+    badge.textContent = hasCache ? '🔄 Refreshing…' : '⏳ Loading...';
+  }
 
   const formLat = parseFloat(document.getElementById('clat')?.value) || wxLat;
   const formLng = parseFloat(document.getElementById('clng')?.value) || wxLng;
@@ -4115,6 +4192,8 @@ async function fetchOpenMeteo(lat, lng, locName) {
     // Store coords for reuse and update satellite/radar map
     wxLat = lat; wxLng = lng;
     updateWindyMap(lat, lng);
+    setWeatherRetryable(false);
+    saveWeatherCache(pressure, pressureHistory, lat, lng);
 
   } catch(err) {
     console.error('fetchOpenMeteo error:', err);
@@ -4123,7 +4202,8 @@ async function fetchOpenMeteo(lat, lng, locName) {
     const badge = document.getElementById('wxBadge');
     if (badge) { badge.className='api-badge offline-badge'; badge.textContent= isRateLimit ? '⏳ Rate limited' : '⚠️ Unavailable'; }
     setText('wxd', isRateLimit ? 'Too many requests — wait a few minutes' : isNetworkErr ? 'Network error — check connection' : 'Weather data unavailable');
-    setText('wxl', isRateLimit ? 'Open-Meteo rate limit hit. Tap Refresh in ~5 min.' : isNetworkErr ? 'Could not reach weather service' : 'Tap Refresh to try again');
+    setText('wxl', isRateLimit ? 'Open-Meteo rate limit hit. Tap to retry in ~5 min.' : isNetworkErr ? 'Could not reach weather service — tap to retry' : 'Tap to retry');
+    setWeatherRetryable(true);
     if (isRateLimit) _wxLastFetch = Date.now() - WX_COOLDOWN_MS + 5 * 60 * 1000; // back off 5 min on rate limit
   }
 }
