@@ -215,6 +215,16 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 #mapActiveBar{display:none;align-items:center;gap:5px;padding:7px 10px;background:rgba(79,195,161,0.08);border:0.5px solid rgba(79,195,161,0.3);border-radius:8px;margin-bottom:8px;flex-wrap:wrap;}
 #mapActiveBar.show{display:flex;}
 .mf-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:10px;background:rgba(79,195,161,0.18);color:#0a5c43;font-size:10px;font-weight:700;}
+.spot-chip-row{display:flex;gap:7px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch;}
+.spot-chip-row::-webkit-scrollbar{display:none;}
+.spot-chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:8px 12px;border-radius:20px;background:var(--surf);border:0.5px solid var(--border);font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;}
+.spot-chip:active{background:#e2e2de;}
+.spot-chip-add{background:rgba(79,195,161,0.1);border:1px dashed rgba(79,195,161,0.55);color:#0a5c43;}
+.legal-box{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12.5px;line-height:1.5;display:flex;gap:9px;align-items:flex-start;}
+.legal-ok{background:rgba(79,195,161,0.12);border:0.5px solid rgba(79,195,161,0.4);}
+.legal-bad{background:rgba(231,76,60,0.12);border:0.5px solid rgba(231,76,60,0.4);}
+.legal-warn{background:rgba(243,156,18,0.12);border:0.5px solid rgba(243,156,18,0.4);}
+.legal-icon{font-size:17px;flex-shrink:0;line-height:1.3;}
 .mf-chip-x{background:none;border:none;cursor:pointer;color:#0a5c43;font-size:11px;padding:0 0 0 2px;line-height:1;font-weight:700;}
 
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
@@ -413,7 +423,7 @@ input,select,textarea{min-height:44px;}
       <div class="sec">
         <div class="stitle">🐟 Catch Details</div>
         <label>Fish species</label>
-        <select id="ftype" style="min-height:44px;">
+        <select id="ftype" style="min-height:44px;" onchange="checkLegalSize()">
           <option value="">Select species...</option>
           <option>Snapper</option><option>Kingfish</option><option>Kahawai</option>
           <option>Gurnard</option><option>John Dory</option><option>Blue Cod</option>
@@ -428,7 +438,7 @@ input,select,textarea{min-height:44px;}
             <label>Length (cm)</label>
             <div class="stepper">
               <button type="button" onclick="adjustVal('flen',-1)">−</button>
-              <input type="number" id="flen" placeholder="cm" inputmode="decimal">
+              <input type="number" id="flen" placeholder="cm" inputmode="decimal" oninput="checkLegalSize()">
               <button type="button" onclick="adjustVal('flen',1)">+</button>
             </div>
           </div>
@@ -441,6 +451,7 @@ input,select,textarea{min-height:44px;}
             </div>
           </div>
         </div>
+        <div id="legalSizeBox" class="legal-box" style="display:none;"></div>
       </div>
 
       <!-- 3. DATE & TIME -->
@@ -500,6 +511,10 @@ input,select,textarea{min-height:44px;}
           <button class="map-layer-btn" id="logMapLayerBtn" onclick="toggleLogMapLayer()">🛰 Satellite</button>
         </div>
         <button class="gpsbtn" onclick="doGPS()" style="min-height:44px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📡 Use my GPS location</button>
+
+        <label style="margin-top:10px;margin-bottom:5px;">⭐ Favorite Spots</label>
+        <div class="spot-chip-row" id="spotChipRow"></div>
+
         <label style="margin-top:8px;">Search location</label>
         <input type="text" id="locname" placeholder="e.g. Tauranga Harbour" oninput="onLocInput()" autocomplete="off" style="min-height:44px;">
         <div class="geo-status" id="gstat"></div>
@@ -989,6 +1004,23 @@ input,select,textarea{min-height:44px;}
         </p>
       </div>
 
+      <!-- Fishing Region (for size/bag limit reference) -->
+      <div class="sec">
+        <div class="stitle">📏 Fishing Region</div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+          Used by the size/bag limit check on the Log tab. NZ recreational rules vary by MPI fishing area — pick the one you fish most.
+        </p>
+        <label>MPI Fishing Area</label>
+        <select id="fishingRegionSelect" style="min-height:44px;" onchange="setFishingRegion(this.value)">
+          <option>Auckland/Kermadec</option>
+          <option>Central</option>
+          <option>Challenger</option>
+          <option>South-East</option>
+          <option>Southland/Sub-Antarctic</option>
+        </select>
+        <p style="font-size:11px;color:var(--hint);margin-top:8px;line-height:1.5;">Reference only — rules vary by exact sub-area and change over time. Always verify with the NZ Fishing Rules app or mpi.govt.nz before keeping a catch.</p>
+      </div>
+
       <!-- Backup & Restore -->
       <div class="sec">
         <div class="stitle">💾 Backup &amp; Restore</div>
@@ -1038,6 +1070,28 @@ input,select,textarea{min-height:44px;}
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Tap ✕ to hide an entry from autocomplete. It stays in your existing catches — just won't appear as a suggestion.</div>
         <div id="manageSuggestionsContent"></div>
         <button class="sbtn" style="margin-top:8px;background:var(--dark3);" onclick="closeManageSuggestions()">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FAVORITE SPOTS MODAL ══ -->
+<div class="msug-wrap" id="favSpotsPanel">
+  <div class="msug-inner">
+    <div class="msug-card">
+      <div class="msug-head">
+        <span style="font-size:16px;font-weight:700;color:#fff;">⭐ Favorite Spots</span>
+        <button onclick="closeFavSpotsPanel()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+      </div>
+      <div style="padding:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Save current location</div>
+        <div id="favSpotsCurrentCoords" style="font-size:12px;color:var(--hint);margin-bottom:8px;"></div>
+        <input type="text" id="favSpotNameInput" placeholder="e.g. The Groyne, home reef" style="min-height:44px;">
+        <button class="sbtn teal-btn" style="margin-top:8px;padding:12px;font-size:14px;" onclick="addFavoriteSpot()">⭐ Save This Spot</button>
+
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:18px 0 8px;">Your spots</div>
+        <div id="favSpotsListContent"></div>
+        <button class="sbtn" style="margin-top:8px;background:var(--dark3);" onclick="closeFavSpotsPanel()">Done</button>
       </div>
     </div>
   </div>
@@ -1547,7 +1601,7 @@ function go(p) {
   document.querySelectorAll('.pg').forEach(e => e.classList.remove('show'));
   document.getElementById('pg-'+p).classList.add('show');
   document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.dataset.tab === p));
-  if(p==='log') setTimeout(initLogMap, 100);
+  if(p==='log') { setTimeout(initLogMap, 100); renderFavSpotsRow(); }
   if(p==='tide') { calcTide(); }
   if(p==='moon') calcMoon();
   if(p==='bite') calcBite();
@@ -1561,6 +1615,8 @@ function go(p) {
 // and navigate to Setup automatically on first launch (no key stored).
 document.addEventListener('DOMContentLoaded', function() {
   _applySettingsVisibility();
+  const regionSel = document.getElementById('fishingRegionSelect');
+  if (regionSel) regionSel.value = getFishingRegion();
   if (!getTidecheckKey()) {
     // First launch — open Settings so user can enter their key
     const settingsTab = document.getElementById('settingsTab');
@@ -2305,6 +2361,224 @@ function _renderManageSuggestions() {
       ${hidden.length ? `<div style="font-size:10px;color:var(--hint);margin-top:4px;">${hidden.length} hidden — <button onclick="(function(){try{localStorage.removeItem('_del_${sec.key}');}catch(e){}; _refreshAllSuggestions();})();" style="background:none;border:none;color:var(--teal);font-size:10px;cursor:pointer;padding:0;">Restore all</button></div>` : ''}
     </div>`;
   }).join('');
+}
+
+// ─────────────────────────────────────────────
+// NZ RECREATIONAL SIZE & BAG LIMITS (reference only)
+// Sourced from MPI's "Recreational daily bag limits and size restrictions
+// for finfish" (mpi.govt.nz). Rules vary by exact sub-area and change over
+// time — this is a quick reference, not a legal authority. Always verify
+// with the official NZ Fishing Rules app or mpi.govt.nz before keeping a catch.
+// size: minimum length in cm (null = no MPI minimum size for this species/area)
+// bag: daily bag limit for that species (null = no individual limit; falls
+//      under the region's combined finfish bag only)
+// ─────────────────────────────────────────────
+const NZ_FISHING_AREAS = ['Auckland/Kermadec', 'Central', 'Challenger', 'South-East', 'Southland/Sub-Antarctic'];
+
+const NZ_SIZE_LIMITS = {
+  'Auckland/Kermadec': { combinedBag: 20, species: {
+    'Snapper':   { size: 30, bag: 7,  note: 'SNA1 zone — most of Auckland, Coromandel, Bay of Plenty & Northland east coast. West Coast/Kaipara area is 27cm, bag 10.' },
+    'Kingfish':  { size: 75, bag: 3,  note: 'Shares a combined 5-fish limit with Hāpuku (max 3 of the 5 as kingfish).' },
+    'Kahawai':   { size: null, bag: 20, note: 'No species-specific rule — counts toward the combined 20-finfish daily bag.' },
+    'Gurnard':   { size: 25, bag: 20 },
+    'Trevally':  { size: 25, bag: 20 },
+    'Tarakihi':  { size: 25, bag: 20 },
+    'Blue Cod':  { size: 30, bag: 20, note: 'Must be landed whole or gutted only.' },
+    'Moki':      { size: 40, bag: 20 },
+    'Hapuka':    { size: null, bag: 5, note: 'Combined 5-fish limit shared with kingfish (max 3 kingfish).' },
+    'John Dory': { size: null, bag: 20, note: 'No species-specific rule — falls under the combined 20-finfish daily bag.' }
+  }},
+  'Central': { combinedBag: 20, species: {
+    'Snapper':   { size: 27, bag: 10 },
+    'Kingfish':  { size: 75, bag: 3, note: 'Shares a combined 5-fish limit with Hāpuku (max 3 of the 5 as kingfish).' },
+    'Kahawai':   { size: null, bag: 20, note: 'No species-specific rule — counts toward the combined 20-finfish daily bag.' },
+    'Gurnard':   { size: 25, bag: 20 },
+    'Trevally':  { size: 25, bag: 20 },
+    'Tarakihi':  { size: 25, bag: 20 },
+    'Blue Cod':  { size: 33, bag: 20, note: 'Central East (Titahi Bay–Cape Runaway) shown. Egmont area (Taranaki–Titahi Bay) is stricter: bag 10. Landed whole or gutted only.' },
+    'Moki':      { size: 40, bag: 20 },
+    'Hapuka':    { size: null, bag: 5, note: 'Combined 5-fish limit shared with kingfish (max 3 kingfish).' },
+    'John Dory': { size: null, bag: 20, note: 'No species-specific rule — falls under the combined 20-finfish daily bag.' }
+  }},
+  'Challenger': { combinedBag: 20, species: {
+    'Snapper':   { size: 25, bag: 10, note: 'Most of the Challenger area. Marlborough Sounds Area is stricter: 25cm, bag 3.' },
+    'Kingfish':  { size: 75, bag: 3, note: 'Shares a combined 5-fish limit with Hāpuku (max 3 of the 5 as kingfish).' },
+    'Kahawai':   { size: null, bag: 20, note: 'No species-specific rule — counts toward the combined 20-finfish daily bag.' },
+    'Gurnard':   { size: 25, bag: 20 },
+    'Trevally':  { size: 25, bag: 20 },
+    'Tarakihi':  { size: 25, bag: 20 },
+    'Blue Cod':  { size: 33, bag: null, note: 'Bag varies a lot by exact sub-area — Tasman/Marlborough Sounds strictest at just 2; Kahurangi 10; Westland 15; South West 10. Landed whole or gutted only.' },
+    'Moki':      { size: 40, bag: 20 },
+    'Hapuka':    { size: null, bag: 5, note: 'Combined 5-fish limit shared with kingfish (max 3 kingfish).' },
+    'John Dory': { size: null, bag: 20, note: 'No species-specific rule — falls under the combined 20-finfish daily bag.' }
+  }},
+  'South-East': { combinedBag: 30, species: {
+    'Snapper':   { size: 25, bag: 10 },
+    'Kingfish':  { size: 75, bag: 3, note: 'Shares a combined 5-fish limit with Hāpuku (max 3 of the 5 as kingfish).' },
+    'Kahawai':   { size: null, bag: 15 },
+    'Gurnard':   { size: 25, bag: 30 },
+    'Trevally':  { size: 25, bag: 30 },
+    'Tarakihi':  { size: 25, bag: 15 },
+    'Blue Cod':  { size: 33, bag: null, note: 'Bag varies a lot by exact sub-area — Canterbury & East Otago Taiāpure strictest at 2; Chatham Islands & Southern Area 15. Landed whole or gutted only.' },
+    'Moki':      { size: 40, bag: 15 },
+    'Hapuka':    { size: null, bag: 5, note: 'Combined 5-fish limit shared with kingfish (max 3 kingfish).' },
+    'John Dory': { size: null, bag: 30, note: 'No species-specific rule — falls under the combined 30-finfish daily bag.' }
+  }},
+  'Southland/Sub-Antarctic': { combinedBag: 30, species: {
+    'Snapper':   { size: null, bag: 30, note: 'Not commonly targeted this far south — no species-specific rule; falls under the combined bag.' },
+    'Kingfish':  { size: 75, bag: 3, note: 'Shares a combined 5-fish limit with Hāpuku (max 3 of the 5 as kingfish).' },
+    'Kahawai':   { size: null, bag: 15 },
+    'Gurnard':   { size: 25, bag: 30 },
+    'Trevally':  { size: 25, bag: 30 },
+    'Tarakihi':  { size: 25, bag: 15 },
+    'Blue Cod':  { size: 33, bag: null, note: 'Bag varies a lot by exact sub-area — Milford Sound is fully closed (no take); Doubtful/Thompson/Bradshaw Sounds strictest at 1; elsewhere 3–15. Landed whole or gutted only.' },
+    'Moki':      { size: 40, bag: 15 },
+    'Hapuka':    { size: null, bag: 5, note: 'Combined 5-fish limit shared with kingfish (max 3 kingfish). Fiordland internal waters: max 3.' },
+    'John Dory': { size: null, bag: 30, note: 'No species-specific rule — falls under the combined 30-finfish daily bag.' }
+  }}
+};
+
+const FISHING_REGION_KEY = 'fishinglog_region';
+function getFishingRegion() {
+  return localStorage.getItem(FISHING_REGION_KEY) || 'Auckland/Kermadec';
+}
+function setFishingRegion(region) {
+  try { localStorage.setItem(FISHING_REGION_KEY, region); } catch(e) {}
+  checkLegalSize();
+}
+
+// Live legal-size check shown under the Length/Weight fields on the Log tab.
+// Reads the currently selected species + length; renders nothing if there's
+// not enough info to say something meaningful.
+function checkLegalSize() {
+  const box = document.getElementById('legalSizeBox');
+  if (!box) return;
+  const species = document.getElementById('ftype')?.value;
+  const lenVal  = parseFloat(document.getElementById('flen')?.value);
+  const region  = getFishingRegion();
+
+  if (!species) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  if (species === 'Crayfish') {
+    box.className = 'legal-box legal-warn';
+    box.style.display = 'flex';
+    box.innerHTML = `<div class="legal-icon">ℹ️</div><div><div>Rock lobster (crayfish) rules are a separate system from finfish — size, bag limits and tail-clipping requirements vary by CRA area and change often (including seasonal closures).</div><div style="margin-top:6px;font-size:11px;color:var(--hint);">Check the NZ Fishing Rules app or mpi.govt.nz for current crayfish rules before keeping this catch.</div></div>`;
+    return;
+  }
+
+  const rules = NZ_SIZE_LIMITS[region]?.species?.[species];
+  if (!rules) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  const parts = [];
+  let cls = 'legal-ok', icon = '✅';
+
+  if (rules.size != null) {
+    if (!isNaN(lenVal)) {
+      if (lenVal < rules.size) { cls = 'legal-bad'; icon = '⛔'; parts.push(`Undersize — ${lenVal}cm is below the ${rules.size}cm minimum for ${species} in ${region}. This fish must be released immediately.`); }
+      else { parts.push(`${lenVal}cm meets the ${rules.size}cm minimum for ${species} in ${region}.`); }
+    } else {
+      parts.push(`Minimum size for ${species} in ${region}: ${rules.size}cm. Enter a length above to check this catch.`);
+      cls = 'legal-warn'; icon = 'ℹ️';
+    }
+  } else {
+    parts.push(`No minimum size for ${species} in ${region}.`);
+  }
+
+  if (rules.bag != null) parts.push(`Daily bag limit: ${rules.bag}.`);
+  else parts.push(`Daily bag limit varies by exact sub-area — see note below.`);
+
+  if (rules.note) parts.push(rules.note);
+
+  box.className = 'legal-box ' + cls;
+  box.style.display = 'flex';
+  box.innerHTML = `<div class="legal-icon">${icon}</div><div><div>${parts.join(' ')}</div><div style="margin-top:6px;font-size:11px;color:var(--hint);">Reference only — rules vary by exact location and change over time. Always verify with the NZ Fishing Rules app or mpi.govt.nz before keeping a catch.</div></div>`;
+}
+
+
+const FAVSPOTS_KEY = 'fishinglog_favspots';
+
+function getFavSpots() {
+  try { return JSON.parse(localStorage.getItem(FAVSPOTS_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveFavSpots(arr) {
+  try { localStorage.setItem(FAVSPOTS_KEY, JSON.stringify(arr)); } catch(e) {}
+}
+
+// Chip row shown on the Log tab, above the location search field
+function renderFavSpotsRow() {
+  const row = document.getElementById('spotChipRow');
+  if (!row) return;
+  const spots = getFavSpots();
+  const chips = spots.map(s => `<div class="spot-chip" onclick="applyFavoriteSpot('${s.id}')">📍 ${s.name.replace(/</g,'&lt;')}</div>`).join('');
+  row.innerHTML = chips + `<div class="spot-chip spot-chip-add" onclick="openFavSpotsPanel()">⭐ ${spots.length ? 'Manage' : 'Save a spot'}</div>`;
+}
+
+// One tap: fill location fields + move the map pin, exactly like GPS/search do
+function applyFavoriteSpot(id) {
+  const spot = getFavSpots().find(s => s.id === id);
+  if (!spot) return;
+  vibrate(20);
+  document.getElementById('clat').value = spot.lat;
+  document.getElementById('clng').value = spot.lng;
+  document.getElementById('locname').value = spot.name;
+  if (logMap && logPin) { logPin.setLatLng([spot.lat, spot.lng]); logMap.setView([spot.lat, spot.lng], 14); }
+  setGeoStatus(`📍 Using "${spot.name}"`, false);
+}
+
+function openFavSpotsPanel() {
+  const panel = document.getElementById('favSpotsPanel');
+  if (!panel) return;
+  const la = document.getElementById('clat')?.value, ln = document.getElementById('clng')?.value;
+  const nm = document.getElementById('locname')?.value;
+  const coordsEl = document.getElementById('favSpotsCurrentCoords');
+  if (coordsEl) {
+    coordsEl.textContent = (la && ln) ? `Current: ${nm ? nm + ' · ' : ''}${parseFloat(la).toFixed(4)}, ${parseFloat(ln).toFixed(4)}` : 'Set a location on the map first to save it.';
+  }
+  const nameInput = document.getElementById('favSpotNameInput');
+  if (nameInput) nameInput.value = nm || '';
+  _renderFavSpotsList();
+  panel.classList.add('open');
+}
+function closeFavSpotsPanel() {
+  const panel = document.getElementById('favSpotsPanel');
+  if (panel) panel.classList.remove('open');
+}
+
+function addFavoriteSpot() {
+  const la = parseFloat(document.getElementById('clat')?.value);
+  const ln = parseFloat(document.getElementById('clng')?.value);
+  const nameInput = document.getElementById('favSpotNameInput');
+  const name = (nameInput?.value || '').trim();
+  if (isNaN(la) || isNaN(ln)) { showToast('Set a location first — use GPS, search, or tap the map', 'error'); return; }
+  if (!name) { showToast('Give this spot a name', 'error'); return; }
+  const spots = getFavSpots();
+  spots.push({ id: 'fs_' + Date.now(), name, lat: la, lng: ln });
+  saveFavSpots(spots);
+  if (nameInput) nameInput.value = '';
+  _renderFavSpotsList();
+  renderFavSpotsRow();
+  showToast(`⭐ Saved "${name}"`, 'success');
+}
+
+function deleteFavoriteSpot(id) {
+  saveFavSpots(getFavSpots().filter(s => s.id !== id));
+  _renderFavSpotsList();
+  renderFavSpotsRow();
+}
+
+function _renderFavSpotsList() {
+  const el = document.getElementById('favSpotsListContent');
+  if (!el) return;
+  const spots = getFavSpots();
+  if (!spots.length) { el.innerHTML = `<div style="font-size:12px;color:var(--hint);">No favorite spots yet — save your first one above.</div>`; return; }
+  el.innerHTML = spots.map(s => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px;background:var(--surf);border-radius:8px;margin-bottom:6px;border:0.5px solid var(--border);">
+      <div style="flex:1;min-width:0;cursor:pointer;" onclick="applyFavoriteSpot('${s.id}');closeFavSpotsPanel();">
+        <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📍 ${s.name.replace(/</g,'&lt;')}</div>
+        <div style="font-size:10.5px;color:var(--hint);margin-top:1px;">${s.lat.toFixed(4)}, ${s.lng.toFixed(4)} · tap to use</div>
+      </div>
+      <button onclick="deleteFavoriteSpot('${s.id}')" style="background:none;border:none;color:#e03c3c;font-size:16px;cursor:pointer;padding:0 4px 0 8px;flex-shrink:0;">✕</button>
+    </div>`).join('');
 }
 
 // ── Navigate-to helper — opens Google Maps (Android) or Apple Maps (iOS) ──
@@ -5364,6 +5638,7 @@ function renderStats() {
 // ─────────────────────────────────────────────
 calcTide(); calcMoon(); calcBite();
 setTimeout(initLogMap, 400);
+renderFavSpotsRow();
 setTimeout(() => autoWeather(true), 100);
 initStorage(); // async: migrates legacy photos + hydrates IDB photos into memory
 </script>
