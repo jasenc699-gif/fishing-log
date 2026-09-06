@@ -941,6 +941,12 @@ input,select,textarea{min-height:44px;}
                 <option value="">All locations</option>
               </select>
             </div>
+            <div>
+              <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Fishing Rig</div>
+              <select id="cfRig" onchange="syncCatchFilters()" style="width:100%;padding:8px 10px;font-size:13px;border:0.5px solid var(--border);border-radius:8px;background:var(--surf2);">
+                <option value="">All rigs</option>
+              </select>
+            </div>
           </div>
           <!-- Active filter chips -->
           <div id="catchActiveChips" style="display:none;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border);display:flex;flex-wrap:wrap;gap:5px;"></div>
@@ -1050,6 +1056,14 @@ input,select,textarea{min-height:44px;}
           <button class="sbtn" style="padding:13px;font-size:14px;background:var(--dark3);display:flex;align-items:center;justify-content:center;gap:7px;" onclick="document.getElementById('importFile').click()">📂 Import Backup</button>
         </div>
         <p style="font-size:11px;color:var(--hint);text-align:center;margin-top:10px;line-height:1.5;">Backup includes all catch data &amp; photos · Import merges without duplicates</p>
+        <button class="sbtn" style="margin-top:10px;padding:12px;font-size:13px;background:var(--dark3);width:100%;" onclick="startRelinkFlow()">🔎 Relink Missing Photos from Gallery</button>
+        <p style="font-size:11px;color:var(--hint);text-align:center;margin-top:8px;line-height:1.5;">No backup file? If the original photos are still in your phone's gallery, select them here — we'll match them to catches by date &amp; time automatically.</p>
+      </div>
+
+      <!-- Storage Health -->
+      <div class="sec">
+        <div class="stitle">🗄️ Storage Health</div>
+        <p id="storageHealthText" style="font-size:13px;color:var(--muted);line-height:1.6;">Checking…</p>
       </div>
 
     </div><!-- /pg-settings -->
@@ -1110,6 +1124,29 @@ input,select,textarea{min-height:44px;}
         <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin:18px 0 8px;">Your spots</div>
         <div id="favSpotsListContent"></div>
         <button class="sbtn" style="margin-top:8px;background:var(--dark3);" onclick="closeFavSpotsPanel()">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ RELINK MISSING PHOTOS MODAL ══ -->
+<input type="file" id="relinkFileInput" accept="image/*" multiple style="display:none" onchange="handleRelinkFiles(event)">
+<div class="msug-wrap" id="relinkPanel">
+  <div class="msug-inner">
+    <div class="msug-card">
+      <div class="msug-head">
+        <span style="font-size:16px;font-weight:700;color:#fff;">🔎 Relink Missing Photos</span>
+        <button onclick="closeRelinkPanel()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+      </div>
+      <div style="padding:14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
+          We matched each photo to the closest catch by date/time from the photo's own metadata — check the guesses below and adjust any that are wrong before saving.
+        </div>
+        <div id="relinkContent"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
+          <button class="sbtn" style="background:var(--dark3);" onclick="closeRelinkPanel()">Cancel</button>
+          <button class="sbtn teal-btn" onclick="confirmRelinkMatches()">Save Matches</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1302,9 +1339,205 @@ window.addEventListener('beforeinstallprompt', e => {
 });
 function doInstall() {
   if(deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(() => { deferredPrompt=null; document.getElementById('ibar').style.display='none'; }); }
+  else if (isIOS() && !isStandalone()) {
+    showToast('Tap the Share icon, then "Add to Home Screen"', 'success');
+  }
 }
 window.addEventListener('appinstalled', () => { document.getElementById('ibar').style.display='none'; });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+
+// ─────────────────────────────────────────────
+// STORAGE DURABILITY
+// Photos live only in IndexedDB. Browsers (iOS Safari especially) can evict
+// an origin's entire storage — including IndexedDB — if the site goes unused
+// for ~7 days or the device is low on space. Two mitigations:
+//   1. Ask for persistent storage so the browser treats this data as durable
+//      and excludes it from routine eviction.
+//   2. Nudge users still using a browser tab to install to Home Screen —
+//      installed/standalone PWAs are exempt from Safari's 7-day data purge
+//      in a way plain bookmarked tabs are not.
+// Neither is a hard guarantee, which is why Backup & Restore still matters.
+// ─────────────────────────────────────────────
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+function isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPadOS reports as Mac
+}
+
+async function requestPersistentStorage() {
+  if (!navigator.storage?.persist) return;
+  try {
+    const already = await navigator.storage.persisted?.();
+    if (already) return;
+    await navigator.storage.persist();
+  } catch(e) { /* not fatal — Backup & Restore is the fallback */ }
+}
+requestPersistentStorage();
+
+// Show an iOS-specific "Add to Home Screen" nudge — beforeinstallprompt never
+// fires on iOS Safari, so without this, iOS users in a browser tab never see
+// any install prompt at all.
+if (isIOS() && !isStandalone() && !sessionStorage.getItem('iosInstallNudgeDismissed')) {
+  const ibar = document.getElementById('ibar');
+  if (ibar) {
+    ibar.querySelector('span').textContent = '📲 Add to Home Screen — keeps photos safer';
+    ibar.querySelector('button:not(.ix)').textContent = 'How?';
+    ibar.style.display = 'flex';
+  }
+}
+const _origIx = document.querySelector('#ibar .ix');
+if (_origIx) _origIx.addEventListener('click', () => sessionStorage.setItem('iosInstallNudgeDismissed', '1'));
+
+// ─────────────────────────────────────────────
+// RELINK MISSING PHOTOS — recovery without a backup file
+// If IndexedDB got wiped and there's no backup, the actual photo bytes are
+// gone for good — nothing in the browser can bring them back. But the
+// original photos usually still exist in the user's phone gallery (this app
+// only ever kept a compressed copy). This lets them re-select those original
+// files; we read each photo's own EXIF date/time and guess which catch it
+// belongs to, so it's a few taps instead of manually redoing every catch.
+// ─────────────────────────────────────────────
+let _relinkItems = []; // { file, objectUrl, exifTs, catchId (current selection) }
+
+function startRelinkFlow() {
+  const missing = catches.filter(c => !c.photo);
+  if (missing.length === 0) {
+    showToast('No catches are missing a photo right now 🎣', 'success');
+    return;
+  }
+  document.getElementById('relinkFileInput').click();
+}
+
+async function _relinkExtractExifTs(file) {
+  try {
+    const buf = await file.arrayBuffer();
+    const parsed = await exifr.parse(buf, { tiff:true, exif:true, gps:true, xmp:true }).catch(() => null);
+    const dt = parsed?.DateTimeOriginal ?? parsed?.CreateDate ?? parsed?.DateTime ?? null;
+    if (!dt) return null;
+    const d = new Date(dt);
+    return isNaN(d) ? null : d.getTime();
+  } catch(e) { return null; }
+}
+
+function _guessCatchId(ts, usedIds) {
+  const missing = catches.filter(c => !c.photo && !usedIds.has(c.id));
+  if (!missing.length) return null;
+  if (ts == null) return null;
+  let best = null, bestDiff = Infinity;
+  for (const c of missing) {
+    if (!c.date) continue;
+    const cTs = new Date(`${c.date}T${c.time || '12:00'}`).getTime();
+    if (isNaN(cTs)) continue;
+    const diff = Math.abs(cTs - ts);
+    if (diff < bestDiff) { bestDiff = diff; best = c; }
+  }
+  // Only trust the guess if it's within 14 days — otherwise leave it for manual pick.
+  return (best && bestDiff <= 14*24*3600*1000) ? best.id : null;
+}
+
+async function handleRelinkFiles(e) {
+  const files = Array.from(e.target.files || []);
+  e.target.value = '';
+  if (!files.length) return;
+
+  showToast('Reading photo dates…', 'success');
+  const withTs = [];
+  for (const file of files) {
+    withTs.push({ file, ts: await _relinkExtractExifTs(file) });
+  }
+  // Match earliest photos to earliest missing catches first, for sane defaults.
+  withTs.sort((a,b) => (a.ts ?? Infinity) - (b.ts ?? Infinity));
+
+  const usedIds = new Set();
+  _relinkItems = withTs.map(({file, ts}) => {
+    const guess = _guessCatchId(ts, usedIds);
+    if (guess) usedIds.add(guess);
+    return { file, objectUrl: URL.createObjectURL(file), exifTs: ts, catchId: guess };
+  });
+
+  _renderRelinkPanel();
+  document.getElementById('relinkPanel').classList.add('open');
+}
+
+function _renderRelinkPanel() {
+  const missing = catches.filter(c => !c.photo);
+  const content = document.getElementById('relinkContent');
+  content.innerHTML = _relinkItems.map((item, i) => {
+    const opts = missing.map(c =>
+      `<option value="${c.id}" ${item.catchId === c.id ? 'selected' : ''}>${(c.date||'?')} · ${c.fish || 'Unknown'}${c.location ? ' · ' + c.location : ''}</option>`
+    ).join('');
+    return `
+      <div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);">
+        <img src="${item.objectUrl}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;flex-shrink:0;" alt="Photo to relink">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:11px;color:var(--hint);margin-bottom:4px;">${item.exifTs ? new Date(item.exifTs).toLocaleString() : 'No date found in photo'}</div>
+          <select data-idx="${i}" onchange="_relinkItems[${i}].catchId = this.value || null" style="min-height:38px;font-size:13px;">
+            <option value="">— Skip this photo —</option>
+            ${opts}
+          </select>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function confirmRelinkMatches() {
+  const toSave = _relinkItems.filter(item => item.catchId);
+  if (!toSave.length) { closeRelinkPanel(); return; }
+
+  showToast(`Saving ${toSave.length} photo${toSave.length !== 1 ? 's' : ''}…`, 'success');
+  let saved = 0;
+  for (const item of toSave) {
+    try {
+      const { dataUrl } = await compressImage(item.file);
+      await idbPut(item.catchId, dataUrl);
+      const c = catches.find(c => c.id === item.catchId);
+      if (c) c.photo = dataUrl;
+      saved++;
+    } catch(e) { console.warn('Relink save failed for', item.catchId, e); }
+  }
+
+  closeRelinkPanel();
+  if (currentTab === 'list') renderList();
+  if (currentTab === 'stats') renderStats();
+  showToast(`✅ Restored ${saved} photo${saved !== 1 ? 's' : ''}`, 'success');
+}
+
+function closeRelinkPanel() {
+  document.getElementById('relinkPanel').classList.remove('open');
+  _relinkItems.forEach(item => URL.revokeObjectURL(item.objectUrl));
+  _relinkItems = [];
+}
+
+async function refreshStorageHealth() {
+  const el = document.getElementById('storageHealthText');
+  if (!el) return;
+  const lines = [];
+  try {
+    if (navigator.storage?.persisted) {
+      const persisted = await navigator.storage.persisted();
+      lines.push(persisted
+        ? '✅ Persistent storage granted — photos are protected from routine browser cleanup.'
+        : '⚠️ Persistent storage not granted by your browser yet — photos could be cleared if the app goes unused for a while or the device runs low on space.');
+    }
+    if (navigator.storage?.estimate) {
+      const { usage, quota } = await navigator.storage.estimate();
+      if (usage != null && quota != null && quota > 0) {
+        const pct = Math.round((usage / quota) * 100);
+        const mb = n => (n / (1024*1024)).toFixed(1);
+        lines.push(`Using ${mb(usage)} MB of ${mb(quota)} MB available (${pct}%).`);
+        if (pct > 80) lines.push('⚠️ Getting close to your device storage limit — back up and consider freeing up space.');
+      }
+    }
+    if (!isStandalone()) {
+      lines.push(isIOS()
+        ? 'ℹ️ Running in Safari, not installed — tap Install above for better storage durability.'
+        : 'ℹ️ Running in a browser tab, not installed — installing to your home screen reduces the risk of data loss.');
+    }
+  } catch(e) { lines.push('Could not check storage status.'); }
+  el.innerHTML = lines.length ? lines.join('<br><br>') : 'Storage status unavailable in this browser.';
+}
 
 // ─────────────────────────────────────────────
 // STATE
@@ -1500,6 +1733,7 @@ function _applySettingsVisibility() {
 }
 
 function openSettings() {
+  refreshStorageHealth();
   const input = document.getElementById('settingsApiInput');
   const savedKey = getTidecheckKey();
   if (input) input.value = savedKey;
@@ -4926,7 +5160,7 @@ function syncCatchFilters() {
 }
 
 function clearCatchFilters() {
-  ['cfYear','cfMonth','cfSpecies','cfLocation'].forEach(id => {
+  ['cfYear','cfMonth','cfSpecies','cfLocation','cfRig'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
   });
   _tileSpecies = null;
@@ -4934,7 +5168,7 @@ function clearCatchFilters() {
 }
 
 function _updateCatchFilterBadge() {
-  const active = ['cfYear','cfMonth','cfSpecies','cfLocation']
+  const active = ['cfYear','cfMonth','cfSpecies','cfLocation','cfRig']
     .filter(id => document.getElementById(id)?.value).length
     + (_tileSpecies ? 1 : 0);
   const badge = document.getElementById('catchFilterBadge');
@@ -5052,6 +5286,13 @@ function renderList() {
     const cv = cfLocation.value;
     cfLocation.innerHTML = '<option value="">All locations</option>' + allLocs.map(l => `<option value="${l}"${l===cv?' selected':''}>${l}</option>`).join('');
   }
+  // Populate rig filter with unique fishing rigs
+  const allRigs = [...new Set(catches.map(c => (c.rig||'').trim()).filter(Boolean))].sort();
+  const cfRig = document.getElementById('cfRig');
+  if (cfRig) {
+    const cv = cfRig.value;
+    cfRig.innerHTML = '<option value="">All rigs</option>' + allRigs.map(r => `<option value="${r}"${r===cv?' selected':''}>${r}</option>`).join('');
+  }
   // Sync hidden selects (for backwards compat with any code reading them)
   const filterFishHidden = document.getElementById('filterFish');
   const filterYearHidden = document.getElementById('filterYear');
@@ -5066,6 +5307,7 @@ function renderList() {
   const filterMonth  = document.getElementById('cfMonth')?.value || '';
   const filterFish2  = _tileSpecies || cfSpecies?.value || '';
   const filterLoc    = cfLocation?.value || '';
+  const filterRig    = cfRig?.value || '';
 
   const MONTHS_ALL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -5083,6 +5325,7 @@ function renderList() {
     }
     if (filterFish2 && c.fish !== filterFish2) return false;
     if (filterLoc && (c.nickname||c.location||'').trim() !== filterLoc) return false;
+    if (filterRig && (c.rig||'').trim() !== filterRig) return false;
     return true;
   });
 
@@ -5094,7 +5337,7 @@ function renderList() {
   else if(sort==='fish') s.sort((a,b)=>(a.fish||'').localeCompare(b.fish||''));
 
   // Update stats header — show filtered vs total when filters are active
-  const hasFilters = filterYear2 || filterMonth || filterFish2 || filterLoc;
+  const hasFilters = filterYear2 || filterMonth || filterFish2 || filterLoc || filterRig;
   const bestW = s.filter(c=>c.weight).map(c=>parseFloat(c.weight)||0);
   document.getElementById('tstats').textContent =
     (hasFilters ? s.length + ' of ' + catches.length : catches.length) +
