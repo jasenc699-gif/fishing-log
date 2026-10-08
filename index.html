@@ -6,15 +6,15 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="NZ Fishing Log">
+<meta name="apple-mobile-web-app-title" content="Fishing Log">
 <meta name="theme-color" content="#2c2c2c">
-<title>Fishing Log for NZ Waters</title>
+<title>Fishing Log</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
-<script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+<link rel="stylesheet" href="vendor/leaflet.css"/>
+<link rel="stylesheet" href="vendor/MarkerCluster.css"/>
+<link rel="stylesheet" href="vendor/MarkerCluster.Default.css"/>
+<script src="vendor/exifr.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 :root{
@@ -47,7 +47,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .tab{flex:1;min-width:40px;display:flex;flex-direction:column;align-items:center;padding:8px 2px 5px;cursor:pointer;border-top:2px solid transparent;gap:3px;}
 .tab.active{border-top-color:var(--teal);}
 .ti{font-size:18px;line-height:1;}
-.tl{font-size:7.5px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;}
+.tl{font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.3px;white-space:nowrap;}
 .tab.active .tl{color:var(--teal);}
 
 /* PAGES */
@@ -57,7 +57,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* SECTIONS */
 .sec{background:var(--white);border-radius:12px;border:0.5px solid var(--border);padding:13px;margin-bottom:10px;}
-.stitle{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.stitle{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
 
 /* PHOTO */
 .pu{width:100%;min-height:200px;max-height:65vh;border:none;border-radius:12px;display:flex;align-items:stretch;justify-content:center;cursor:pointer;background:#2c2c2c;overflow:hidden;position:relative;}
@@ -80,7 +80,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* DARK CARD */
 .dcard{background:var(--dark);border-radius:12px;padding:14px;margin-bottom:10px;}
-.dlbl{font-size:10px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;}
+.dlbl{font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;}
 
 /* WEATHER */
 .wgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
@@ -95,7 +95,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .wx-safe-loading{background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.12);}
 .wx-big3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
 .wx-b3{background:rgba(255,255,255,0.07);border-radius:9px;padding:10px 9px 9px;}
-.wx-b3-lbl{font-size:9px;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.38);font-weight:700;margin-bottom:5px;}
+.wx-b3-lbl{font-size:11px;text-transform:uppercase;letter-spacing:0.8px;color:rgba(255,255,255,0.38);font-weight:700;margin-bottom:5px;}
 /* HOURLY RIBBON */
 .wx-ribbon{display:flex;overflow-x:auto;gap:6px;padding-bottom:4px;padding-right:13px;-webkit-overflow-scrolling:touch;scroll-snap-type:x mandatory;}
 .wx-ribbon::-webkit-scrollbar{display:none;}
@@ -103,7 +103,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .wx-cell-now{background:var(--dark2);border-color:rgba(255,255,255,0.18);}
 .wx-cell-major{border-color:rgba(79,195,161,0.6);background:rgba(79,195,161,0.07);}
 .wx-cell-minor{border-color:rgba(239,159,39,0.5);}
-.wx-wind-pill{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;margin-top:1px;color:#fff;}
+.wx-wind-pill{font-size:11px;font-weight:700;padding:2px 5px;border-radius:4px;margin-top:1px;color:#fff;}
 .wx-wind-calm{background:rgba(79,195,161,0.55);}
 .wx-wind-mod{background:rgba(243,156,18,0.7);}
 .wx-wind-strong{background:rgba(231,76,60,0.75);}
@@ -134,7 +134,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .cfish{font-size:14px;font-weight:600;color:var(--text);}
 .cmeta{font-size:12px;color:var(--muted);margin-top:2px;}
 .ctags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
-.tag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--surf);color:var(--muted);border:0.5px solid var(--border);}
+.tag{font-size:11px;padding:2px 7px;border-radius:20px;background:var(--surf);color:var(--muted);border:0.5px solid var(--border);}
 .tg{background:rgba(79,195,161,0.1);color:#0a5c43;border-color:rgba(79,195,161,0.3);}
 .tp{background:rgba(127,119,221,0.1);color:#2e2780;border-color:rgba(127,119,221,0.3);}
 .ta{background:rgba(239,159,39,0.1);color:#6b3e08;border-color:rgba(239,159,39,0.3);}
@@ -161,14 +161,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .summary-tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:2px;}
 .sum-tile{background:var(--surf);border-radius:10px;padding:14px 8px 12px;text-align:center;border:0.5px solid var(--border);}
 .sum-val{font-size:26px;font-weight:700;color:var(--text);line-height:1;}
-.sum-lbl{font-size:10px;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:0.5px;}
+.sum-lbl{font-size:11px;color:var(--muted);margin-top:5px;text-transform:uppercase;letter-spacing:0.5px;}
 /* STATS — 2-col insight tile grid */
 .insight-grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px;}
 .insight-tile{background:rgba(255,255,255,0.06);border-radius:10px;padding:12px 12px 10px;}
 .insight-tile .it-icon{font-size:18px;margin-bottom:5px;}
-.insight-tile .it-title{font-size:10px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px;}
+.insight-tile .it-title{font-size:11px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px;}
 .insight-tile .it-val{font-size:14px;font-weight:600;color:#fff;line-height:1.2;}
-.insight-tile .it-sub{font-size:10px;color:rgba(255,255,255,0.4);margin-top:3px;}
+.insight-tile .it-sub{font-size:11px;color:rgba(255,255,255,0.4);margin-top:3px;}
 .insight-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:0.5px solid rgba(255,255,255,0.07);}
 .insight-item:last-child{border-bottom:none;padding-bottom:0;}
 .insight-icon{font-size:22px;flex-shrink:0;}
@@ -194,9 +194,9 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .qv-fish{font-size:15px;font-weight:700;color:#1a1a1a;line-height:1.2;}
 .qv-loc{font-size:11px;color:#666;margin-top:2px;}
 .qv-combo{background:#f0faf6;border:0.5px solid rgba(79,195,161,0.35);border-radius:7px;padding:7px 9px;margin-top:8px;}
-.qv-combo-lbl{font-size:8.5px;font-weight:700;color:#0a5c43;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px;}
+.qv-combo-lbl{font-size:11px;font-weight:700;color:#0a5c43;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px;}
 .qv-combo-val{font-size:12px;font-weight:600;color:#1a1a1a;}
-.qv-meta{font-size:10px;color:#888;margin-top:6px;line-height:1.6;}
+.qv-meta{font-size:11px;color:#888;margin-top:6px;line-height:1.6;}
 .qv-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;}
 .qv-btn{border:none;border-radius:8px;padding:7px 4px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;text-align:center;line-height:1.3;}
 .qv-btn-nav{background:#4fc3a1;color:#003520;}
@@ -204,17 +204,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 /* ── MAP FILTER PANEL ──────────────────────────────────────────────── */
 .map-filter-panel{background:var(--white);border:0.5px solid var(--border);border-radius:10px;padding:12px 13px;margin-bottom:8px;animation:panelSlide 0.2s ease;}
 @keyframes panelSlide{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:translateY(0);}}
-.mf-section-lbl{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.mf-section-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
 .mf-pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;}
 .mf-pills:last-child{margin-bottom:0;}
 .mf-pill{display:inline-flex;align-items:center;gap:3px;padding:5px 10px;border-radius:20px;border:1.5px solid var(--border);background:var(--surf);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;white-space:nowrap;}
-.mf-pill-check{font-size:10px;display:none;margin-right:1px;}
+.mf-pill-check{font-size:11px;display:none;margin-right:1px;}
 .mf-pill.on .mf-pill-check{display:inline;}
-.mf-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#e74c3c;color:#fff;font-size:9px;font-weight:800;margin-left:4px;padding:0 3px;line-height:1;vertical-align:middle;}
+.mf-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;border-radius:8px;background:#e74c3c;color:#fff;font-size:11px;font-weight:800;margin-left:4px;padding:0 3px;line-height:1;vertical-align:middle;}
 .map-ctrl-btn.filter-on{background:var(--dark);color:#fff;border-color:var(--dark);}
 #mapActiveBar{display:none;align-items:center;gap:5px;padding:7px 10px;background:rgba(79,195,161,0.08);border:0.5px solid rgba(79,195,161,0.3);border-radius:8px;margin-bottom:8px;flex-wrap:wrap;}
 #mapActiveBar.show{display:flex;}
-.mf-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:10px;background:rgba(79,195,161,0.18);color:#0a5c43;font-size:10px;font-weight:700;}
+.mf-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 7px;border-radius:10px;background:rgba(79,195,161,0.18);color:#0a5c43;font-size:11px;font-weight:700;}
 .spot-chip-row{display:flex;gap:7px;overflow-x:auto;padding:2px 0 4px;-webkit-overflow-scrolling:touch;}
 .spot-chip-row::-webkit-scrollbar{display:none;}
 .spot-chip{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:8px 12px;border-radius:20px;background:var(--surf);border:0.5px solid var(--border);font-size:12.5px;font-weight:600;color:var(--text);cursor:pointer;white-space:nowrap;}
@@ -237,7 +237,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
 /* Permanent nickname tooltip on catch-card mini-maps */
-.catch-nick-tip{background:rgba(30,30,30,0.82)!important;border:none!important;border-radius:5px!important;color:#fff!important;font-size:10px!important;font-weight:600!important;padding:2px 6px!important;box-shadow:0 1px 4px rgba(0,0,0,0.35)!important;white-space:nowrap!important;}
+.catch-nick-tip{background:rgba(30,30,30,0.82)!important;border:none!important;border-radius:5px!important;color:#fff!important;font-size:11px!important;font-weight:600!important;padding:2px 6px!important;box-shadow:0 1px 4px rgba(0,0,0,0.35)!important;white-space:nowrap!important;}
 .catch-nick-tip::before{border-top-color:rgba(30,30,30,0.82)!important;}
 input[type=file]{display:none;}
 /* ── SPECIES TILES ─────────────────────────────────────────────────────── */
@@ -248,7 +248,7 @@ input[type=file]{display:none;}
 .sp-tile-body{padding:13px 14px 14px;}
 .sp-tile-name{font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px;line-height:1.25;}
 .sp-tile-count{font-size:32px;font-weight:800;color:var(--text);line-height:1;}
-.sp-tile-lbl{font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;}
+.sp-tile-lbl{font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:0.5px;}
 .sp-tile-sub{font-size:11px;color:var(--muted);margin-top:4px;}
 .sp-tile-thumb{width:100%;height:72px;object-fit:cover;display:block;background:#e0e0e0;}
 .sp-tile-thumb-ph{width:100%;height:72px;display:flex;align-items:center;justify-content:center;font-size:30px;}
@@ -270,7 +270,7 @@ input[type=file]{display:none;}
 .toast-inner.error{background:#7a2020;border:0.5px solid rgba(220,80,80,0.5);}
 .toast-icon{font-size:20px;flex-shrink:0;line-height:1;}
 .toast-msg{font-size:14px;font-weight:500;color:#fff;line-height:1.4;}
-.api-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:10px;margin-left:6px;font-weight:500;}
+.api-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 7px;border-radius:10px;margin-left:6px;font-weight:500;}
 .live-badge{background:rgba(79,195,161,0.15);color:#0a5c43;border:0.5px solid rgba(79,195,161,0.4);}
 .offline-badge{background:rgba(255,160,0,0.12);color:#7a4e00;border:0.5px solid rgba(255,160,0,0.3);}
 .info-box{background:var(--surf);border-radius:8px;padding:11px 13px;border:0.5px solid var(--border);font-size:13px;color:var(--muted);line-height:1.7;}
@@ -331,29 +331,29 @@ input[type=file]{display:none;}
 .tide-sep{height:0.5px;background:rgba(255,255,255,0.1);margin:11px 0 9px;}
 .tide-hl-row{display:flex;gap:6px;}
 .tide-hl-item{flex:1;}
-.tide-hl-label{font-size:8px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.7px;}
+.tide-hl-label{font-size:11px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.7px;}
 .tide-hl-time{font-size:12px;font-weight:700;color:#fff;margin-top:2px;}
-.tide-hl-ht{font-size:10px;color:rgba(255,255,255,0.45);margin-top:1px;}
+.tide-hl-ht{font-size:11px;color:rgba(255,255,255,0.45);margin-top:1px;}
 .tide-prog-track{height:3px;background:rgba(255,255,255,0.1);border-radius:3px;margin-top:10px;overflow:hidden;}
 .tide-prog-fill{height:100%;background:linear-gradient(to right,rgba(79,195,161,0.5),var(--teal));border-radius:3px;}
-.tide-tz-note{font-size:10px;color:var(--hint);text-align:center;margin:-2px 0 9px;line-height:1.4;}
+.tide-tz-note{font-size:11px;color:var(--hint);text-align:center;margin:-2px 0 9px;line-height:1.4;}
 /* Day cards */
 .tide-day-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
 .tide-day-card{background:var(--white);border-radius:12px;border:0.5px solid var(--border);overflow:hidden;}
 .tide-day-head{background:#1a2a38;padding:9px 10px;}
-.tide-today-dot{font-size:8px;font-weight:700;color:var(--teal);letter-spacing:0.5px;margin-bottom:2px;}
-.tide-day-datestr{font-size:10.5px;font-weight:700;color:#fff;line-height:1.35;}
+.tide-today-dot{font-size:11px;font-weight:700;color:var(--teal);letter-spacing:0.5px;margin-bottom:2px;}
+.tide-day-datestr{font-size:11px;font-weight:700;color:#fff;line-height:1.35;}
 .tide-day-meta{margin-top:5px;display:flex;flex-direction:column;gap:3px;}
-.tide-day-meta-row{font-size:8.5px;color:rgba(255,255,255,0.5);line-height:1.45;}
-.tide-stars-row{font-size:9px;letter-spacing:1.5px;margin-top:1px;}
+.tide-day-meta-row{font-size:11px;color:rgba(255,255,255,0.5);line-height:1.45;}
+.tide-stars-row{font-size:11px;letter-spacing:1.5px;margin-top:1px;}
 .tide-event-row{display:flex;align-items:flex-start;gap:5px;padding:7px 9px;border-bottom:0.5px solid var(--border);}
 .tide-event-row:last-child{border-bottom:none;}
-.tide-event-badge{font-size:6.5px;font-weight:700;letter-spacing:0.2px;border-radius:3px;padding:2px 4px;flex-shrink:0;margin-top:2px;white-space:nowrap;}
+.tide-event-badge{font-size:11px;font-weight:700;letter-spacing:0.2px;border-radius:3px;padding:2px 4px;flex-shrink:0;margin-top:2px;white-space:nowrap;}
 .tide-event-badge.high{background:rgba(32,137,214,0.12);color:#1869aa;border:0.5px solid rgba(32,137,214,0.25);}
 .tide-event-badge.low{background:rgba(0,0,0,0.05);color:var(--muted);border:0.5px solid var(--border);}
 .tide-event-time{font-size:12px;font-weight:700;color:var(--text);line-height:1.3;}
-.tide-event-ht{font-size:9px;color:var(--muted);margin-top:2px;}
-.tide-lat-badge{font-size:6px;background:rgba(0,0,0,0.07);border:0.5px solid #ccc;border-radius:2px;padding:0 3px;color:var(--hint);margin-left:3px;vertical-align:middle;}
+.tide-event-ht{font-size:11px;color:var(--muted);margin-top:2px;}
+.tide-lat-badge{font-size:11px;background:rgba(0,0,0,0.07);border:0.5px solid #ccc;border-radius:2px;padding:0 3px;color:var(--hint);margin-left:3px;vertical-align:middle;}
 /* LOG TAB UX */
 .exif-badge{display:none;align-items:center;gap:6px;padding:7px 10px;background:rgba(79,195,161,0.12);border:0.5px solid rgba(79,195,161,0.35);border-radius:8px;margin-top:8px;font-size:12px;color:#0a5c43;font-weight:500;}
 .exif-badge.show{display:flex;}
@@ -368,6 +368,55 @@ input[type=file]{display:none;}
 .coll-body{overflow:hidden;transition:max-height .3s ease;}
 .log-submit-bar{position:sticky;bottom:0;left:0;right:0;padding:10px 13px max(env(safe-area-inset-bottom),10px);background:linear-gradient(transparent,var(--surf2) 30%);z-index:10;}
 input,select,textarea{min-height:44px;}
+/* ═══ PRO POLISH OVERRIDES ═══ */
+:root{--teal-d:#0f8a6d;--ring:0 0 0 3px rgba(79,195,161,.35);}
+.app{height:100dvh;}
+body{-webkit-font-smoothing:antialiased;}
+button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+.header{border-bottom:1px solid rgba(255,255,255,.06);}
+.htitle{font-size:19px;letter-spacing:-.4px;}.hsub{font-size:12px;}
+#settingsGearBtn{display:flex;align-items:center;justify-content:center;width:44px;height:44px;color:rgba(255,255,255,.7)!important;}
+/* tab bar */
+.tabs{background:var(--dark);padding:0 4px max(env(safe-area-inset-bottom),6px);border-top:1px solid rgba(255,255,255,.08);}
+.tab{background:none;border:none;border-top:2px solid transparent;font-family:inherit;color:rgba(255,255,255,.5);min-height:56px;justify-content:center;gap:4px;}
+.tab.active{color:var(--teal);}.tl{font-size:11px;font-weight:600;letter-spacing:.2px;text-transform:none;color:inherit;}
+.tab.active .tl{color:var(--teal);}.ti{width:22px;height:22px;}
+/* segmented control */
+.seg{display:flex;gap:4px;margin:10px 13px 0;padding:3px;background:var(--surf);border-radius:10px;flex-shrink:0;}
+.seg button{flex:1;border:none;background:none;padding:9px 0;border-radius:8px;font:600 13px inherit;font-family:inherit;color:var(--muted);min-height:40px;}
+.seg button.on{background:var(--white);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12);}
+.pg.show{animation:pgIn .18s ease;}@keyframes pgIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* hierarchy & contrast */
+.teal-btn,.install-bar button,.qv-btn-nav{color:#06382b!important;font-weight:700;}
+.sbtn{border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.12);}
+.sbtn:not(.teal-btn){background:transparent;color:var(--text);border:1px solid var(--border);box-shadow:none;}
+.sec,.ccard,.stat-card,.wcard{border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);}
+.stitle{font-size:11px;letter-spacing:.8px;}
+.tag{font-size:11px;padding:3px 9px;}
+.adv{margin-top:10px;}.adv summary{font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;padding:8px 0;min-height:44px;display:flex;align-items:center;}
+/* catch card */
+.chero{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;cursor:zoom-in;background:#222;}
+.cbody2{padding:14px;}.crow{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;}
+.cfish{font-size:18px;font-weight:700;letter-spacing:-.2px;}.cmeta{font-size:13px;margin-top:3px;}
+.cstats{display:flex;gap:18px;margin:10px 0 4px;}.cstats div{display:flex;align-items:baseline;gap:4px;}
+.cstats b{font-size:26px;font-weight:800;letter-spacing:-.5px;}.cstats span{font-size:12px;color:var(--muted);}
+.cact{display:flex;gap:2px;flex-shrink:0;}.ibtn{background:none;border:none;font:600 13px inherit;font-family:inherit;color:var(--teal-d);min-width:44px;min-height:44px;cursor:pointer;}
+.ibtn.danger{color:#c0392b;}
+.cnote{font-size:13px;color:var(--muted);font-style:italic;margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;cursor:pointer;}
+.cnote.open{display:block;}
+.maptoggle{margin-top:10px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:0 14px;min-height:40px;font:600 13px inherit;font-family:inherit;color:var(--muted);cursor:pointer;}
+.upd{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));max-width:406px;margin:0 auto;background:var(--dark);color:#fff;padding:12px 14px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;font-size:14px;z-index:9998;box-shadow:0 6px 24px rgba(0,0,0,.35);}
+.upd button{background:var(--teal);color:#06382b;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-family:inherit;}
+/* dark mode */
+@media(prefers-color-scheme:dark){
+ :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
+ input,select,textarea{border-color:#444;color:var(--text);}
+ .tg{color:#7fe0c0}.tp{color:#c5bfff}.ta{color:#f5c77e}.tb{color:#9cc9f5}
+ .live-badge,.exif-badge,.legal-summary-ok,.bwm .bwt,.mf-chip{color:#7fe0c0}
+ .offline-badge,.bwn .bwt{color:#f5c77e}.del-modal{background:#262626}.seg button.on{background:#3a3a3a}
+ .stepper button{background:#333}.spot-chip{color:var(--text)}.sbtn:not(.teal-btn){color:var(--text)}
+}
+
 </style>
 </head>
 <body>
@@ -384,19 +433,20 @@ input,select,textarea{min-height:44px;}
   <div id="ibar" class="install-bar" style="display:none">
     <span>📲 Add to Home Screen for full app</span>
     <button onclick="doInstall()">Install</button>
-    <button class="ix" onclick="document.getElementById('ibar').style.display='none'">✕</button>
+    <button aria-label="Close" class="ix" onclick="document.getElementById('ibar').style.display='none'">✕</button>
   </div>
 
   <!-- HEADER -->
   <div class="header">
     <img src="icon-192.png" width="38" height="38" style="border-radius:9px;flex-shrink:0;" alt="Fishing Log icon">
     <div style="flex:1;">
-      <div class="htitle">Fishing Log for NZ Waters</div>
+      <div class="htitle">Fishing Log</div>
       <div class="hsub" id="hcount">0 catches logged</div>
     </div>
-    <button id="settingsGearBtn" onclick="openSettings()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:22px;cursor:pointer;padding:4px;line-height:1;flex-shrink:0;display:none;" title="Settings">⚙️</button>
+    <button id="settingsGearBtn" onclick="openSettings()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:22px;cursor:pointer;padding:4px;line-height:1;flex-shrink:0;display:none;" title="Settings" aria-label="Settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></button>
   </div>
 
+  <div class="seg" id="seg" style="display:none"><button data-seg="wx" onclick="go('wx')">Weather</button><button data-seg="tide" onclick="go('tide')">Tide</button><button data-seg="moon" onclick="go('moon')">Moon</button><button data-seg="bite" onclick="go('bite')">Bite</button></div>
   <div class="pages">
 
     <!-- ══ LOG ══ -->
@@ -404,7 +454,7 @@ input,select,textarea{min-height:44px;}
 
       <!-- 1. PHOTO -->
       <div class="sec">
-        <div class="stitle">📸 Photo</div>
+        <div class="stitle">Photo</div>
         <div class="pu" id="puEl" onclick="const i=document.getElementById('fiLib');i.value='';i.click();">
           <div class="pu-inner" id="puInner">
             <div class="pu-fish-cover"></div>
@@ -419,9 +469,7 @@ input,select,textarea{min-height:44px;}
           <span class="exif-badge-icon">✅</span>
           <span id="exifBadgeText">GPS &amp; time captured from photo</span>
         </div>
-        <div style="margin-top:8px;">
-          <button class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click();" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:600;">📷 Upload Photo</button>
-        </div>
+        
         <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
@@ -429,7 +477,7 @@ input,select,textarea{min-height:44px;}
 
       <!-- 2. CATCH ESSENTIALS -->
       <div class="sec">
-        <div class="stitle">🐟 Catch Details</div>
+        <div class="stitle">Catch Details</div>
         <label>Fish species</label>
         <select id="ftype" style="min-height:44px;" onchange="checkLegalSize()">
           <option value="">Select species...</option>
@@ -470,8 +518,8 @@ input,select,textarea{min-height:44px;}
       </div>
 
       <!-- 3. DATE & TIME -->
-      <div class="sec" id="dateTimeSection" style="display:none;">
-        <div class="stitle">📅 Date &amp; Time</div>
+      <div class="sec" id="dateTimeSection">
+        <div class="stitle">Date &amp; Time</div>
         <div class="r2">
           <div><label>Date</label><input type="date" id="cdate" style="min-height:44px;"></div>
           <div><label>Time</label><input type="time" id="ctime" style="min-height:44px;"></div>
@@ -521,7 +569,7 @@ input,select,textarea{min-height:44px;}
 
       <!-- 5. LOCATION — map first -->
       <div class="sec">
-        <div class="stitle">📍 Location</div>
+        <div class="stitle">Location</div>
         <div class="mapbox" id="logmap" style="margin-bottom:10px;">
           <button class="map-layer-btn" id="logMapLayerBtn" onclick="toggleLogMapLayer()">🛰 Satellite</button>
         </div>
@@ -533,10 +581,10 @@ input,select,textarea{min-height:44px;}
         <label style="margin-top:8px;">Search location</label>
         <input type="text" id="locname" placeholder="e.g. Tauranga Harbour" oninput="onLocInput()" autocomplete="off" style="min-height:44px;">
         <div class="geo-status" id="gstat"></div>
-        <label>Location Nickname <span style="font-weight:400;color:var(--hint);font-size:10px;">— your personal name for this spot</span></label>
+        <label>Location Nickname <span style="font-weight:400;color:var(--hint);font-size:11px;">— your personal name for this spot</span></label>
         <input type="text" id="cnickname" placeholder="e.g. Blue Tongue" list="nicknameSuggestions" autocomplete="off" style="min-height:44px;">
         <datalist id="nicknameSuggestions"></datalist>
-        <div class="r2">
+        <details class="adv"><summary>Edit coordinates</summary>        <div class="r2">
           <div><label>Latitude</label><input type="number" id="clat" step="0.0001" value="-37.6878" oninput="onCoordInput()" inputmode="decimal" style="min-height:44px;"></div>
           <div><label>Longitude</label><input type="number" id="clng" step="0.0001" value="176.1651" oninput="onCoordInput()" inputmode="decimal" style="min-height:44px;"></div>
         </div>
@@ -545,14 +593,14 @@ input,select,textarea{min-height:44px;}
 
       <!-- 6. NOTES -->
       <div class="sec">
-        <div class="stitle">📝 Notes</div>
+        <div class="stitle">Notes</div>
         <textarea id="notes" rows="3" placeholder="Depth, technique, retrieve speed, conditions..." style="resize:none;font-size:16px;min-height:44px;"></textarea>
       </div>
 
       <!-- 7. CONDITIONS (collapsible) -->
       <div class="sec" id="condCard">
         <div class="coll-head" onclick="toggleCond()">
-          <div class="stitle" style="margin-bottom:0;">🌊 Conditions <span style="font-size:10px;color:var(--hint);font-weight:400;">(auto-filled on save)</span></div>
+          <div class="stitle" style="margin-bottom:0;">Conditions <span style="font-size:11px;color:var(--hint);font-weight:400;">(auto-filled on save)</span></div>
           <span class="coll-arrow" id="condArrow">▼</span>
         </div>
         <div class="coll-body" id="condBody" style="max-height:0;">
@@ -562,6 +610,7 @@ input,select,textarea{min-height:44px;}
             </div>
           </div>
         </div>
+</details>
       </div>
 
       <!-- sticky submit -->
@@ -576,7 +625,7 @@ input,select,textarea{min-height:44px;}
       <div class="sec" style="padding:11px 13px;margin-bottom:10px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
           <div style="flex:1;min-width:0;">
-            <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Tide Station</div>
+            <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Tide Station</div>
             <div id="tideLocLabel" style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">📍 Bay of Plenty, NZ (default)</div>
             <div id="tideGpsStatus" style="font-size:11px;color:var(--teal);min-height:14px;margin-top:2px;"></div>
           </div>
@@ -603,7 +652,7 @@ input,select,textarea{min-height:44px;}
       <div class="sec" id="tideCurveSection" style="display:none;margin-bottom:10px;">
         <div class="stitle" style="justify-content:space-between;align-items:center;">
           <span id="tideCurveLabel">📊 Tide Curve</span>
-          <button onclick="document.getElementById('tideCurveSection').style.display='none';_activeTideTile=null;_highlightTideTile();"
+          <button aria-label="Close" onclick="document.getElementById('tideCurveSection').style.display='none';_activeTideTile=null;_highlightTideTile();"
             style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--hint);padding:0;line-height:1;">✕</button>
         </div>
         <canvas id="tcurve" width="360" height="130" style="width:100%;height:130px;display:block;margin-top:4px;"></canvas>
@@ -629,8 +678,8 @@ input,select,textarea{min-height:44px;}
         </div>
         <div id="mrow" style="display:flex;justify-content:space-between;margin-top:13px;"></div>
       </div>
-      <div class="sec"><div class="stitle">📅 Moon Calculator</div><label>Date</label><input type="date" id="mdate" oninput="calcMoon()"></div>
-      <div class="sec"><div class="stitle">🎣 Moon &amp; Fishing</div><div id="mtip" style="font-size:13px;color:var(--muted);line-height:1.7;"></div></div>
+      <div class="sec"><div class="stitle">Moon Calculator</div><label>Date</label><input type="date" id="mdate" oninput="calcMoon()"></div>
+      <div class="sec"><div class="stitle">Moon &amp; Fishing</div><div id="mtip" style="font-size:13px;color:var(--muted);line-height:1.7;"></div></div>
     </div>
 
     <!-- ══ BITE ══ -->
@@ -656,20 +705,20 @@ input,select,textarea{min-height:44px;}
         <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:11px;">Major ~2 hrs · Minor ~1 hr · Red line = now</div>
         <canvas id="bcanv" width="360" height="46" style="width:100%;height:46px;display:block;"></canvas>
         <div style="display:flex;justify-content:space-between;margin-top:3px;">
-          <span style="font-size:9px;color:rgba(255,255,255,0.28);">12am</span>
-          <span style="font-size:9px;color:rgba(255,255,255,0.28);">6am</span>
-          <span style="font-size:9px;color:rgba(255,255,255,0.28);">12pm</span>
-          <span style="font-size:9px;color:rgba(255,255,255,0.28);">6pm</span>
-          <span style="font-size:9px;color:rgba(255,255,255,0.28);">12am</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.28);">12am</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.28);">6am</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.28);">12pm</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.28);">6pm</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.28);">12am</span>
         </div>
         <div style="display:flex;gap:14px;margin-top:9px;">
           <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><div style="width:9px;height:9px;border-radius:50%;background:var(--teal);"></div>Major</div>
           <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.5);"><div style="width:9px;height:9px;border-radius:50%;background:#EF9F27;"></div>Minor</div>
         </div>
       </div>
-      <div class="sec"><div class="stitle">📅 Select Date</div><input type="date" id="bcdate" oninput="calcBite()"></div>
+      <div class="sec"><div class="stitle">Select Date</div><input type="date" id="bcdate" oninput="calcBite()"></div>
       <div id="bwins" style="margin-bottom:10px;"></div>
-      <div class="sec"><div class="stitle">📊 Day Rating</div><div id="brate" style="font-size:13px;color:var(--muted);line-height:1.7;"></div></div>
+      <div class="sec"><div class="stitle">Day Rating</div><div id="brate" style="font-size:13px;color:var(--muted);line-height:1.7;"></div></div>
     </div>
 
     <!-- ══ WEATHER ══ -->
@@ -702,10 +751,10 @@ input,select,textarea{min-height:44px;}
               </svg>
               <span id="wxWindSpd" style="font-size:15px;font-weight:700;color:#fff;line-height:1;">—</span>
             </div>
-            <div id="wxWindDir" style="font-size:10px;color:rgba(255,255,255,0.5);">—</div>
-            <div id="wxGust" style="font-size:10px;color:rgba(255,255,255,0.32);margin-top:2px;">Gust —</div>
+            <div id="wxWindDir" style="font-size:11px;color:rgba(255,255,255,0.5);">—</div>
+            <div id="wxGust" style="font-size:11px;color:rgba(255,255,255,0.32);margin-top:2px;">Gust —</div>
             <button id="wxCompassBtn" onclick="toggleCompassArrow()"
-              style="margin-top:7px;background:none;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;color:rgba(255,255,255,0.38);font-size:9px;font-weight:700;padding:3px 6px;cursor:pointer;font-family:inherit;width:100%;letter-spacing:0.2px;">
+              style="margin-top:7px;background:none;border:0.5px solid rgba(255,255,255,0.18);border-radius:6px;color:rgba(255,255,255,0.38);font-size:11px;font-weight:700;padding:3px 6px;cursor:pointer;font-family:inherit;width:100%;letter-spacing:0.2px;">
               🧭 Compass
             </button>
           </div>
@@ -716,8 +765,8 @@ input,select,textarea{min-height:44px;}
               <span id="wxPressVal" style="font-size:15px;font-weight:700;color:#fff;">—</span>
               <span id="wxPressTrendArrow" style="font-size:15px;font-weight:700;color:#4fc3a1;line-height:1;"></span>
             </div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.5);">hPa</div>
-            <div id="wxPressTrend" style="font-size:10px;color:rgba(255,255,255,0.32);margin-top:2px;">—</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5);">hPa</div>
+            <div id="wxPressTrend" style="font-size:11px;color:rgba(255,255,255,0.32);margin-top:2px;">—</div>
           </div>
           <!-- Sky -->
           <div class="wx-b3">
@@ -725,8 +774,8 @@ input,select,textarea{min-height:44px;}
             <div style="margin-bottom:3px;">
               <span id="wxFeels" style="font-size:15px;font-weight:700;color:#fff;">—</span>
             </div>
-            <div style="font-size:10px;color:rgba(255,255,255,0.5);">feels like</div>
-            <div id="wxRainNow" style="font-size:10px;color:rgba(255,255,255,0.32);margin-top:2px;">Rain —</div>
+            <div style="font-size:11px;color:rgba(255,255,255,0.5);">feels like</div>
+            <div id="wxRainNow" style="font-size:11px;color:rgba(255,255,255,0.32);margin-top:2px;">Rain —</div>
           </div>
         </div>
       </div>
@@ -736,7 +785,7 @@ input,select,textarea{min-height:44px;}
 
       <!-- ② 24-HOUR RIBBON -->
       <div class="sec" style="padding:10px 0 10px 13px;overflow:hidden;">
-        <div class="stitle" style="padding-right:13px;margin-bottom:8px;">🕐 Next 24 Hours</div>
+        <div class="stitle" style="padding-right:13px;margin-bottom:8px;">Next 24 Hours</div>
         <div id="wxRibbon" class="wx-ribbon">
           <div style="font-size:12px;color:var(--hint);padding:14px 0;">Loading…</div>
         </div>
@@ -755,7 +804,7 @@ input,select,textarea{min-height:44px;}
 
       <!-- ③ BAROMETER (unchanged) -->
       <div class="baro-wrap" id="baroCard">
-        <div class="stitle" style="margin-bottom:0;">🌡 Barometer</div>
+        <div class="stitle" style="margin-bottom:0;">Barometer</div>
         <div class="baro-gauge">
           <svg class="baro-arc" width="160" height="84" viewBox="0 0 160 84">
             <path d="M14,80 A70,70 0 0,1 38,22" stroke="#e74c3c" stroke-width="10" fill="none" stroke-linecap="round" opacity="0.25"/>
@@ -778,21 +827,21 @@ input,select,textarea{min-height:44px;}
         <div class="baro-unit" id="baroTrend">Waiting for data…</div>
         <div class="baro-status baro-fair" id="baroStatus">—</div>
         <div style="margin-top:10px;">
-          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">3-Hour Pressure History</div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">3-Hour Pressure History</div>
           <div class="baro-history" id="baroHistory"></div>
           <div style="display:flex;justify-content:space-between;margin-top:2px;">
-            <span style="font-size:9px;color:var(--hint);">-3h</span>
-            <span style="font-size:9px;color:var(--hint);">now</span>
+            <span style="font-size:11px;color:var(--hint);">-3h</span>
+            <span style="font-size:11px;color:var(--hint);">now</span>
           </div>
         </div>
       </div>
 
       <!-- ④ FISHING CONDITIONS -->
-      <div class="sec" style="margin-top:0;"><div class="stitle">⚡ Fishing Conditions</div><div id="wxcond" style="font-size:14px;color:var(--text);line-height:1.7;">—</div></div>
+      <div class="sec" style="margin-top:0;"><div class="stitle">Fishing Conditions</div><div id="wxcond" style="font-size:14px;color:var(--text);line-height:1.7;">—</div></div>
 
       <!-- ⑤ 7-DAY FORECAST -->
       <div class="sec" style="margin-top:0;padding-bottom:10px;">
-        <div class="stitle">📅 7-Day Forecast</div>
+        <div class="stitle">7-Day Forecast</div>
         <div id="wxforecast" style="font-size:13px;color:var(--hint);">Loading forecast…</div>
         <div style="display:flex;gap:14px;margin-top:10px;padding-top:8px;border-top:0.5px solid var(--border);flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><div style="width:9px;height:9px;border-radius:50%;background:#4fc3a1;flex-shrink:0;"></div>Excellent fishing</div>
@@ -804,7 +853,7 @@ input,select,textarea{min-height:44px;}
       <!-- ⑥ SATELLITE / RADAR MAP -->
       <div class="sec" style="margin-top:0;padding:12px 13px 13px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-          <div class="stitle" style="margin-bottom:0;">🛰 Satellite &amp; Radar</div>
+          <div class="stitle" style="margin-bottom:0;">Satellite &amp; Radar</div>
           <div style="display:flex;gap:6px;">
             <button id="wxSatBtn" onclick="setWindyLayer('satellite')"
               style="padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;background:var(--dark);color:#fff;border:0.5px solid rgba(255,255,255,0.2);">
@@ -826,7 +875,7 @@ input,select,textarea{min-height:44px;}
             title="Weather satellite / radar map">
           </iframe>
         </div>
-        <div style="font-size:10px;color:var(--hint);margin-top:6px;text-align:center;">Powered by Windy · Tap map to interact · Updates on location</div>
+        <div style="font-size:11px;color:var(--hint);margin-top:6px;text-align:center;">Powered by Windy · Tap map to interact · Updates on location</div>
       </div>
 
       <!-- Hidden legacy elements (still updated by JS for catch-logging weather field) -->
@@ -841,7 +890,7 @@ input,select,textarea{min-height:44px;}
     <!-- ══ MAP ══ -->
     <div class="pg" id="pg-map">
       <div class="sec" style="padding:12px;">
-        <div class="stitle" style="margin-bottom:8px;">🗺 All Catch Locations</div>
+        <div class="stitle" style="margin-bottom:8px;">All Catch Locations</div>
         <div class="main-map-controls">
           <button class="map-ctrl-btn active" id="mmStreetBtn" onclick="setMainMapLayer('street')">🗺 Street</button>
           <button class="map-ctrl-btn" id="mmSatBtn" onclick="setMainMapLayer('satellite')">🛰 Satellite</button>
@@ -849,7 +898,7 @@ input,select,textarea{min-height:44px;}
         </div>
         <!-- Active filter chips bar -->
         <div id="mapActiveBar">
-          <span style="font-size:10px;font-weight:700;color:#0a5c43;flex-shrink:0;">Showing:</span>
+          <span style="font-size:11px;font-weight:700;color:#0a5c43;flex-shrink:0;">Showing:</span>
           <div id="mapActiveChips" style="display:flex;flex-wrap:wrap;gap:4px;flex:1;"></div>
           <button onclick="clearMapFilters()" style="background:none;border:none;font-size:11px;font-weight:700;color:#e74c3c;cursor:pointer;padding:0;white-space:nowrap;font-family:inherit;">✕ Clear</button>
         </div>
@@ -867,7 +916,7 @@ input,select,textarea{min-height:44px;}
         <div id="mleg" style="margin-top:8px;font-size:12px;color:var(--muted);">No catches logged yet.</div>
       <div id="mapLegend" style="display:none;margin-top:8px;"></div>
       </div>
-      <div class="sec"><div class="stitle">📌 My Fishing Spots</div><div id="loclist" style="font-size:13px;color:var(--muted);">No locations saved yet.</div></div>
+      <div class="sec"><div class="stitle">My Fishing Spots</div><div id="loclist" style="font-size:13px;color:var(--muted);">No locations saved yet.</div></div>
     </div>
 
     <!-- ══ CATCHES ══ -->
@@ -883,7 +932,7 @@ input,select,textarea{min-height:44px;}
         </select>
         <button id="catchFilterBtn" onclick="toggleCatchFilter()" style="position:relative;flex-shrink:0;display:flex;align-items:center;gap:5px;padding:7px 11px;background:var(--white);border:0.5px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;font-family:inherit;white-space:nowrap;">
           <span style="font-size:13px;">⚙️</span> Filter
-          <span id="catchFilterBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#e74c3c;color:#fff;font-size:9px;font-weight:800;padding:0 3px;line-height:16px;text-align:center;position:absolute;top:-5px;right:-5px;"></span>
+          <span id="catchFilterBadge" style="display:none;min-width:16px;height:16px;border-radius:8px;background:#e74c3c;color:#fff;font-size:11px;font-weight:800;padding:0 3px;line-height:16px;text-align:center;position:absolute;top:-5px;right:-5px;"></span>
         </button>
       </div>
 
@@ -915,13 +964,13 @@ input,select,textarea{min-height:44px;}
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
             <div>
-              <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Year</div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Year</div>
               <select id="cfYear" onchange="syncCatchFilters()" style="width:100%;padding:8px 10px;font-size:13px;border:0.5px solid var(--border);border-radius:8px;background:var(--surf2);">
                 <option value="">All years</option>
               </select>
             </div>
             <div>
-              <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Month</div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Month</div>
               <select id="cfMonth" onchange="syncCatchFilters()" style="width:100%;padding:8px 10px;font-size:13px;border:0.5px solid var(--border);border-radius:8px;background:var(--surf2);">
                 <option value="">All months</option>
                 <option>January</option><option>February</option><option>March</option><option>April</option>
@@ -930,19 +979,19 @@ input,select,textarea{min-height:44px;}
               </select>
             </div>
             <div>
-              <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Species</div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Species</div>
               <select id="cfSpecies" onchange="_tileSpecies=null;syncCatchFilters()" style="width:100%;padding:8px 10px;font-size:13px;border:0.5px solid var(--border);border-radius:8px;background:var(--surf2);">
                 <option value="">All species</option>
               </select>
             </div>
             <div>
-              <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Location</div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Location</div>
               <select id="cfLocation" onchange="syncCatchFilters()" style="width:100%;padding:8px 10px;font-size:13px;border:0.5px solid var(--border);border-radius:8px;background:var(--surf2);">
                 <option value="">All locations</option>
               </select>
             </div>
             <div>
-              <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Fishing Rig</div>
+              <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px;">Fishing Rig</div>
               <select id="cfRig" onchange="syncCatchFilters()" style="width:100%;padding:8px 10px;font-size:13px;border:0.5px solid var(--border);border-radius:8px;background:var(--surf2);">
                 <option value="">All rigs</option>
               </select>
@@ -975,8 +1024,8 @@ input,select,textarea{min-height:44px;}
       <div class="dcard" style="margin-bottom:10px;">
         <div style="text-align:center;padding:10px 0 14px;">
           <div style="font-size:40px;margin-bottom:8px;">🌊</div>
-          <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;">Set Up Live Tides</div>
-          <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.5;">Connect a free TideCheck API key to get accurate, real-time tide predictions for your exact location.</div>
+          <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:6px;">Live tide data (optional)</div>
+          <div style="font-size:13px;color:rgba(255,255,255,0.55);line-height:1.5;">Add a free TideCheck API key to get accurate, real-time tide predictions for your exact location.</div>
         </div>
       </div>
 
@@ -987,7 +1036,7 @@ input,select,textarea{min-height:44px;}
           TideCheck provides free tide data for New Zealand waters — no credit card needed, 50 requests per day.
         </p>
         <a href="https://tidecheck.com" target="_blank" rel="noopener"
-           style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--teal);color:#fff;font-size:14px;font-weight:600;padding:13px 16px;border-radius:10px;text-decoration:none;letter-spacing:0.1px;">
+           style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--teal);color:#06382b;font-size:14px;font-weight:600;padding:13px 16px;border-radius:10px;text-decoration:none;letter-spacing:0.1px;">
           🔗 Register at tidecheck.com
         </a>
         <p style="font-size:11px;color:var(--hint);text-align:center;margin-top:8px;">Opens in your browser — then come back here</p>
@@ -1005,7 +1054,7 @@ input,select,textarea{min-height:44px;}
                style="font-family:monospace;font-size:13px;letter-spacing:0.3px;">
         <div id="settingsApiMsg" style="font-size:12px;margin-top:6px;min-height:16px;"></div>
         <button onclick="saveApiKey()"
-                style="margin-top:12px;width:100%;padding:13px;background:var(--teal);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;letter-spacing:0.1px;">
+                style="margin-top:12px;width:100%;padding:13px;background:var(--teal);color:#06382b;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer;letter-spacing:0.1px;">
           ✅ Save & Activate
         </button>
       </div>
@@ -1030,7 +1079,7 @@ input,select,textarea{min-height:44px;}
 
       <!-- Fishing Region (for size/bag limit reference) -->
       <div class="sec">
-        <div class="stitle">📏 Fishing Region</div>
+        <div class="stitle">Fishing Region</div>
         <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
           Used by the size/bag limit check on the Log tab. NZ recreational rules vary by MPI fishing area — pick the one you fish most.
         </p>
@@ -1047,7 +1096,7 @@ input,select,textarea{min-height:44px;}
 
       <!-- Backup & Restore -->
       <div class="sec">
-        <div class="stitle">💾 Backup &amp; Restore</div>
+        <div class="stitle">Backup &amp; Restore</div>
         <p style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:14px;">
           Save a full backup of your catches and photos to a file, or restore from a previous backup. Your data stays on your device.
         </p>
@@ -1062,7 +1111,7 @@ input,select,textarea{min-height:44px;}
 
       <!-- Storage Health -->
       <div class="sec">
-        <div class="stitle">🗄️ Storage Health</div>
+        <div class="stitle">Storage Health</div>
         <p id="storageHealthText" style="font-size:13px;color:var(--muted);line-height:1.6;">Checking…</p>
       </div>
 
@@ -1070,23 +1119,12 @@ input,select,textarea{min-height:44px;}
 
   </div><!-- /pages -->
 
-  <div class="tabs">
-    <div class="tab active" data-tab="log" onclick="go('log')"><span class="ti">📝</span><span class="tl">Log</span></div>
-    <div class="tab" data-tab="tide" onclick="go('tide')"><span class="ti">🌊</span><span class="tl">Tide</span></div>
-    <div class="tab" data-tab="moon" onclick="go('moon')"><span class="ti">🌙</span><span class="tl">Moon</span></div>
-    <div class="tab" data-tab="bite" onclick="go('bite')"><span class="ti">🐟</span><span class="tl">Bite</span></div>
-    <div class="tab" data-tab="wx" onclick="go('wx')"><span class="ti">⛅</span><span class="tl">Weather</span></div>
-    <div class="tab" data-tab="map" onclick="go('map')"><span class="ti">📍</span><span class="tl">Map</span></div>
-    <div class="tab" data-tab="list" onclick="go('list')"><span class="ti">🏆</span><span class="tl">Catches</span></div>
-    <div class="tab" data-tab="stats" onclick="go('stats')"><span class="ti">📊</span><span class="tl">Stats</span></div>
-    <div class="tab" data-tab="settings" id="settingsTab" onclick="go('settings')"><span class="ti">⚙️</span><span class="tl">Setup</span></div>
-  </div>
-
+  <nav class="tabs" role="tablist"><button class="tab active" data-tab="log" role="tab" aria-label="Log" onclick="go('log')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="tl">Log</span></button><button class="tab" data-tab="cond" role="tab" aria-label="Conditions" onclick="goCond()"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 18c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 6c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1"/></svg><span class="tl">Conditions</span></button><button class="tab" data-tab="map" role="tab" aria-label="Map" onclick="go('map')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="tl">Map</span></button><button class="tab" data-tab="list" role="tab" aria-label="Catches" onclick="go('list')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-4-8 7"/></svg><span class="tl">Catches</span></button><button class="tab" data-tab="stats" role="tab" aria-label="Stats" onclick="go('stats')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="tl">Stats</span></button></nav>
 </div><!-- /app -->
 
 <!-- ══ PHOTO LIGHTBOX ══ -->
 <div class="lightbox-wrap" id="photoLightbox" onclick="closeLightbox()">
-  <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+  <button aria-label="Close" class="lightbox-close" onclick="closeLightbox()">✕</button>
   <img class="lightbox-img" id="lightboxImg" src="" alt="Catch photo">
 </div>
 
@@ -1096,7 +1134,7 @@ input,select,textarea{min-height:44px;}
     <div class="msug-card">
       <div class="msug-head">
         <span style="font-size:16px;font-weight:700;color:#fff;">✏️ Manage Saved Entries</span>
-        <button onclick="closeManageSuggestions()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+        <button aria-label="Close" onclick="closeManageSuggestions()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
       </div>
       <div style="padding:14px;">
         <div style="font-size:12px;color:var(--muted);margin-bottom:14px;">Tap ✕ to hide an entry from autocomplete. It stays in your existing catches — just won't appear as a suggestion.</div>
@@ -1113,7 +1151,7 @@ input,select,textarea{min-height:44px;}
     <div class="msug-card">
       <div class="msug-head">
         <span style="font-size:16px;font-weight:700;color:#fff;">⭐ Favorite Spots</span>
-        <button onclick="closeFavSpotsPanel()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+        <button aria-label="Close" onclick="closeFavSpotsPanel()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
       </div>
       <div style="padding:14px;">
         <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;">Save current location</div>
@@ -1136,7 +1174,7 @@ input,select,textarea{min-height:44px;}
     <div class="msug-card">
       <div class="msug-head">
         <span style="font-size:16px;font-weight:700;color:#fff;">🔎 Relink Missing Photos</span>
-        <button onclick="closeRelinkPanel()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+        <button aria-label="Close" onclick="closeRelinkPanel()" style="background:none;border:none;color:rgba(255,255,255,0.45);font-size:24px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
       </div>
       <div style="padding:14px;">
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6;">
@@ -1157,11 +1195,11 @@ input,select,textarea{min-height:44px;}
   <div class="del-modal">
     <div class="del-modal-body">
       <div class="del-modal-icon">🗑️</div>
-      <div class="del-modal-msg">Are you sure you want to delete this awesome catch?</div>
+      <div class="del-modal-msg">Delete this catch?</div>
       <div class="del-modal-sub">This action cannot be undone.</div>
     </div>
     <div class="del-modal-btns">
-      <button class="del-cancel" onclick="closeDelModal()">Keep it</button>
+      <button class="del-cancel" onclick="closeDelModal()">Cancel</button>
       <button class="del-confirm" onclick="confirmDelCatch()">Delete</button>
     </div>
   </div>
@@ -1171,11 +1209,11 @@ input,select,textarea{min-height:44px;}
     <div class="edit-modal-card">
       <div class="edit-modal-head">
         <span class="edit-modal-title">✏️ Edit Catch</span>
-        <button class="edit-close" onclick="closeEdit()">✕</button>
+        <button aria-label="Close" class="edit-close" onclick="closeEdit()">✕</button>
       </div>
       <div class="edit-modal-body">
         <div class="sec" style="margin-bottom:10px;">
-          <div class="stitle">📸 Photo</div>
+          <div class="stitle">Photo</div>
           <div class="pu" id="epuEl" style="min-height:140px;cursor:pointer;" onclick="const i=document.getElementById('efiLib');i.value='';i.click();">
             <div class="pu-inner" id="epuInner">
               <div class="pu-fish-cover"></div>
@@ -1191,7 +1229,7 @@ input,select,textarea{min-height:44px;}
           <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         </div>
         <div class="sec" style="margin-bottom:10px;">
-          <div class="stitle">🐟 Catch Details</div>
+          <div class="stitle">Catch Details</div>
           <label>Fish species</label>
           <select id="efish">
             <option value="">Select species...</option>
@@ -1208,7 +1246,7 @@ input,select,textarea{min-height:44px;}
           </div>
         </div>
         <div class="sec" style="margin-bottom:10px;">
-          <div class="stitle">🎣 Method &amp; Bait</div>
+          <div class="stitle">Method &amp; Bait</div>
           <div class="r2">
             <div><label>Method</label>
               <select id="emethod">
@@ -1235,7 +1273,7 @@ input,select,textarea{min-height:44px;}
           <textarea id="enotes" rows="3" style="resize:none;font-size:16px;" placeholder="Depth, technique, conditions..."></textarea>
         </div>
         <div class="sec" style="margin-bottom:10px;">
-          <div class="stitle">📅 Date &amp; Time</div>
+          <div class="stitle">Date &amp; Time</div>
           <div class="r2">
             <div><label>Date</label><input type="date" id="edate" oninput="updateEditTidePreview()"></div>
             <div><label>Time</label><input type="time" id="etime" oninput="updateEditTidePreview()"></div>
@@ -1243,7 +1281,7 @@ input,select,textarea{min-height:44px;}
           <div id="editTidePreview" style="margin-top:8px;min-height:0;"></div>
         </div>
         <div class="sec" style="margin-bottom:14px;">
-          <div class="stitle">📍 Location</div>
+          <div class="stitle">Location</div>
           <label>Location Nickname</label>
           <input type="text" id="enickname" placeholder="e.g. Blue Tongue" list="nicknameSuggestions" autocomplete="off">
           <label>Search location</label>
@@ -1268,8 +1306,8 @@ input,select,textarea{min-height:44px;}
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="vendor/leaflet.js"></script>
+<script src="vendor/leaflet.markercluster.js"></script>
 <script>
 // ─────────────────────────────────────────────
 // INDEXEDDB — Photo Storage
@@ -1344,7 +1382,8 @@ function doInstall() {
   }
 }
 window.addEventListener('appinstalled', () => { document.getElementById('ibar').style.display='none'; });
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('./sw.js');
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had)return;const b=document.createElement('div');b.className='upd';b.innerHTML='A new version is ready <button onclick="location.reload()">Reload</button>';document.body.appendChild(b);});}
 
 // ─────────────────────────────────────────────
 // STORAGE DURABILITY
@@ -1728,8 +1767,8 @@ function _applySettingsVisibility() {
   const hasKey = !!getTidecheckKey();
   const settingsTab = document.getElementById('settingsTab');
   const gearBtn = document.getElementById('settingsGearBtn');
-  if (settingsTab) settingsTab.style.display = hasKey ? 'none' : '';
-  if (gearBtn) gearBtn.style.display = hasKey ? '' : 'none';
+  if (settingsTab) settingsTab.style.display = 'none';
+  if (gearBtn) gearBtn.style.display = 'flex';
 }
 
 function openSettings() {
@@ -1846,13 +1885,17 @@ async function saveApiKey() {
 
 
 let currentTab = 'log';
+let _lastCond='wx'; function goCond(){ go(_lastCond); }
 function go(p) {
   if(p === currentTab) return;
   vibrate(30);
   currentTab = p;
   document.querySelectorAll('.pg').forEach(e => e.classList.remove('show'));
   document.getElementById('pg-'+p).classList.add('show');
-  document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.dataset.tab === p));
+  const COND=['wx','tide','moon','bite']; if(COND.includes(p)) _lastCond=p;
+  document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.dataset.tab === (COND.includes(p)?'cond':p)));
+  document.getElementById('seg').style.display = COND.includes(p)?'flex':'none';
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on', b.dataset.seg===p));
   if(p==='log') { setTimeout(initLogMap, 100); renderFavSpotsRow(); }
   if(p==='tide') { calcTide(); }
   if(p==='moon') calcMoon();
@@ -1869,18 +1912,6 @@ document.addEventListener('DOMContentLoaded', function() {
   _applySettingsVisibility();
   const regionSel = document.getElementById('fishingRegionSelect');
   if (regionSel) regionSel.value = getFishingRegion();
-  if (!getTidecheckKey()) {
-    // First launch — open Settings so user can enter their key
-    const settingsTab = document.getElementById('settingsTab');
-    if (settingsTab) settingsTab.style.display = '';
-    setTimeout(() => {
-      document.querySelectorAll('.pg').forEach(e => e.classList.remove('show'));
-      const pg = document.getElementById('pg-settings');
-      if (pg) pg.classList.add('show');
-      document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.dataset.tab === 'settings'));
-      currentTab = 'settings';
-    }, 50);
-  }
 });
 
 // ─────────────────────────────────────────────
@@ -2608,9 +2639,9 @@ function _renderManageSuggestions() {
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;">${sec.label}</div>
       ${active.map(v=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--surf);border-radius:6px;margin-bottom:4px;border:0.5px solid var(--border);">
         <span style="font-size:13px;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;">${v}</span>
-        <button onclick="deleteSuggestion('${sec.key}','${v.replace(/'/g,"\\'")}');" style="background:none;border:none;color:#e03c3c;font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;">✕</button>
+        <button aria-label="Close" onclick="deleteSuggestion('${sec.key}','${v.replace(/'/g,"\\'")}');" style="background:none;border:none;color:#e03c3c;font-size:16px;cursor:pointer;padding:0 4px;flex-shrink:0;">✕</button>
       </div>`).join('')}
-      ${hidden.length ? `<div style="font-size:10px;color:var(--hint);margin-top:4px;">${hidden.length} hidden — <button onclick="(function(){try{localStorage.removeItem('_del_${sec.key}');}catch(e){}; _refreshAllSuggestions();})();" style="background:none;border:none;color:var(--teal);font-size:10px;cursor:pointer;padding:0;">Restore all</button></div>` : ''}
+      ${hidden.length ? `<div style="font-size:11px;color:var(--hint);margin-top:4px;">${hidden.length} hidden — <button onclick="(function(){try{localStorage.removeItem('_del_${sec.key}');}catch(e){}; _refreshAllSuggestions();})();" style="background:none;border:none;color:var(--teal);font-size:11px;cursor:pointer;padding:0;">Restore all</button></div>` : ''}
     </div>`;
   }).join('');
 }
@@ -2860,9 +2891,9 @@ function _renderFavSpotsList() {
     <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px;background:var(--surf);border-radius:8px;margin-bottom:6px;border:0.5px solid var(--border);">
       <div style="flex:1;min-width:0;cursor:pointer;" onclick="applyFavoriteSpot('${s.id}');closeFavSpotsPanel();">
         <div style="font-size:13px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📍 ${s.name.replace(/</g,'&lt;')}</div>
-        <div style="font-size:10.5px;color:var(--hint);margin-top:1px;">${s.lat.toFixed(4)}, ${s.lng.toFixed(4)} · tap to use</div>
+        <div style="font-size:11px;color:var(--hint);margin-top:1px;">${s.lat.toFixed(4)}, ${s.lng.toFixed(4)} · tap to use</div>
       </div>
-      <button onclick="deleteFavoriteSpot('${s.id}')" style="background:none;border:none;color:#e03c3c;font-size:16px;cursor:pointer;padding:0 4px 0 8px;flex-shrink:0;">✕</button>
+      <button aria-label="Close" onclick="deleteFavoriteSpot('${s.id}')" style="background:none;border:none;color:#e03c3c;font-size:16px;cursor:pointer;padding:0 4px 0 8px;flex-shrink:0;">✕</button>
     </div>`).join('');
 }
 
@@ -3031,7 +3062,7 @@ function _syncMapFilterUI() {
   bar.classList.add('show');
   const makeChip = (type, value, label) =>
     `<span class="mf-chip">${label}
-      <button class="mf-chip-x" onclick="toggleMapFilter('${type}','${value.replace(/'/g,"\\'")}')">✕</button>
+      <button aria-label="Close" class="mf-chip-x" onclick="toggleMapFilter('${type}','${value.replace(/'/g,"\\'")}')">✕</button>
     </span>`;
   const TIDE_LABEL = { Incoming:'↑ Incoming', Outgoing:'↓ Outgoing', High:'High Tide', Low:'Low Tide' };
   let html = '';
@@ -3182,7 +3213,7 @@ function refreshMainMap() {
         </div>
         <div style="flex-shrink:0;text-align:right;">
           <div style="font-size:16px;font-weight:700;color:var(--text);">${cnt}</div>
-          <div style="font-size:10px;color:var(--hint);">catch${cnt!==1?'es':''}</div>
+          <div style="font-size:11px;color:var(--hint);">catch${cnt!==1?'es':''}</div>
         </div>
       </div>
     </div>`;
@@ -3909,7 +3940,7 @@ function _renderDayCard(dateStr, events, isToday) {
         </div>
       </div>
       <div>${rows}</div>
-      <div style="padding:6px 10px;border-top:0.5px solid var(--border);font-size:9px;color:var(--hint);text-align:center;letter-spacing:0.3px;">TAP FOR TIDE CURVE</div>
+      <div style="padding:6px 10px;border-top:0.5px solid var(--border);font-size:11px;color:var(--hint);text-align:center;letter-spacing:0.3px;">TAP FOR TIDE CURVE</div>
     </div>`;
   } catch(e) {
     console.error('_renderDayCard error:', e, dateStr);
@@ -4136,7 +4167,7 @@ function calcMoon() {
   document.getElementById('mage').textContent='Day '+m.dy+' of 29.5-day cycle';
   drawMoon(document.getElementById('moonc'),m.ag);
   const ps=[{e:'🌑',l:'New',p:0},{e:'🌓',l:'1st Qtr',p:0.25},{e:'🌕',l:'Full',p:0.5},{e:'🌗',l:'3rd Qtr',p:0.75}];
-  document.getElementById('mrow').innerHTML=ps.map(p=>`<div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="font-size:18px;opacity:${Math.abs(m.ag-p.p)<0.1?1:0.32};">${p.e}</div><span style="font-size:9px;color:rgba(255,255,255,0.32);">${p.l}</span></div>`).join('');
+  document.getElementById('mrow').innerHTML=ps.map(p=>`<div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="font-size:18px;opacity:${Math.abs(m.ag-p.p)<0.1?1:0.32};">${p.e}</div><span style="font-size:11px;color:rgba(255,255,255,0.32);">${p.l}</span></div>`).join('');
   const tips={'New Moon':'Spring tides + strong currents. Snapper and kingfish feed hard through channels and reefs.','Waxing Crescent':'Tides building in strength. Good time for bait fishing on the incoming tide.','First Quarter':'Neap tides, calmer water. Focus on structure and drop-offs.','Waxing Gibbous':'Activity increasing fast as full moon approaches.','Full Moon':'Maximum spring tides. Fish feed heavily at night. Dawn and dusk are peak bite times.','Waning Gibbous':'Strong post-full tides. Fish very active at solunar windows.','Last Quarter':'Neap tides. Reliable fishing near structure.','Waning Crescent':'Activity building back toward new moon.'};
   document.getElementById('mtip').textContent=tips[m.n]||'Good conditions. Check solunar times for best bite windows.';
 }
@@ -4228,7 +4259,7 @@ function runTideCheck() {
           <div class="tide-day-meta" style="margin-top:6px;">
             ${sun ? `<div class="tide-day-meta-row">🌅 ${sun.rise} – ${sun.set}</div>` : ''}
             <div class="tide-day-meta-row">${mo.e} ${mo.n} · ${mo.il}% illumination</div>
-            <div class="tide-day-meta-row" style="font-size:9px;color:rgba(255,255,255,0.35);">Harmonic model · ${port.name}</div>
+            <div class="tide-day-meta-row" style="font-size:11px;color:rgba(255,255,255,0.35);">Harmonic model · ${port.name}</div>
           </div>
         </div>
         <div>${rows}</div>
@@ -4697,14 +4728,14 @@ async function fetchOpenMeteo(lat, lng, locName) {
         const windClass = ws==null?'':ws>40?'wx-wind-strong':ws>20?'wx-wind-mod':'wx-wind-calm';
         const windLabel = ws != null ? ws + ' km/h' : '—';
         let cellClass = 'wx-cell' + (isNow?' wx-cell-now':bite==='major'?' wx-cell-major':bite==='minor'?' wx-cell-minor':'');
-        const bitePin = bite==='major'?'<div style="font-size:9px;line-height:1;margin-bottom:1px;">🐟</div>':bite==='minor'?'<div style="font-size:9px;line-height:1;margin-bottom:1px;">⭐</div>':'';
+        const bitePin = bite==='major'?'<div style="font-size:11px;line-height:1;margin-bottom:1px;">🐟</div>':bite==='minor'?'<div style="font-size:11px;line-height:1;margin-bottom:1px;">⭐</div>':'';
         cells.push(`<div class="${cellClass}">
           ${bitePin}
-          <div style="font-size:9px;color:${isNow?'#fff':'var(--muted)'};font-weight:${isNow?'700':'400'};">${isNow?'Now':h12}</div>
+          <div style="font-size:11px;color:${isNow?'#fff':'var(--muted)'};font-weight:${isNow?'700':'400'};">${isNow?'Now':h12}</div>
           <div style="font-size:18px;line-height:1.1;">${omIcon(wc)}</div>
           <div style="font-size:11px;font-weight:600;color:${isNow?'#fff':'var(--text)'};">${t}°</div>
           <div class="wx-wind-pill ${windClass}">${windLabel}</div>
-          ${rain>0?`<div style="font-size:9px;color:var(--hint);margin-top:1px;">💧${rain}%</div>`:''}
+          ${rain>0?`<div style="font-size:11px;color:var(--hint);margin-top:1px;">💧${rain}%</div>`:''}
         </div>`);
       }
       ribbonEl.innerHTML = cells.join('');
@@ -4733,7 +4764,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
         return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border);">
           <div style="width:52px;flex-shrink:0;">
             <div style="font-size:12px;font-weight:${i<2?'700':'400'};color:${i<2?'var(--text)':'var(--muted)'};">${dayLbl}</div>
-            <div style="font-size:10px;color:var(--hint);">${d.getDate()} ${d.toLocaleString('en-NZ',{month:'short'})}</div>
+            <div style="font-size:11px;color:var(--hint);">${d.getDate()} ${d.toLocaleString('en-NZ',{month:'short'})}</div>
           </div>
           <div style="font-size:22px;flex-shrink:0;">${omIcon(code2)}</div>
           <div style="flex:1;min-width:0;">
@@ -5132,10 +5163,10 @@ function toggleNote(id) {
   const full = el.dataset.full || '';
   const expanded = el.dataset.exp === '1';
   if (expanded) {
-    el.innerHTML = '"' + full.slice(0, 100) + '…" <button class="notes-more-btn" onclick="toggleNote(\'' + id + '\')" style="background:none;border:none;color:var(--teal);font-size:10px;cursor:pointer;padding:0;font-style:normal;">more ›</button>';
+    el.innerHTML = '"' + full.slice(0, 100) + '…" <button class="notes-more-btn" onclick="toggleNote(\'' + id + '\')" style="background:none;border:none;color:var(--teal);font-size:11px;cursor:pointer;padding:0;font-style:normal;">more ›</button>';
     el.dataset.exp = '0';
   } else {
-    el.innerHTML = '"' + full + '" <button class="notes-more-btn" onclick="toggleNote(\'' + id + '\')" style="background:none;border:none;color:var(--teal);font-size:10px;cursor:pointer;padding:0;font-style:normal;">‹ less</button>';
+    el.innerHTML = '"' + full + '" <button class="notes-more-btn" onclick="toggleNote(\'' + id + '\')" style="background:none;border:none;color:var(--teal);font-size:11px;cursor:pointer;padding:0;font-style:normal;">‹ less</button>';
     el.dataset.exp = '1';
   }
 }
@@ -5348,7 +5379,7 @@ function renderList() {
     document.getElementById('clist').innerHTML=`<div class="empty">
       <img src="icon-192.png" style="width:80px;height:80px;border-radius:18px;opacity:0.35;margin-bottom:4px;mix-blend-mode:normal;" alt="">
       <div style="font-size:15px;font-weight:600;color:var(--muted);">No catches yet</div>
-      <div style="font-size:13px;color:var(--hint);margin-top:2px;">Let's Go Fishing! 🎣</div>
+      <button class="sbtn teal-btn" style="width:auto;padding:12px 22px;margin-top:10px" onclick="go('log')">Log your first catch</button>
     </div>`;
     return;
   }
@@ -5366,35 +5397,25 @@ function renderList() {
 
   document.getElementById('clist').innerHTML = backBar + s.map(c=>`
     <div class="ccard" id="card-${c.id}">
-      <div class="ctop">
-        ${c.photo
-          ? `<img src="${c.photo}" class="cimgel" alt="catch" onclick="openLightbox('${c.photo}')" style="cursor:zoom-in;">`
-          : `<div class="ciph">${DEFAULT_SVG_HTML}</div>`
-        }
-        <div class="cbody">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
-            <div class="cfish">${c.fish}</div>
-            <div style="display:flex;gap:2px;">
-              <button class="delbtn" onclick="editCatch('${c.id}')" title="Edit" style="color:var(--teal);font-size:15px;">✏️</button>
-              <button class="delbtn" onclick="delCatch('${c.id}')">🗑</button>
-            </div>
-          </div>
-          <div class="cmeta">${[c.length?c.length+'cm':'',c.weight?c.weight+'kg':''].filter(Boolean).join(' · ')||'Size not recorded'}</div>
-          <div class="cmeta" style="font-size:11px;">${c.date} ${c.time} · ${c.location}</div>
-          ${(c.method||c.platform)?`<div class="cmeta" style="font-size:11px;color:var(--hint);">${[c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · ')}</div>`:''}
-          ${c.notes?`<div class="cmeta notes-preview" style="font-size:11px;font-style:italic;color:var(--hint);" id="notewrap-${c.id}" data-full="${c.notes.replace(/"/g,'&quot;').replace(/\\/g,'\\\\')}">"${c.notes.slice(0,100)}${c.notes.length>100?'…':''}"${c.notes.length>100?` <button class="notes-more-btn" onclick="toggleNote('${c.id}')" style="background:none;border:none;color:var(--teal);font-size:10px;cursor:pointer;padding:0;font-style:normal;">more ›</button>`:''}</div>`:''}
-
-          <div class="ctags">
-            <span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':c.tide||'—'}</span>
-            <span class="tag tp">${c.moon||'—'}</span>
-            ${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${c.bite}</span>`:''}
-          </div>
-        </div>
+      ${c.photo?`<img src="${c.photo}" class="chero" alt="${esc(c.fish)} catch" onclick="openLightboxId('${c.id}')">`:''}
+      <div class="cbody2">
+        <div class="crow"><div><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)} · ${esc(c.nickname||c.location||'')}</div></div>
+          <div class="cact"><button class="ibtn" aria-label="Edit catch" onclick="editCatch('${c.id}')">Edit</button><button class="ibtn danger" aria-label="Delete catch" onclick="delCatch('${c.id}')">Delete</button></div></div>
+        <div class="cstats">${c.length?`<div><b>${esc(c.length)}</b><span>cm</span></div>`:''}${c.weight?`<div><b>${esc(c.weight)}</b><span>kg</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
+        ${(c.method||c.platform)?`<div class="cmeta">${esc([c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · '))}</div>`:''}
+        ${c.notes?`<div class="cnote" onclick="this.classList.toggle('open')">${esc(c.notes)}</div>`:''}
+        <div class="ctags"><span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':esc(c.tide||'—')}</span><span class="tag tp">${esc(c.moon||'—')}</span>${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${esc(c.bite)}</span>`:''}</div>
+        ${(c.lat&&c.lng)?`<button class="maptoggle" onclick="toggleCardMap('${c.id}')">Show map</button>`:''}
       </div>
-      <div class="cmap" id="cm-${c.id}"></div>
+      <div class="cmap" id="cm-${c.id}" style="display:none"></div>
     </div>`).join('');
-  s.forEach(c=>{if(c.lat&&c.lng)initCatchMap(c.id,c.lat,c.lng,c.fish+(c.location?' — '+c.location:''),c.fish,c.nickname||'');});
 }
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function fmtWhen(c){try{const d=new Date((c.date||'1970-01-01')+'T'+(c.time||'00:00'));return d.toLocaleDateString('en-NZ',{weekday:'short',day:'numeric',month:'short'})+(c.time?' · '+d.toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'}):'');}catch(e){return esc(c.date||'');}}
+function openLightboxId(id){const c=catches.find(x=>String(x.id)===String(id)); if(c&&c.photo) openLightbox(c.photo);}
+function toggleCardMap(id){const el=document.getElementById('cm-'+id), btn=el.previousElementSibling.querySelector('.maptoggle');
+  if(el.style.display==='none'){el.style.display='block';const c=catches.find(x=>String(x.id)===String(id));initCatchMap(c.id,c.lat,c.lng,c.fish+(c.location?' — '+c.location:''),c.fish,c.nickname||'');btn.textContent='Hide map';}
+  else{el.style.display='none';try{cmaps[id]&&cmaps[id].remove();delete cmaps[id];}catch(e){}btn.textContent='Show map';}}
 
 // ─────────────────────────────────────────────
 // EDIT CATCH
@@ -5609,7 +5630,7 @@ function renderStats() {
 
   const summaryHTML = `
     <div class="sec">
-      <div class="stitle">📊 Overview</div>
+      <div class="stitle">Overview</div>
       <div class="summary-tiles">
         <div class="sum-tile"><div class="sum-val">${catches.length}</div><div class="sum-lbl">Catches</div></div>
         <div class="sum-tile"><div class="sum-val">${topSpeciesAll.length}</div><div class="sum-lbl">Species</div></div>
@@ -5829,7 +5850,7 @@ function renderStats() {
     const rows=Object.entries(spBestMonth);
     if(!rows.length) return '';
     return `<div style="width:100%;margin-top:12px;">
-      <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;padding:0 4px;">Best month per species</div>
+      <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;padding:0 4px;">Best month per species</div>
       <div style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:0;font-size:11px;color:rgba(255,255,255,0.5);padding:4px 4px 6px;border-bottom:0.5px solid rgba(255,255,255,0.1);">
         <div></div><div>Species</div><div style="text-align:center;">Best</div><div style="text-align:center;padding:0 4px;">Worst</div><div style="text-align:right;">Total</div>
       </div>
@@ -5837,9 +5858,9 @@ function renderStats() {
         <div style="display:grid;grid-template-columns:14px 1fr auto auto auto;gap:0;align-items:center;padding:6px 4px;border-bottom:0.5px solid rgba(255,255,255,0.06);">
           <svg width="10" height="10" viewBox="0 0 10 10" style="flex-shrink:0;"><circle cx="5" cy="5" r="5" fill="${spColor(sp)}"/></svg>
           <div style="font-size:12px;color:rgba(255,255,255,0.85);padding-left:4px;">${sp}</div>
-          <div style="text-align:center;font-size:12px;font-weight:700;color:#4fc3a1;">${d.bestShort}<span style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.4);"> ×${d.bestCnt}</span></div>
-          <div style="text-align:center;padding:0 4px;font-size:12px;color:rgba(255,255,255,0.4);">${d.worstShort?d.worstShort+'<span style="font-size:9px;"> ×'+d.worstCnt+'</span>':'—'}</div>
-          <div style="text-align:right;font-size:12px;font-weight:600;color:#fff;">${d.total}<span style="font-size:9px;font-weight:400;color:rgba(255,255,255,0.4);"> / ${d.activeMons}mo</span></div>
+          <div style="text-align:center;font-size:12px;font-weight:700;color:#4fc3a1;">${d.bestShort}<span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);"> ×${d.bestCnt}</span></div>
+          <div style="text-align:center;padding:0 4px;font-size:12px;color:rgba(255,255,255,0.4);">${d.worstShort?d.worstShort+'<span style="font-size:11px;"> ×'+d.worstCnt+'</span>':'—'}</div>
+          <div style="text-align:right;font-size:12px;font-weight:600;color:#fff;">${d.total}<span style="font-size:11px;font-weight:400;color:rgba(255,255,255,0.4);"> / ${d.activeMons}mo</span></div>
         </div>`).join('')}
     </div>`;
   })();
@@ -5895,7 +5916,7 @@ function renderStats() {
       <div class="dlbl">🎯 Top Patterns &amp; Gear</div>
       ${topFlies.length?`
       <div style="margin-bottom:${topFlyCols.length?'12px':'0'};">
-        <div style="font-size:10px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:7px;">Fly / Bait</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:7px;">Fly / Bait</div>
         ${topFlies.map(([fly,cnt],i)=>`
         <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.07);">
           <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.28);width:14px;text-align:right;">${i+1}</div>
@@ -5905,7 +5926,7 @@ function renderStats() {
       </div>`:''}
       ${topFlyCols.length?`
       <div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:7px;">Colour &amp; Size</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.38);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:7px;">Colour &amp; Size</div>
         ${topFlyCols.map(([col,cnt],i)=>`
         <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.07);">
           <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.28);width:14px;text-align:right;">${i+1}</div>
@@ -5916,7 +5937,7 @@ function renderStats() {
     </div>`:''}
 
     <div class="sec">
-      <div class="stitle">🐟 Species Breakdown</div>
+      <div class="stitle">Species Breakdown</div>
       ${topSpecies.map(([sp,cnt])=>`
         <div class="stat-row">
           <div class="stat-label">${sp}</div>

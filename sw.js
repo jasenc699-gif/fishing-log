@@ -1,63 +1,25 @@
-const CACHE      = 'fishinglog-v13';          // app shell — bump to force reinstall
-const TILE_CACHE = 'fishinglog-tiles-v1';    // map tiles — separate, bounded
-const MAX_TILES  = 300;                      // ~15 MB max tile storage
-const CORE = ['./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
-
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(CORE.map(a => c.add(a).catch(()=>{})))));
-  self.skipWaiting();
-});
-
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(k => k !== CACHE && k !== TILE_CACHE)
-          .map(k => caches.delete(k))
-      )
-    )
-  );
-  self.clients.claim();
-});
-
-self.addEventListener('fetch', e => {
-  const url = e.request.url;
-
-  // ── Map tiles: separate bounded cache ──────────────────────────────────────
-  if (url.includes('tile.openstreetmap.org') || url.includes('tiles.')) {
-    e.respondWith(
-      caches.open(TILE_CACHE).then(async c => {
-        const cached = await c.match(e.request);
-        if (cached) return cached;
-
-        try {
-          const res = await fetch(e.request);
-          // Enforce size limit: evict oldest entries when over MAX_TILES
-          const keys = await c.keys();
-          if (keys.length >= MAX_TILES) {
-            // Delete the oldest ~10% to avoid thrashing on every new tile
-            const evict = Math.max(1, Math.floor(MAX_TILES * 0.1));
-            await Promise.all(keys.slice(0, evict).map(k => c.delete(k)));
-          }
-          c.put(e.request, res.clone());
-          return res;
-        } catch {
-          return new Response('', { status: 503 });
-        }
-      })
-    );
-    return;
-  }
-
-  // ── Cross-origin API calls: straight to network, never cached ──────────────
-  if (!url.startsWith(self.location.origin)) {
-    e.respondWith(fetch(e.request).catch(() => new Response('', { status: 503 })));
-    return;
-  }
-
-  // ── Same-origin app shell: cache-first ─────────────────────────────────────
-  e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request).catch(() => caches.match('./index.html')))
-  );
+const CACHE='fishinglog-v14', TILE_CACHE='fishinglog-tiles-v1', MAX_TILES=300;
+const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png',
+ './vendor/leaflet.js','./vendor/leaflet.css','./vendor/leaflet.markercluster.js','./vendor/MarkerCluster.css','./vendor/MarkerCluster.Default.css','./vendor/exifr.js',
+ './vendor/images/marker-icon.png','./vendor/images/marker-icon-2x.png','./vendor/images/marker-shadow.png','./vendor/images/layers.png','./vendor/images/layers-2x.png'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.allSettled(CORE.map(a=>c.add(a)))));self.skipWaiting();});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE&&x!==TILE_CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});
+self.addEventListener('fetch',e=>{
+  const req=e.request, url=req.url;
+  if(req.method!=='GET')return;
+  if(url.includes('tile.openstreetmap.org')||url.includes('tiles.')||url.includes('/tile/')){
+    e.respondWith(caches.open(TILE_CACHE).then(async c=>{
+      const hit=await c.match(req); if(hit)return hit;
+      try{const res=await fetch(req);
+        if(res.ok||res.type==='opaque'){const keys=await c.keys();
+          if(keys.length>=MAX_TILES)await Promise.all(keys.slice(0,Math.floor(MAX_TILES*.1)).map(k=>c.delete(k)));
+          c.put(req,res.clone());}
+        return res;}catch{return new Response('',{status:503});}}));
+    return;}
+  if(!url.startsWith(self.location.origin)){e.respondWith(fetch(req).catch(()=>new Response('',{status:503})));return;}
+  // app shell: stale-while-revalidate (instant load, silently updates)
+  e.respondWith(caches.open(CACHE).then(async c=>{
+    const hit=await c.match(req,{ignoreSearch:true});
+    const net=fetch(req).then(r=>{if(r.ok)c.put(req,r.clone());return r;}).catch(()=>null);
+    return hit||(await net)||c.match('./index.html');}));
 });
