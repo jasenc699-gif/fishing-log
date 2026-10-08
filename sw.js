@@ -1,4 +1,4 @@
-const CACHE='fishinglog-v14', TILE_CACHE='fishinglog-tiles-v1', MAX_TILES=300;
+const CACHE='fishinglog-v16', TILE_CACHE='fishinglog-tiles-v1', MAX_TILES=300;
 const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png',
  './vendor/leaflet.js','./vendor/leaflet.css','./vendor/leaflet.markercluster.js','./vendor/MarkerCluster.css','./vendor/MarkerCluster.Default.css','./vendor/exifr.js',
  './vendor/images/marker-icon.png','./vendor/images/marker-icon-2x.png','./vendor/images/marker-shadow.png','./vendor/images/layers.png','./vendor/images/layers-2x.png'];

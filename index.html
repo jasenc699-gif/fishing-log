@@ -11,7 +11,7 @@
 <title>Fishing Log</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet.css"/>
+<link rel="stylesheet" href="vendor/leaflet.css" onerror="this.onerror=null;this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'"/>
 <link rel="stylesheet" href="vendor/MarkerCluster.css"/>
 <link rel="stylesheet" href="vendor/MarkerCluster.Default.css"/>
 <script src="vendor/exifr.js"></script>
@@ -407,6 +407,22 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 .maptoggle{margin-top:10px;background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:0 14px;min-height:40px;font:600 13px inherit;font-family:inherit;color:var(--muted);cursor:pointer;}
 .upd{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));max-width:406px;margin:0 auto;background:var(--dark);color:#fff;padding:12px 14px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;font-size:14px;z-index:9998;box-shadow:0 6px 24px rgba(0,0,0,.35);}
 .upd button{background:var(--teal);color:#06382b;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-family:inherit;}
+
+/* catch viewer */
+.viewer{position:fixed;inset:0;z-index:9300;background:#111;display:none;flex-direction:column;}
+.viewer.open{display:flex;animation:pgIn .2s ease;}
+.vbar{display:flex;align-items:center;gap:8px;padding:max(env(safe-area-inset-top),10px) 8px 6px;color:#fff;}
+.vclose{background:none;border:none;color:#fff;font-size:22px;width:44px;height:44px;cursor:pointer;}
+.vtitle{flex:1;font-weight:700;font-size:16px;text-align:center;}.vcount{min-width:44px;text-align:right;padding-right:8px;font-size:13px;color:rgba(255,255,255,.65);font-variant-numeric:tabular-nums;}
+.vtrack{flex:1;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 4%;scroll-padding:0 4%;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;scrollbar-width:none;}
+.vtrack::-webkit-scrollbar{display:none;}
+.vslide{flex:0 0 92%;scroll-snap-align:start;scroll-snap-stop:always;background:var(--surf2);border-radius:18px;overflow-y:auto;max-width:400px;margin:0 auto;}
+.vslide .chero{cursor:zoom-in;}.vacts{display:flex;gap:8px;margin-top:14px;}
+.vacts button{flex:1;min-height:44px;border-radius:10px;border:1px solid var(--border);background:var(--white);font:600 14px inherit;font-family:inherit;color:var(--text);}
+.vacts .danger{color:#c0392b;}.vslide .cnote{display:block;font-size:14px;line-height:1.5;}
+.vnav{display:flex;align-items:center;justify-content:space-between;padding:6px 16px max(env(safe-area-inset-bottom),12px);}
+.vnav button{width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:26px;line-height:1;cursor:pointer;}
+.vnav button:disabled{opacity:.25}.vhint{font-size:12px;color:rgba(255,255,255,.45);}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -1122,6 +1138,12 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
   <nav class="tabs" role="tablist"><button class="tab active" data-tab="log" role="tab" aria-label="Log" onclick="go('log')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="tl">Log</span></button><button class="tab" data-tab="cond" role="tab" aria-label="Conditions" onclick="goCond()"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 18c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 6c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1"/></svg><span class="tl">Conditions</span></button><button class="tab" data-tab="map" role="tab" aria-label="Map" onclick="go('map')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="tl">Map</span></button><button class="tab" data-tab="list" role="tab" aria-label="Catches" onclick="go('list')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-4-8 7"/></svg><span class="tl">Catches</span></button><button class="tab" data-tab="stats" role="tab" aria-label="Stats" onclick="go('stats')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="tl">Stats</span></button></nav>
 </div><!-- /app -->
 
+<!-- ══ CATCH VIEWER ══ -->
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Catch viewer">
+  <div class="vbar"><button class="vclose" aria-label="Close" onclick="closeViewer()">✕</button><div class="vtitle" id="vtitle"></div><div class="vcount" id="vcount"></div></div>
+  <div class="vtrack" id="vtrack"></div>
+  <div class="vnav"><button id="vprev" aria-label="Previous catch" onclick="vStep(-1)">‹</button><div class="vhint">Swipe to browse</div><button id="vnext" aria-label="Next catch" onclick="vStep(1)">›</button></div>
+</div>
 <!-- ══ PHOTO LIGHTBOX ══ -->
 <div class="lightbox-wrap" id="photoLightbox" onclick="closeLightbox()">
   <button aria-label="Close" class="lightbox-close" onclick="closeLightbox()">✕</button>
@@ -1306,8 +1328,8 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
   </div>
 </div>
 
-<script src="vendor/leaflet.js"></script>
-<script src="vendor/leaflet.markercluster.js"></script>
+<script src="vendor/leaflet.js" onerror="document.write('<script src=&quot;https://unpkg.com/leaflet@1.9.4/dist/leaflet.js&quot;><\/script>')"></script>
+<script src="vendor/leaflet.markercluster.js" onerror="document.write('<script src=&quot;https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js&quot;><\/script>')"></script>
 <script>
 // ─────────────────────────────────────────────
 // INDEXEDDB — Photo Storage
@@ -3076,6 +3098,7 @@ function _syncMapFilterUI() {
 
 // Main map
 function initMainMap() {
+  if (typeof L === 'undefined') { document.getElementById('mainmap').innerHTML='<div style="padding:24px;text-align:center;color:#888;font-size:14px">Map library failed to load.<br>Check the vendor folder was uploaded, then reload.</div>'; return; }
   if(mainMap) { mainMap.invalidateSize(); refreshMainMap(); return; }
   mainMap = L.map('mainmap', { zoomControl:true, attributionControl:false }).setView([-37.6878,176.1651],10);
   mainStreetLayer = streetLayer().addTo(mainMap);
@@ -3112,7 +3135,7 @@ function refreshMainMap() {
   const filtered = catches.filter(_catchMatchesFilters);
 
   // Build cluster group with custom icons
-  mainCluster = L.markerClusterGroup({
+  mainCluster = (L.markerClusterGroup ? L.markerClusterGroup : () => L.featureGroup())({
     maxClusterRadius: 50,
     iconCreateFunction: function(cluster) {
       const count = cluster.getChildCount();
@@ -5395,11 +5418,12 @@ function renderList() {
       </div>`
     : '';
 
+  window._vList = s;
   document.getElementById('clist').innerHTML = backBar + s.map(c=>`
     <div class="ccard" id="card-${c.id}">
-      ${c.photo?`<img src="${c.photo}" class="chero" alt="${esc(c.fish)} catch" onclick="openLightboxId('${c.id}')">`:''}
+      ${c.photo?`<img src="${c.photo}" class="chero" alt="${esc(c.fish)} catch" onclick="openViewer('${c.id}')">`:''}
       <div class="cbody2">
-        <div class="crow"><div><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)} · ${esc(c.nickname||c.location||'')}</div></div>
+        <div class="crow"><div style="cursor:pointer;flex:1;min-width:0" onclick="openViewer('${c.id}')"><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)} · ${esc(c.nickname||c.location||'')}</div></div>
           <div class="cact"><button class="ibtn" aria-label="Edit catch" onclick="editCatch('${c.id}')">Edit</button><button class="ibtn danger" aria-label="Delete catch" onclick="delCatch('${c.id}')">Delete</button></div></div>
         <div class="cstats">${c.length?`<div><b>${esc(c.length)}</b><span>cm</span></div>`:''}${c.weight?`<div><b>${esc(c.weight)}</b><span>kg</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
         ${(c.method||c.platform)?`<div class="cmeta">${esc([c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · '))}</div>`:''}
@@ -5956,6 +5980,35 @@ setTimeout(initLogMap, 400);
 renderFavSpotsRow();
 setTimeout(() => autoWeather(true), 100);
 initStorage(); // async: migrates legacy photos + hydrates IDB photos into memory
+
+// ── CATCH VIEWER (swipe through catches) ──
+let _vList=[],_vIdx=0,_vRaf=0;
+function vSlide(c){return `<div class="vslide">
+  ${c.photo?`<img src="${c.photo}" class="chero" alt="${esc(c.fish)}" onclick="openLightboxId('${c.id}')">`:''}
+  <div class="cbody2"><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)}${(c.nickname||c.location)?' · '+esc(c.nickname||c.location):''}</div>
+  <div class="cstats">${c.length?`<div><b>${esc(c.length)}</b><span>cm</span></div>`:''}${c.weight?`<div><b>${esc(c.weight)}</b><span>kg</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
+  ${(c.method||c.platform)?`<div class="cmeta">${esc([c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · '))}</div>`:''}
+  ${c.notes?`<div class="cnote">${esc(c.notes)}</div>`:''}
+  <div class="ctags"><span class="tag tg">${esc(c.tide||'—')}</span><span class="tag tp">${esc(c.moon||'—')}</span>${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${esc(c.bite)}</span>`:''}</div>
+  <div class="vacts"><button onclick="vAct('edit','${c.id}')">Edit</button><button class="danger" onclick="vAct('del','${c.id}')">Delete</button></div></div></div>`;}
+function openViewer(id){
+  _vList=(window._vList&&window._vList.length)?window._vList:catches;
+  _vIdx=Math.max(0,_vList.findIndex(c=>String(c.id)===String(id)));
+  const t=document.getElementById('vtrack'); t.innerHTML=_vList.map(vSlide).join('');
+  const sp=[...new Set(_vList.map(c=>c.fish))]; document.getElementById('vtitle').textContent=sp.length===1?sp[0]:'Catches';
+  document.getElementById('viewer').classList.add('open');
+  t.style.scrollBehavior='auto'; t.scrollLeft=_vIdx*_vW(); t.style.scrollBehavior=''; _vUpdate();
+}
+function _vW(){const t=document.getElementById('vtrack'),f=t.children[0];return f?f.offsetWidth+10:1;}
+function _vUpdate(){document.getElementById('vcount').textContent=(_vIdx+1)+' / '+_vList.length;
+  document.getElementById('vprev').disabled=_vIdx===0; document.getElementById('vnext').disabled=_vIdx>=_vList.length-1;}
+function vStep(d){const i=Math.min(_vList.length-1,Math.max(0,_vIdx+d));document.getElementById('vtrack').scrollTo({left:i*_vW(),behavior:'smooth'});}
+function closeViewer(){document.getElementById('viewer').classList.remove('open');}
+function vAct(k,id){closeViewer(); k==='edit'?editCatch(id):delCatch(id);}
+document.getElementById('vtrack').addEventListener('scroll',e=>{cancelAnimationFrame(_vRaf);_vRaf=requestAnimationFrame(()=>{
+  const i=Math.round(e.target.scrollLeft/_vW()); if(i!==_vIdx&&i>=0&&i<_vList.length){_vIdx=i;_vUpdate();vibrate&&vibrate(10);}});},{passive:true});
+document.addEventListener('keydown',e=>{if(!document.getElementById('viewer').classList.contains('open'))return;
+  if(e.key==='Escape')closeViewer(); if(e.key==='ArrowRight')vStep(1); if(e.key==='ArrowLeft')vStep(-1);});
 </script>
 </body>
 </html>
