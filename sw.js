@@ -1,6 +1,6 @@
-const CACHE='fishinglog-v16', TILE_CACHE='fishinglog-tiles-v1', MAX_TILES=300;
+const CACHE='fishinglog-v17', TILE_CACHE='fishinglog-tiles-v1', MAX_TILES=300;
 const CORE=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png',
- './vendor/leaflet.js','./vendor/leaflet.css','./vendor/leaflet.markercluster.js','./vendor/MarkerCluster.css','./vendor/MarkerCluster.Default.css','./vendor/exifr.js',
+ './vendor/leaflet.js','./vendor/leaflet.css','./vendor/leaflet.markercluster.js','./vendor/MarkerCluster.css','./vendor/MarkerCluster.Default.css','./vendor/exifr.js','./vendor/leaflet-heat.js',
  './vendor/images/marker-icon.png','./vendor/images/marker-icon-2x.png','./vendor/images/marker-shadow.png','./vendor/images/layers.png','./vendor/images/layers-2x.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>Promise.allSettled(CORE.map(a=>c.add(a)))));self.skipWaiting();});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==CACHE&&x!==TILE_CACHE).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));});

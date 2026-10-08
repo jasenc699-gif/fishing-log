@@ -423,6 +423,20 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 .vnav{display:flex;align-items:center;justify-content:space-between;padding:6px 16px max(env(safe-area-inset-bottom),12px);}
 .vnav button{width:48px;height:48px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;font-size:26px;line-height:1;cursor:pointer;}
 .vnav button:disabled{opacity:.25}.vhint{font-size:12px;color:rgba(255,255,255,.45);}
+
+/* today, defaults, photos */
+.tgreet{font-size:24px;font-weight:800;letter-spacing:-.4px}.tsub{font-size:13px;color:var(--muted);margin:2px 0 12px}
+.verdict{border-radius:14px;padding:14px 16px;font-weight:700;font-size:15px;margin-bottom:10px;border:1px solid}
+.verdict.good{background:rgba(79,195,161,.15);border-color:rgba(79,195,161,.5);color:#0a5c43}.verdict.warn{background:rgba(243,156,18,.13);border-color:rgba(243,156,18,.5);color:#8a5a00}
+.verdict.bad{background:rgba(231,76,60,.12);border-color:rgba(231,76,60,.5);color:#a5301f}.verdict.load{background:var(--surf);border-color:var(--border);color:var(--muted)}
+.tgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.ttile{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:12px 14px}
+.tl2{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted)}.tv{font-size:20px;font-weight:800;margin-top:4px;letter-spacing:-.3px}.ts{font-size:12px;color:var(--muted);margin-top:2px}
+.spq{display:flex;gap:6px;overflow-x:auto;margin-bottom:8px}.spchip{flex-shrink:0;min-height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--border);background:var(--surf);font:600 13px inherit;font-family:inherit;color:var(--text)}
+.spchip:active{background:var(--teal);color:#06382b}.photobtns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}.photobtns .gpsbtn{margin:0;min-height:44px;font-weight:600}
+.xthumbs{display:flex;gap:8px;overflow-x:auto;margin-top:8px}.xthumbs:empty{display:none}.xt{position:relative;flex-shrink:0}.xt img{width:64px;height:64px;object-fit:cover;border-radius:10px;display:block}
+.xt button{position:absolute;top:-6px;right:-6px;width:24px;height:24px;border-radius:50%;border:none;background:#222;color:#fff;font-size:12px}
+.cbadge{position:absolute;right:10px;margin-top:-34px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:12px}
+.vthumbs{display:flex;gap:8px;overflow-x:auto;margin:8px 0}.vthumbs:empty{display:none}.vthumbs img{width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:zoom-in}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -465,8 +479,9 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
   <div class="seg" id="seg" style="display:none"><button data-seg="wx" onclick="go('wx')">Weather</button><button data-seg="tide" onclick="go('tide')">Tide</button><button data-seg="moon" onclick="go('moon')">Moon</button><button data-seg="bite" onclick="go('bite')">Bite</button></div>
   <div class="pages">
 
+    <div class="pg show" id="pg-today"><div id="todayContent"></div></div>
     <!-- ══ LOG ══ -->
-    <div class="pg show" id="pg-log">
+    <div class="pg" id="pg-log">
 
       <!-- 1. PHOTO -->
       <div class="sec">
@@ -486,7 +501,9 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
           <span id="exifBadgeText">GPS &amp; time captured from photo</span>
         </div>
         
-        <input type="file" id="fiLib" accept="image/*" onchange="handlePhoto(event)">
+        <div class="photobtns"><button type="button" class="gpsbtn" onclick="document.getElementById('fiCam').click()">Take photo</button><button type="button" class="gpsbtn" onclick="const i=document.getElementById('fiLib');i.value='';i.click()">Choose photos</button></div>
+        <div id="extraThumbs" class="xthumbs"></div>
+        <input type="file" id="fiLib" accept="image/*" multiple onchange="onPhotosPicked(event)"><input type="file" id="fiCam" accept="image/*" capture="environment" onchange="onPhotosPicked(event)">
         <div id="compressInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
         <div id="exifInfo" style="font-size:11px;margin-top:4px;display:none;"></div>
       </div>
@@ -495,6 +512,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
       <div class="sec">
         <div class="stitle">Catch Details</div>
         <label>Fish species</label>
+        <div class="spq" id="spQuick"></div>
         <select id="ftype" style="min-height:44px;" onchange="checkLegalSize()">
           <option value="">Select species...</option>
           <option>Snapper</option><option>Kingfish</option><option>Kahawai</option>
@@ -910,6 +928,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
         <div class="main-map-controls">
           <button class="map-ctrl-btn active" id="mmStreetBtn" onclick="setMainMapLayer('street')">🗺 Street</button>
           <button class="map-ctrl-btn" id="mmSatBtn" onclick="setMainMapLayer('satellite')">🛰 Satellite</button>
+          <button class="map-ctrl-btn" id="mmHeatBtn" onclick="toggleHeat()">Heatmap</button>
           <button class="map-ctrl-btn" id="mapFilterBtn" onclick="toggleMapFilterPanel()" style="position:relative;">⚙️ Filter<span id="mapFilterBadge" class="mf-badge" style="display:none;position:absolute;top:-5px;right:-5px;"></span></button>
         </div>
         <!-- Active filter chips bar -->
@@ -1135,7 +1154,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 
   </div><!-- /pages -->
 
-  <nav class="tabs" role="tablist"><button class="tab active" data-tab="log" role="tab" aria-label="Log" onclick="go('log')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="tl">Log</span></button><button class="tab" data-tab="cond" role="tab" aria-label="Conditions" onclick="goCond()"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 18c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 6c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1"/></svg><span class="tl">Conditions</span></button><button class="tab" data-tab="map" role="tab" aria-label="Map" onclick="go('map')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="tl">Map</span></button><button class="tab" data-tab="list" role="tab" aria-label="Catches" onclick="go('list')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-4-8 7"/></svg><span class="tl">Catches</span></button><button class="tab" data-tab="stats" role="tab" aria-label="Stats" onclick="go('stats')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="tl">Stats</span></button></nav>
+  <nav class="tabs" role="tablist"><button class="tab active" data-tab="today" role="tab" aria-label="Today" onclick="go('today')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span class="tl">Today</span></button><button class="tab" data-tab="log" role="tab" aria-label="Log" onclick="go('log')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="tl">Log</span></button><button class="tab" data-tab="cond" role="tab" aria-label="Conditions" onclick="goCond()"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 18c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 6c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1"/></svg><span class="tl">Conditions</span></button><button class="tab" data-tab="map" role="tab" aria-label="Map" onclick="go('map')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="tl">Map</span></button><button class="tab" data-tab="list" role="tab" aria-label="Catches" onclick="go('list')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-4-8 7"/></svg><span class="tl">Catches</span></button><button class="tab" data-tab="stats" role="tab" aria-label="Stats" onclick="go('stats')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="tl">Stats</span></button></nav>
 </div><!-- /app -->
 
 <!-- ══ CATCH VIEWER ══ -->
@@ -1329,6 +1348,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 </div>
 
 <script src="vendor/leaflet.js" onerror="document.write('<script src=&quot;https://unpkg.com/leaflet@1.9.4/dist/leaflet.js&quot;><\/script>')"></script>
+<script src="vendor/leaflet-heat.js"></script>
 <script src="vendor/leaflet.markercluster.js" onerror="document.write('<script src=&quot;https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js&quot;><\/script>')"></script>
 <script>
 // ─────────────────────────────────────────────
@@ -1606,7 +1626,7 @@ async function refreshStorageHealth() {
 let catches = [], photo = null;
 let logMap = null, logPin = null, logStreetLayer = null, logSatLayer = null, logLayerMode = 'street';
 let mainMap = null, mainPins = [], mainCluster = null, mainStreetLayer = null, mainSatLayer = null, mainLayerMode = 'street';
-const mapFilters = { species: new Set(), tide: new Set(), weather: new Set() };
+const mapFilters = { species: new Set(), tide: new Set(), weather: new Set(), season: new Set() };
 let cmaps = {};
 let geoTimer = null, revTimer = null;
 let wxLat = -37.6878, wxLng = 176.1651; // default Tauranga
@@ -1906,7 +1926,7 @@ async function saveApiKey() {
 }
 
 
-let currentTab = 'log';
+let currentTab = 'today';
 let _lastCond='wx'; function goCond(){ go(_lastCond); }
 function go(p) {
   if(p === currentTab) return;
@@ -1918,7 +1938,8 @@ function go(p) {
   document.querySelectorAll('.tab').forEach(e => e.classList.toggle('active', e.dataset.tab === (COND.includes(p)?'cond':p)));
   document.getElementById('seg').style.display = COND.includes(p)?'flex':'none';
   document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on', b.dataset.seg===p));
-  if(p==='log') { setTimeout(initLogMap, 100); renderFavSpotsRow(); }
+  if(p==='today') renderToday();
+  if(p==='log') { setTimeout(initLogMap, 100); renderFavSpotsRow(); renderSpQuick(); applyDefaults(); }
   if(p==='tide') { calcTide(); }
   if(p==='moon') calcMoon();
   if(p==='bite') calcBite();
@@ -2990,13 +3011,14 @@ function _catchMatchesFilters(c) {
     );
     if (!hit) return false;
   }
+  if (mapFilters.season.size > 0 && !mapFilters.season.has(_season(c))) return false;
   // Weather — OR within group
   if (mapFilters.weather.size > 0 && !mapFilters.weather.has(c.weather)) return false;
   return true;
 }
 
 function _totalActiveFilters() {
-  return mapFilters.species.size + mapFilters.tide.size + mapFilters.weather.size;
+  return mapFilters.species.size + mapFilters.tide.size + mapFilters.weather.size + mapFilters.season.size;
 }
 
 function toggleMapFilter(type, value) {
@@ -3007,7 +3029,7 @@ function toggleMapFilter(type, value) {
 }
 
 function clearMapFilters() {
-  mapFilters.species.clear(); mapFilters.tide.clear(); mapFilters.weather.clear();
+  mapFilters.species.clear(); mapFilters.tide.clear(); mapFilters.weather.clear(); mapFilters.season.clear();
   _syncMapFilterUI();
   refreshMainMap();
 }
@@ -3062,6 +3084,8 @@ function renderMapFilterPanel() {
   let html = '';
   if (allSpecies.length)  html += section('🐟 Species', allSpecies.map(sp => pill('species', sp, sp, speciesColor(sp))).join(''));
   if (TIDE_OPTS.length)   html += section('🌊 Tide Phase', TIDE_OPTS.map(o => pill('tide', o.key, o.label)).join(''));
+  const allSeasons=['Summer','Autumn','Winter','Spring'].filter(x=>catches.some(c=>_season(c)===x));
+  if (allSeasons.length) html += section('Season', allSeasons.map(x => pill('season', x, x)).join(''));
   if (allWeathers.length) html += section('☁️ Weather', allWeathers.map(w => pill('weather', w, (WX_EMOJI[w]?WX_EMOJI[w]+' ':'')+w)).join(''));
   if (!html) html = '<div style="font-size:12px;color:var(--hint);">Log some catches to use filters.</div>';
   el.innerHTML = html;
@@ -3091,6 +3115,7 @@ function _syncMapFilterUI() {
   mapFilters.species.forEach(v => { html += makeChip('species', v, v); });
   mapFilters.tide.forEach(v    => { html += makeChip('tide',    v, TIDE_LABEL[v] || v); });
   mapFilters.weather.forEach(v => { html += makeChip('weather', v, v); });
+  mapFilters.season.forEach(v => { html += makeChip('season', v, v); });
   chips.innerHTML = html;
   // Also refresh pill states if panel is open
   if (document.getElementById('mapFilterPanel')?.style.display !== 'none') renderMapFilterPanel();
@@ -3124,6 +3149,7 @@ function refreshMainMap() {
   // Clear old cluster
   if(mainCluster) { mainMap.removeLayer(mainCluster); mainCluster = null; }
   mainPins = [];
+  if(window._heatLyr){ mainMap.removeLayer(_heatLyr); _heatLyr=null; }
 
   if(!catches.length) {
     document.getElementById('mleg').textContent='No catches logged yet.';
@@ -3134,6 +3160,13 @@ function refreshMainMap() {
   // Apply filters
   const filtered = catches.filter(_catchMatchesFilters);
 
+  if(_mapHeat && L.heatLayer){
+    const mw=Math.max(...filtered.map(c=>parseFloat(c.weight)||0),1);
+    const pts=filtered.filter(c=>c.lat&&c.lng).map(c=>[c.lat,c.lng,0.45+0.55*((parseFloat(c.weight)||0)/mw)]);
+    if(pts.length){ _heatLyr=L.heatLayer(pts,{radius:30,blur:24,maxZoom:15,gradient:{0.3:'#4fc3a1',0.6:'#f1c40f',1:'#e74c3c'}}).addTo(mainMap); mainMap.fitBounds(L.latLngBounds(pts.map(q=>[q[0],q[1]])).pad(0.3),{maxZoom:15}); }
+    document.getElementById('mleg').textContent='Heatmap: brighter = more and bigger catches ('+pts.length+' shown)';
+    return;
+  }
   // Build cluster group with custom icons
   mainCluster = (L.markerClusterGroup ? L.markerClusterGroup : () => L.featureGroup())({
     maxClusterRadius: 50,
@@ -5421,12 +5454,13 @@ function renderList() {
   window._vList = s;
   document.getElementById('clist').innerHTML = backBar + s.map(c=>`
     <div class="ccard" id="card-${c.id}">
-      ${c.photo?`<img src="${c.photo}" class="chero" alt="${esc(c.fish)} catch" onclick="openViewer('${c.id}')">`:''}
+      ${c.photo?`<img src="${c.photo}" class="chero" alt="${esc(c.fish)} catch" onclick="openViewer('${c.id}')">`:''}${c.extra?`<span class="cbadge">+${c.extra} photo${c.extra>1?'s':''}</span>`:''}
       <div class="cbody2">
         <div class="crow"><div style="cursor:pointer;flex:1;min-width:0" onclick="openViewer('${c.id}')"><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)} · ${esc(c.nickname||c.location||'')}</div></div>
           <div class="cact"><button class="ibtn" aria-label="Edit catch" onclick="editCatch('${c.id}')">Edit</button><button class="ibtn danger" aria-label="Delete catch" onclick="delCatch('${c.id}')">Delete</button></div></div>
         <div class="cstats">${c.length?`<div><b>${esc(c.length)}</b><span>cm</span></div>`:''}${c.weight?`<div><b>${esc(c.weight)}</b><span>kg</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
         ${(c.method||c.platform)?`<div class="cmeta">${esc([c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · '))}</div>`:''}
+        ${wxLine(c)?`<div class="cmeta">${wxLine(c)}</div>`:''}
         ${c.notes?`<div class="cnote" onclick="this.classList.toggle('open')">${esc(c.notes)}</div>`:''}
         <div class="ctags"><span class="tag tg">${c.tide&&c.tide.includes('Incoming')?'↑ Incoming':c.tide&&c.tide.includes('Outgoing')?'↓ Outgoing':esc(c.tide||'—')}</span><span class="tag tp">${esc(c.moon||'—')}</span>${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${esc(c.bite)}</span>`:''}</div>
         ${(c.lat&&c.lng)?`<button class="maptoggle" onclick="toggleCardMap('${c.id}')">Show map</button>`:''}
@@ -5988,6 +6022,8 @@ function vSlide(c){return `<div class="vslide">
   <div class="cbody2"><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)}${(c.nickname||c.location)?' · '+esc(c.nickname||c.location):''}</div>
   <div class="cstats">${c.length?`<div><b>${esc(c.length)}</b><span>cm</span></div>`:''}${c.weight?`<div><b>${esc(c.weight)}</b><span>kg</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
   ${(c.method||c.platform)?`<div class="cmeta">${esc([c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · '))}</div>`:''}
+  ${wxLine(c)?`<div class="cmeta">${wxLine(c)}</div>`:''}
+  <div class="vthumbs" id="vx-${c.id}"></div>
   ${c.notes?`<div class="cnote">${esc(c.notes)}</div>`:''}
   <div class="ctags"><span class="tag tg">${esc(c.tide||'—')}</span><span class="tag tp">${esc(c.moon||'—')}</span>${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${esc(c.bite)}</span>`:''}</div>
   <div class="vacts"><button onclick="vAct('edit','${c.id}')">Edit</button><button class="danger" onclick="vAct('del','${c.id}')">Delete</button></div></div></div>`;}
@@ -5997,6 +6033,7 @@ function openViewer(id){
   const t=document.getElementById('vtrack'); t.innerHTML=_vList.map(vSlide).join('');
   const sp=[...new Set(_vList.map(c=>c.fish))]; document.getElementById('vtitle').textContent=sp.length===1?sp[0]:'Catches';
   document.getElementById('viewer').classList.add('open');
+  _vList.forEach(c=>loadExtras(c).then(a=>{const el=document.getElementById('vx-'+c.id);if(el&&a.length)el.innerHTML=a.map((u,i)=>`<img src="${u}" alt="Photo ${i+2}" onclick="openLightbox(this.src)">`).join('');}));
   t.style.scrollBehavior='auto'; t.scrollLeft=_vIdx*_vW(); t.style.scrollBehavior=''; _vUpdate();
 }
 function _vW(){const t=document.getElementById('vtrack'),f=t.children[0];return f?f.offsetWidth+10:1;}
@@ -6009,6 +6046,56 @@ document.getElementById('vtrack').addEventListener('scroll',e=>{cancelAnimationF
   const i=Math.round(e.target.scrollLeft/_vW()); if(i!==_vIdx&&i>=0&&i<_vList.length){_vIdx=i;_vUpdate();vibrate&&vibrate(10);}});},{passive:true});
 document.addEventListener('keydown',e=>{if(!document.getElementById('viewer').classList.contains('open'))return;
   if(e.key==='Escape')closeViewer(); if(e.key==='ArrowRight')vStep(1); if(e.key==='ArrowLeft')vStep(-1);});
+
+// ═══ TODAY / DEFAULTS / MULTI-PHOTO / WEATHER SNAPSHOT / HEATMAP ═══
+let _mapHeat=false, _heatLyr=null, extraPhotos=[]; const _exCache={};
+function _season(c){const m=parseInt(((c.date||'').split('-')[1])||0,10);return (m===12||m<=2&&m>0)?'Summer':m<=5&&m>0?'Autumn':m<=8&&m>0?'Winter':m>0?'Spring':'';}
+function toggleHeat(){_mapHeat=!_mapHeat;document.getElementById('mmHeatBtn').classList.toggle('active',_mapHeat);refreshMainMap();}
+const _tx=id=>((document.getElementById(id)||{}).textContent||'').trim();
+function wxLine(c){const w=c.wx;if(!w)return '';return [w.wind&&w.wind!=='—'?'Wind '+w.wind+(w.dir&&w.dir!=='—'?' '+w.dir:''):'',w.press&&w.press!=='—'?w.press+' hPa'+(w.trend&&w.trend!=='—'?' · '+w.trend:''):'',w.temp&&w.temp!=='—'?w.temp:''].filter(Boolean).map(esc).join(' · ');}
+// extra photos
+async function loadExtras(c){if(!c.extra)return [];if(_exCache[c.id])return _exCache[c.id];const a=[];for(let i=1;i<=c.extra;i++){try{const u=await idbGet(c.id+'#'+i);if(u)a.push(u);}catch(e){}}return _exCache[c.id]=a;}
+async function onPhotosPicked(ev){const files=[...ev.target.files];ev.target.value='';if(!files.length)return;let i=0;
+  if(!photo){await handlePhoto({target:{files:[files[0]]}});i=1;}
+  for(;i<files.length;i++){if(extraPhotos.length>=5){showToast('Up to 6 photos per catch','error');break;}
+    try{const r=await compressImage(files[i]);const u=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));if(u)extraPhotos.push(u);}catch(e){showToast('Could not add one of the photos','error');}}
+  renderThumbs();}
+function renderThumbs(){document.getElementById('extraThumbs').innerHTML=extraPhotos.map((u,i)=>`<div class="xt"><img src="${u}" alt="Extra photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="extraPhotos.splice(${i},1);renderThumbs()">✕</button></div>`).join('');}
+const _idbDel0=idbDel; idbDel=function(k){const r=_idbDel0(k);if(typeof k==='string'&&!k.includes('#'))for(let i=1;i<=8;i++)_idbDel0(k+'#'+i).catch(()=>{});return r;};
+// defaults + recent species
+const DEF_KEY='fishinglog_defaults',DEF_FIELDS=['method','platform','rig','fly','flycol'];
+function applyDefaults(){let d={};try{d=JSON.parse(localStorage.getItem(DEF_KEY)||'{}');}catch(e){}DEF_FIELDS.forEach(k=>{const el=document.getElementById(k);if(el&&!el.value&&d[k])el.value=d[k];});}
+function renderSpQuick(){const r=[...new Set(catches.map(c=>c.fish).filter(Boolean))].slice(0,5);const el=document.getElementById('spQuick');if(el)el.innerHTML=r.map(x=>`<button type="button" class="spchip" onclick="pickSp(this.textContent)">${esc(x)}</button>`).join('');}
+function pickSp(sp){const sel=document.getElementById('ftype');if([...sel.options].some(o=>o.text===sp))sel.value=sp;else{sel.value='Other';document.getElementById('fcust').value=sp;}checkLegalSize();vibrate(15);}
+const _save0=saveCatch;
+saveCatch=async function(){const n=catches.length,ex=extraPhotos.slice(),d={};DEF_FIELDS.forEach(k=>d[k]=document.getElementById(k).value);
+  const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
+  const snap=document.getElementById('cdate').value===today?{temp:_tx('wxt'),wind:_tx('wxWindSpd'),dir:_tx('wxWindDir'),press:_tx('wxPressVal'),trend:_tx('wxPressTrend')}:null;
+  await _save0(); if(catches.length<=n)return; const c=catches[0];
+  try{localStorage.setItem(DEF_KEY,JSON.stringify(d));}catch(e){}
+  if(snap&&snap.wind&&snap.wind!=='—')c.wx=snap;
+  for(let i=0;i<ex.length;i++){try{await idbPut(c.id+'#'+(i+1),ex[i]);c.extra=i+1;}catch(e){}}
+  persist(); extraPhotos=[]; renderThumbs(); applyDefaults(); renderSpQuick(); if(currentTab==='today')renderToday();};
+// today
+function renderToday(){const el=document.getElementById('todayContent');if(!el)return;const now=new Date();
+  const wind=parseFloat(_tx('wxWindSpd')),has=!isNaN(wind);
+  const v=!has?['load','Checking conditions…']:wind<=15?['good','Good conditions for fishing']:wind<=22?['warn','Fishable, but take care']:['bad','Strong wind — stay safe'];
+  let tide='—',moon='—',bite='—';
+  try{tide=_calcTideLabelForCatch(now)||'—';}catch(e){}
+  try{const m=moonAt(now);moon=m.e+' '+m.n;}catch(e){}
+  try{const so=solunarAt(now,appLng),hn=(((now.getUTCHours()+now.getUTCMinutes()/60+(_nzISOOffset()==='+13:00'?13:12))%24)+24)%24;
+    const w=[[so.m1,'Major'],[so.m2,'Major'],[so.n1,'Minor'],[so.n2,'Minor']].map(([h,l])=>({d:((h-hn)%24+24)%24,h,l})).sort((a,b)=>a.d-b.d)[0];
+    const hh=Math.floor(w.h),mm=Math.round((w.h-hh)*60);bite=w.l+' · '+(w.d<0.1?'now':'in '+(w.d>=1?Math.floor(w.d)+'h ':'')+Math.round((w.d%1)*60)+'m');
+  }catch(e){}
+  const tile=(l,x,s)=>`<div class="ttile"><div class="tl2">${l}</div><div class="tv">${esc(x)}</div>${s?`<div class="ts">${esc(s)}</div>`:''}</div>`;
+  const ym=now.toISOString().slice(0,7),mc=catches.filter(c=>(c.date||'').startsWith(ym)).length,last=catches[0];
+  el.innerHTML=`<div class="tgreet">${now.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'})}</div><div class="tsub">${esc(_tx('wxl')||'')}</div>
+  <div class="verdict ${v[0]}">${v[1]}${has?' · wind '+esc(_tx('wxWindSpd')):''}</div>
+  <div class="tgrid">${tile('Temp',_tx('wxt')||'—',_tx('wxd'))}${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,'').slice(0,22))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}</div>
+  <button class="sbtn teal-btn" style="margin:4px 0 12px;font-size:17px;padding:16px" onclick="go('log')">Log a catch</button>
+  <div class="sec"><div class="stitle">Your fishing</div>${last?`<div class="cfish">${esc(last.fish)}${last.length?' · '+esc(last.length)+' cm':''}</div><div class="cmeta">Last catch · ${fmtWhen(last)}</div><div class="cmeta" style="margin-top:6px">${mc} catch${mc!==1?'es':''} this month · ${catches.length} total</div>`:'<div class="cmeta">No catches yet. Your first one will show up here.</div>'}</div>`;}
+document.addEventListener('DOMContentLoaded',()=>{renderToday();renderSpQuick();applyDefaults();setTimeout(renderToday,1500);
+  const t=document.getElementById('wxt');if(t)new MutationObserver(()=>{if(currentTab==='today')renderToday();}).observe(t,{childList:true,characterData:true,subtree:true});});
 </script>
 </body>
 </html>
