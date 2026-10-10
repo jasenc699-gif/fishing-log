@@ -3163,7 +3163,7 @@ function refreshMainMap() {
   if(_mapHeat && L.heatLayer){
     const mw=Math.max(...filtered.map(c=>parseFloat(c.weight)||0),1);
     const pts=filtered.filter(c=>c.lat&&c.lng).map(c=>[c.lat,c.lng,0.45+0.55*((parseFloat(c.weight)||0)/mw)]);
-    if(pts.length){ _heatLyr=L.heatLayer(pts,{radius:30,blur:24,maxZoom:15,gradient:{0.3:'#4fc3a1',0.6:'#f1c40f',1:'#e74c3c'}}).addTo(mainMap); mainMap.fitBounds(L.latLngBounds(pts.map(q=>[q[0],q[1]])).pad(0.3),{maxZoom:15}); }
+    if(pts.length){ _heatLyr=L.heatLayer(pts,{radius:32,blur:22,maxZoom:8,max:1.2,minOpacity:0.35,gradient:{0.3:'#4fc3a1',0.6:'#f1c40f',1:'#e74c3c'}}).addTo(mainMap); mainMap.fitBounds(L.latLngBounds(pts.map(q=>[q[0],q[1]])).pad(0.3),{maxZoom:15}); }
     document.getElementById('mleg').textContent='Heatmap: brighter = more and bigger catches ('+pts.length+' shown)';
     return;
   }
@@ -6050,7 +6050,7 @@ document.addEventListener('keydown',e=>{if(!document.getElementById('viewer').cl
 // ═══ TODAY / DEFAULTS / MULTI-PHOTO / WEATHER SNAPSHOT / HEATMAP ═══
 let _mapHeat=false, _heatLyr=null, extraPhotos=[]; const _exCache={};
 function _season(c){const m=parseInt(((c.date||'').split('-')[1])||0,10);return (m===12||m<=2&&m>0)?'Summer':m<=5&&m>0?'Autumn':m<=8&&m>0?'Winter':m>0?'Spring':'';}
-function toggleHeat(){_mapHeat=!_mapHeat;document.getElementById('mmHeatBtn').classList.toggle('active',_mapHeat);refreshMainMap();}
+function toggleHeat(){if(!_mapHeat&&!L.heatLayer){showToast('Heatmap file missing — upload vendor/leaflet-heat.js','error');return;}_mapHeat=!_mapHeat;document.getElementById('mmHeatBtn').classList.toggle('active',_mapHeat);refreshMainMap();}
 const _tx=id=>((document.getElementById(id)||{}).textContent||'').trim();
 function wxLine(c){const w=c.wx;if(!w)return '';return [w.wind&&w.wind!=='—'?'Wind '+w.wind+(w.dir&&w.dir!=='—'?' '+w.dir:''):'',w.press&&w.press!=='—'?w.press+' hPa'+(w.trend&&w.trend!=='—'?' · '+w.trend:''):'',w.temp&&w.temp!=='—'?w.temp:''].filter(Boolean).map(esc).join(' · ');}
 // extra photos
