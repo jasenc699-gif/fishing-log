@@ -440,6 +440,14 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 
 .brow{display:flex;align-items:center;gap:8px;margin:6px 0}.bl{width:96px;font-size:13px;color:var(--muted);flex-shrink:0}.bt{flex:1;height:10px;background:var(--surf);border-radius:5px;overflow:hidden}.bt i{display:block;height:100%;background:var(--teal);border-radius:5px;min-width:0}.bn{width:24px;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
 .spchip.on{background:var(--teal);color:#06382b;border-color:var(--teal)}#sgCam,#sgLib{display:none}.tab{min-width:0;padding:0 2px}
+
+.wx-cell{cursor:pointer}.wx-cell:active{transform:scale(.96)}
+.wxbg{position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center}.wxbg.open{display:flex;animation:fadeIn .18s ease}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes sheetUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.wxsheet{background:var(--white);color:var(--text);width:100%;max-width:430px;max-height:88dvh;overflow-y:auto;border-radius:20px 20px 0 0;padding:14px 14px max(env(safe-area-inset-bottom),18px);animation:sheetUp .22s ease}
+.wxh{display:flex;align-items:center;gap:4px;margin-bottom:6px}.wxt{font-size:18px;font-weight:800;text-align:inherit}
+.wxx,.wxn{width:44px;height:44px;border:none;background:none;font-size:22px;color:var(--muted);cursor:pointer;flex-shrink:0}.wxn:disabled{opacity:.25}
+.wxhero{display:flex;align-items:center;gap:14px;padding:4px}.wxrow{display:flex;align-items:center;gap:12px;padding:10px 4px;min-height:48px;border-bottom:0.5px solid var(--border);cursor:pointer}.wxrt{width:40px;font-size:13px;color:var(--muted)}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -823,7 +831,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 
       <!-- ② 24-HOUR RIBBON -->
       <div class="sec" style="padding:10px 0 10px 13px;overflow:hidden;">
-        <div class="stitle" style="padding-right:13px;margin-bottom:8px;">Next 24 Hours</div>
+        <div class="stitle" style="padding-right:13px;margin-bottom:8px;">Next 24 Hours <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--hint)">· tap an hour for details</span></div>
         <div id="wxRibbon" class="wx-ribbon">
           <div style="font-size:12px;color:var(--hint);padding:14px 0;">Loading…</div>
         </div>
@@ -879,7 +887,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 
       <!-- ⑤ 7-DAY FORECAST -->
       <div class="sec" style="margin-top:0;padding-bottom:10px;">
-        <div class="stitle">7-Day Forecast</div>
+        <div class="stitle">7-Day Forecast <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--hint)">· tap a day</span></div>
         <div id="wxforecast" style="font-size:13px;color:var(--hint);">Loading forecast…</div>
         <div style="display:flex;gap:14px;margin-top:10px;padding-top:8px;border-top:0.5px solid var(--border);flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);"><div style="width:9px;height:9px;border-radius:50%;background:#4fc3a1;flex-shrink:0;"></div>Excellent fishing</div>
@@ -4656,7 +4664,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
 
   try {
     const [landRes, marineRes, geoRes] = await Promise.all([
-      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,precipitation_probability,surface_pressure,visibility&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=7&wind_speed_unit=kmh&timezone=auto`),
+      fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,surface_pressure&hourly=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,precipitation_probability,surface_pressure,visibility,wind_gusts_10m,apparent_temperature,relative_humidity_2m,precipitation,cloud_cover&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,wind_direction_10m_dominant,sunrise,sunset,wind_gusts_10m_max,precipitation_sum,uv_index_max&forecast_days=7&wind_speed_unit=kmh&timezone=auto`),
       fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction,wave_period,sea_surface_temperature&forecast_days=1`).catch(()=>null),
       locName ? Promise.resolve(null) : fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10`, {headers:{'Accept-Language':'en','User-Agent':'FishingLogApp/1.0'}}).catch(()=>null)
     ]);
@@ -4664,6 +4672,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
     if (landRes.status === 429) throw new Error('RATE_LIMITED');
     if (!landRes.ok) throw new Error(`Open-Meteo API error: ${landRes.status}`);
     const land = await landRes.json();
+    window._wxData = land; try{ localStorage.setItem('fishinglog_wxdata', JSON.stringify(land)); }catch(e){}
     const cur = land.current;
     if (!cur) throw new Error('Unexpected API response — no current data');
 
@@ -4794,7 +4803,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
         const windLabel = ws != null ? ws + ' km/h' : '—';
         let cellClass = 'wx-cell' + (isNow?' wx-cell-now':bite==='major'?' wx-cell-major':bite==='minor'?' wx-cell-minor':'');
         const bitePin = bite==='major'?'<div style="font-size:11px;line-height:1;margin-bottom:1px;">🐟</div>':bite==='minor'?'<div style="font-size:11px;line-height:1;margin-bottom:1px;">⭐</div>':'';
-        cells.push(`<div class="${cellClass}">
+        cells.push(`<div class="${cellClass}" role="button" tabindex="0" aria-label="Details for ${isNow?'now':h12}" onclick="wxHourSheet(${idx})">
           ${bitePin}
           <div style="font-size:11px;color:${isNow?'#fff':'var(--muted)'};font-weight:${isNow?'700':'400'};">${isNow?'Now':h12}</div>
           <div style="font-size:18px;line-height:1.1;">${omIcon(wc)}</div>
@@ -4826,7 +4835,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
         const wdirLbl= wdirDeg != null ? windDir(wdirDeg) : '—';
         const fishBg = weatherConditionOM(code2, typeof wnd==='number'?wnd:0);
         const dot    = fishBg.startsWith('✅')?'#4fc3a1':fishBg.startsWith('🟡')?'#f39c12':'#e74c3c';
-        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border);">
+        return `<div role="button" tabindex="0" aria-label="Details for ${dayLbl}" onclick="wxDaySheet(${i})" style="display:flex;align-items:center;gap:10px;padding:8px 0;min-height:52px;cursor:pointer;border-bottom:0.5px solid var(--border);">
           <div style="width:52px;flex-shrink:0;">
             <div style="font-size:12px;font-weight:${i<2?'700':'400'};color:${i<2?'var(--text)':'var(--muted)'};">${dayLbl}</div>
             <div style="font-size:11px;color:var(--hint);">${d.getDate()} ${d.toLocaleString('en-NZ',{month:'short'})}</div>
@@ -6234,6 +6243,39 @@ function sgMapInit(){const box=document.getElementById('sgMapBox');if(_sgMap){tr
   if(_sgHeat&&L.heatLayer)L.heatLayer(pts.map(e=>[e.lat,e.lng,Math.min(1,0.4+0.15*e.count)]),{radius:32,blur:22,maxZoom:8,max:1.2,minOpacity:0.35,gradient:{0.3:'#4fc3a1',0.6:'#f1c40f',1:'#e74c3c'}}).addTo(_sgMap);
   else pts.forEach(e=>{const w=sgWt(e);L.circleMarker([e.lat,e.lng],{radius:7+Math.min(e.count,6)*2,color:'#0a5c43',weight:2,fillColor:'#4fc3a1',fillOpacity:0.6}).addTo(_sgMap).bindPopup(`<b>${e.count>1?e.count+' × ':''}Shorttail stingray</b><br>${fmtWhen(e)}${e.spot?'<br>'+esc(e.spot):''}<br>${esc(e.tod)} · ${esc(e.tide)}${w!=null?'<br>Water '+(+w).toFixed(1)+'°C':''}`);});
   _sgMap.fitBounds(L.latLngBounds(pts.map(e=>[e.lat,e.lng])).pad(0.3),{maxZoom:15});setTimeout(()=>_sgMap&&_sgMap.invalidateSize(),150);}
+
+// ═══ FORECAST DETAIL SHEETS (tap an hour or a day) ═══
+function wxData(){if(window._wxData)return window._wxData;try{return JSON.parse(localStorage.getItem('fishinglog_wxdata'));}catch(e){return null;}}
+const _kn=k=>k==null?'—':Math.round(k/1.852)+' kn',_kmh=k=>k==null?'—':Math.round(k)+' km/h',_h12=h=>h===0?'12am':h<12?h+'am':h===12?'12pm':(h-12)+'pm';
+const _wT=(l,v,s,id)=>`<div class="ttile"><div class="tl2">${l}</div><div class="tv" style="font-size:18px">${v}</div>${s||id?`<div class="ts"${id?` id="${id}"`:''}>${s||''}</div>`:''}</div>`;
+function wxSheetOpen(html){let bg=document.getElementById('wxSheetBg');if(!bg){bg=document.createElement('div');bg.id='wxSheetBg';bg.className='wxbg';bg.onclick=e=>{if(e.target===bg)wxSheetClose();};bg.innerHTML='<div class="wxsheet" role="dialog" aria-modal="true" id="wxSheet"></div>';document.body.appendChild(bg);}
+  const sh=document.getElementById('wxSheet');sh.innerHTML=html;bg.classList.add('open');sh.scrollTop=0;}
+function wxSheetClose(){const b=document.getElementById('wxSheetBg');if(b)b.classList.remove('open');}
+const _wxNone=()=>wxSheetOpen('<div class="wxh"><div class="wxt">Details unavailable</div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div><div class="cmeta" style="padding:6px 0 28px">Refresh the weather while online to load hour-by-hour detail.</div>');
+function wxHourSheet(idx){const D=wxData();if(!D||!D.hourly||!D.hourly.time||!D.hourly.time[idx]){_wxNone();return;}
+  const H=D.hourly,g=k=>H[k]?H[k][idx]:null,dt=new Date(H.time[idx]),hr=dt.getHours(),code=g('weather_code')??3,wk=g('wind_speed_10m'),pr=g('surface_pressure'),p3=H.surface_pressure?H.surface_pressure[idx-3]:null;
+  const tr=pr!=null&&p3!=null?(pr-p3>1?'Rising':pr-p3<-1?'Falling':'Steady'):'',fo=weatherConditionOM(code,wk||0),dot=fo.startsWith('✅')?'#4fc3a1':fo.startsWith('🟡')?'#f39c12':'#e74c3c';
+  let bite='None',tide='—',moon='—';
+  try{const so=solunarAt(dt,appLng),d=c=>{const x=((hr+0.5-c)%24+24)%24;return x>12?24-x:x;};if(d(so.m1)<=1||d(so.m2)<=1)bite='Major window';else if(d(so.n1)<=0.5||d(so.n2)<=0.5)bite='Minor window';}catch(e){}
+  try{tide=(_calcTideLabelForCatch(dt)||'—').replace(/^[^A-Za-z]+/,'');}catch(e){} try{moon=moonAt(dt).n;}catch(e){}
+  const vis=g('visibility');
+  wxSheetOpen(`<div class="wxh"><button class="wxn" onclick="wxHourSheet(${idx-1})" aria-label="Previous hour" ${idx<=0?'disabled':''}>‹</button><div style="flex:1;text-align:center"><div class="wxt">${dt.toLocaleDateString('en-NZ',{weekday:'long'})} ${_h12(hr)}</div><div class="cmeta">${dt.toLocaleDateString('en-NZ',{day:'numeric',month:'long'})}</div></div><button class="wxn" onclick="wxHourSheet(${idx+1})" aria-label="Next hour" ${!H.time[idx+1]?'disabled':''}>›</button><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
+  <div class="wxhero"><span style="font-size:42px">${omIcon(code)}</span><div><div style="font-size:30px;font-weight:800;letter-spacing:-.5px">${g('temperature_2m')!=null?Math.round(g('temperature_2m'))+'°':'—'}</div><div class="cmeta">${esc(omDesc(code))}${g('apparent_temperature')!=null?' · feels '+Math.round(g('apparent_temperature'))+'°':''}</div></div></div>
+  <div class="verdict ${dot==='#4fc3a1'?'good':dot==='#f39c12'?'warn':'bad'}" style="margin:10px 0">${esc(fo.replace(/^[^A-Za-z]+/,''))}</div>
+  <div class="tgrid">${_wT('Wind',_kmh(wk),_kn(wk)+' '+(g('wind_direction_10m')!=null?windDir(g('wind_direction_10m')):''))}${_wT('Gusts',_kmh(g('wind_gusts_10m')),_kn(g('wind_gusts_10m')))}${_wT('Rain',(g('precipitation_probability')??0)+'%',g('precipitation')!=null?g('precipitation')+' mm':'')}${_wT('Pressure',pr!=null?Math.round(pr)+' hPa':'—',tr)}${_wT('Cloud',g('cloud_cover')!=null?g('cloud_cover')+'%':'—',g('relative_humidity_2m')!=null?'Humidity '+g('relative_humidity_2m')+'%':'')}${_wT('Visibility',vis!=null?(vis/1000).toFixed(1)+' km':'—')}</div>
+  <div class="stitle" style="margin:4px 0 6px">Fishing at this time</div><div class="tgrid">${_wT('Bite window',bite)}${_wT('Tide',esc(tide.slice(0,26)))}${_wT('Moon',esc(moon))}${_wT('Sea temp','…','forecast model','wxSheetSea')}</div>`);
+  const ds=H.time[idx].slice(0,10),ts=H.time[idx].slice(11,16);
+  seaModel(wxLat||appLat,wxLng||appLng,ds,ts).then(v=>{const e=document.getElementById('wxSheetSea');if(e){e.previousElementSibling.textContent=v!=null?v.toFixed(1)+'°C':'—';}});}
+function wxDaySheet(i){const D=wxData(),d=D&&D.daily;if(!d||!d.time||!d.time[i]){_wxNone();return;}
+  const g=k=>d[k]?d[k][i]:null,dt=new Date(d.time[i]+'T12:00:00'),code=g('weather_code')??3,tm=k=>g(k)?new Date(g(k)).toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'}):'—',wk=g('wind_speed_10m_max');
+  const fo=weatherConditionOM(code,wk||0),cls=fo.startsWith('✅')?'good':fo.startsWith('🟡')?'warn':'bad',H=D.hourly;
+  const rows=[0,3,6,9,12,15,18,21].map(h=>{const x=i*24+h;if(!H||H.time[x]==null)return '';return `<div class="wxrow" role="button" tabindex="0" onclick="wxHourSheet(${x})"><span class="wxrt">${_h12(h)}</span><span style="font-size:20px">${omIcon(H.weather_code[x]??3)}</span><b>${H.temperature_2m[x]!=null?Math.round(H.temperature_2m[x])+'°':'—'}</b><span class="cmeta" style="flex:1">${_kmh(H.wind_speed_10m[x])} ${H.wind_direction_10m[x]!=null?windDir(H.wind_direction_10m[x]):''}</span><span class="cmeta">${H.precipitation_probability?(H.precipitation_probability[x]??0)+'%':''}</span><span class="cmeta">›</span></div>`;}).join('');
+  wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">${i===0?'Today':i===1?'Tomorrow':dt.toLocaleDateString('en-NZ',{weekday:'long'})}</div><div class="cmeta">${dt.toLocaleDateString('en-NZ',{day:'numeric',month:'long'})}</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
+  <div class="wxhero"><span style="font-size:42px">${omIcon(code)}</span><div><div style="font-size:26px;font-weight:800">${g('temperature_2m_max')!=null?Math.round(g('temperature_2m_max'))+'°':'—'} <span style="font-weight:400;color:var(--hint)">${g('temperature_2m_min')!=null?Math.round(g('temperature_2m_min'))+'°':''}</span></div><div class="cmeta">${esc(omDesc(code))}</div></div></div>
+  <div class="verdict ${cls}" style="margin:10px 0">${esc(fo.replace(/^[^A-Za-z]+/,''))}</div>
+  <div class="tgrid">${_wT('Wind (max)',_kmh(wk),_kn(wk)+' '+(g('wind_direction_10m_dominant')!=null?windDir(g('wind_direction_10m_dominant')):''))}${_wT('Gusts (max)',_kmh(g('wind_gusts_10m_max')),_kn(g('wind_gusts_10m_max')))}${_wT('Rain',(g('precipitation_probability_max')??0)+'%',g('precipitation_sum')!=null?g('precipitation_sum')+' mm total':'')}${_wT('UV index',g('uv_index_max')!=null?Math.round(g('uv_index_max')):'—')}${_wT('Sunrise',tm('sunrise'))}${_wT('Sunset',tm('sunset'))}</div>
+  ${rows?`<div class="stitle" style="margin:4px 0 4px">Through the day · tap an hour</div>${rows}`:''}`);}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')wxSheetClose();if((e.key==='Enter'||e.key===' ')&&e.target.getAttribute&&e.target.getAttribute('role')==='button'&&e.target.onclick){e.preventDefault();e.target.click();}});
 </script>
 </body>
 </html>
