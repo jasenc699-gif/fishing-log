@@ -67,8 +67,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .pu-text-block{padding:12px 16px 16px;text-align:center;background:linear-gradient(transparent,rgba(0,0,0,0.68));}
 .pu-add-text{font-size:14px;font-weight:600;color:#ffffff;letter-spacing:0.1px;}
 .pu-add-sub{font-size:12px;color:rgba(255,255,255,0.55);margin-top:3px;}
-.pu-logo{width:120px;height:120px;border-radius:0;object-fit:cover;flex-shrink:0;mix-blend-mode:screen;opacity:1;}
-.pu-tap-ring{display:flex;align-items:center;justify-content:center;width:90px;height:90px;border-radius:20px;border:2px dashed rgba(79,195,161,0.55);background:rgba(79,195,161,0.06);flex-shrink:0;}
 
 /* FORMS */
 label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;margin-top:10px;font-weight:500;}
@@ -83,7 +81,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .dlbl{font-size:11px;color:rgba(255,255,255,0.35);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;}
 
 /* WEATHER */
-.wgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
 .wcard{background:var(--surf);border-radius:10px;padding:11px;display:flex;flex-direction:column;gap:3px;border:0.5px solid var(--border);}
 .wi{font-size:20px;}.wv{font-size:18px;font-weight:600;color:var(--text);}.wl{font-size:11px;color:var(--muted);}
 /* WEATHER HERO */
@@ -108,9 +105,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .wx-wind-mod{background:rgba(243,156,18,0.7);}
 .wx-wind-strong{background:rgba(231,76,60,0.75);}
 /* SWELL STRIP */
-.wx-swell-strip{display:flex;gap:8px;overflow-x:auto;margin-bottom:10px;padding:1px 0;}
-.wx-swell-strip::-webkit-scrollbar{display:none;}
-.wx-sw-card{flex-shrink:0;background:var(--white);border:0.5px solid var(--border);border-radius:10px;padding:9px 12px;display:flex;flex-direction:column;gap:2px;min-width:90px;}
 
 /* BUTTONS */
 .sbtn{width:100%;padding:14px;background:var(--grey-btn);border:none;border-radius:12px;font-size:16px;font-weight:600;color:#fff;cursor:pointer;font-family:inherit;transition:background 0.15s,transform 0.1s;}
@@ -127,10 +121,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 /* CATCH CARDS */
 .ccard{background:var(--white);border-radius:12px;border:0.5px solid var(--border);margin-bottom:10px;overflow:hidden;}
-.ctop{display:flex;}
-.ciph{width:80px;height:80px;background:#2c2c2c;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
-.cimgel{width:80px;height:80px;object-fit:cover;flex-shrink:0;}
-.cbody{padding:10px 11px;flex:1;min-width:0;}
 .cfish{font-size:14px;font-weight:600;color:var(--text);}
 .cmeta{font-size:12px;color:var(--muted);margin-top:2px;}
 .ctags{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap;}
@@ -140,7 +130,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .ta{background:rgba(239,159,39,0.1);color:#6b3e08;border-color:rgba(239,159,39,0.3);}
 .tb{background:rgba(55,138,221,0.1);color:#0a3868;border-color:rgba(55,138,221,0.3);}
 .cmap{height:110px;border-top:0.5px solid var(--border);}
-.delbtn{background:none;border:none;cursor:pointer;font-size:14px;padding:2px 4px;color:var(--hint);}
 
 /* BITE */
 .bwm{background:rgba(79,195,161,0.1);border:0.5px solid rgba(79,195,161,0.3);padding:10px 12px;border-radius:8px;margin-bottom:8px;}
@@ -149,7 +138,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .bwn .bwt{font-size:13px;font-weight:600;color:#6b3e08;}.bwn .bws{font-size:12px;margin-top:2px;color:#8a5510;}
 
 /* STATS */
-.stat-card{background:var(--white);border-radius:12px;border:0.5px solid var(--border);padding:13px;margin-bottom:10px;}
 .stat-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border);}
 .stat-row:last-child{border-bottom:none;padding-bottom:0;}
 .stat-label{font-size:13px;color:var(--muted);}
@@ -237,8 +225,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:10px;color:var(--hint);text-align:center;}
 /* Permanent nickname tooltip on catch-card mini-maps */
-.catch-nick-tip{background:rgba(30,30,30,0.82)!important;border:none!important;border-radius:5px!important;color:#fff!important;font-size:11px!important;font-weight:600!important;padding:2px 6px!important;box-shadow:0 1px 4px rgba(0,0,0,0.35)!important;white-space:nowrap!important;}
-.catch-nick-tip::before{border-top-color:rgba(30,30,30,0.82)!important;}
 input[type=file]{display:none;}
 /* ── SPECIES TILES ─────────────────────────────────────────────────────── */
 .sp-tiles-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
@@ -252,10 +238,6 @@ input[type=file]{display:none;}
 .sp-tile-sub{font-size:11px;color:var(--muted);margin-top:4px;}
 .sp-tile-thumb{width:100%;height:72px;object-fit:cover;display:block;background:#e0e0e0;}
 .sp-tile-thumb-ph{width:100%;height:72px;display:flex;align-items:center;justify-content:center;font-size:30px;}
-.sp-back-bar{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px 14px;background:var(--white);border-radius:12px;border:0.5px solid var(--border);}
-.sp-back-btn{background:none;border:none;cursor:pointer;font-size:22px;padding:0 2px 0 0;line-height:1;color:var(--teal);flex-shrink:0;}
-.sp-back-label{font-size:16px;font-weight:700;color:var(--text);flex:1;}
-.sp-back-badge{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;font-size:11px;font-weight:700;color:#fff;padding:0 6px;}
 .install-bar{background:#383838;color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:13px;flex-shrink:0;}
 .install-bar button{background:var(--teal);border:none;border-radius:8px;color:#fff;padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;}
 .ix{background:none!important;color:rgba(255,255,255,0.4)!important;font-size:18px!important;padding:0!important;}
@@ -320,7 +302,6 @@ input[type=file]{display:none;}
 .baro-good{background:rgba(79,195,161,0.12);color:#0a5c43;border:0.5px solid rgba(79,195,161,0.3);}
 .baro-fair{background:rgba(239,159,39,0.1);color:#6b3e08;border:0.5px solid rgba(239,159,39,0.3);}
 .baro-poor{background:rgba(231,76,60,0.1);color:#7a2020;border:0.5px solid rgba(231,76,60,0.3);}
-.baro-trend{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:8px;font-size:12px;color:var(--muted);}
 .baro-history{display:flex;align-items:flex-end;gap:3px;height:36px;margin:10px 0 4px;}
 .baro-bar{flex:1;border-radius:3px 3px 0 0;min-height:3px;background:var(--teal);opacity:0.7;transition:height 0.4s;}
 /* ── TIDE REDESIGN ─────────────────────────────────────────────────── */
@@ -448,6 +429,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 .wxh{display:flex;align-items:center;gap:4px;margin-bottom:6px}.wxt{font-size:18px;font-weight:800;text-align:inherit}
 .wxx,.wxn{width:44px;height:44px;border:none;background:none;font-size:22px;color:var(--muted);cursor:pointer;flex-shrink:0}.wxn:disabled{opacity:.25}
 .wxhero{display:flex;align-items:center;gap:14px;padding:4px}.wxrow{display:flex;align-items:center;gap:12px;padding:10px 4px;min-height:48px;border-bottom:0.5px solid var(--border);cursor:pointer}.wxrt{width:40px;font-size:13px;color:var(--muted)}
+.dymic.on{background:#e74c3c!important;color:#fff!important;border-color:#e74c3c!important}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -1060,8 +1042,11 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 
     <!-- ══ STATS ══ -->
     <div class="pg" id="pg-rays">
+      <div class="seg" id="dySeg" style="margin:0 0 10px"><button class="on" onclick="dyTab('diary')">Diary</button><button onclick="dyTab('rays')">Rays</button></div>
+      <div id="dyWrap"></div>
+      <div id="raysWrap" style="display:none">
       <div class="seg" id="sgSeg" style="margin:0 0 10px"><button class="on" onclick="sgShow('log')">Log</button><button onclick="sgShow('hist')">History</button><button onclick="sgShow('pat')">Patterns</button></div>
-      <div id="sgLog"></div><div id="sgHist" style="display:none"></div><div id="sgPat" style="display:none"></div>
+      <div id="sgLog"></div><div id="sgHist" style="display:none"></div><div id="sgPat" style="display:none"></div></div>
     </div>
     <div class="pg" id="pg-stats">
       <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Fishing Insights</div>
@@ -1170,7 +1155,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 
   </div><!-- /pages -->
 
-  <nav class="tabs" role="tablist"><button class="tab active" data-tab="today" role="tab" aria-label="Today" onclick="go('today')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span class="tl">Today</span></button><button class="tab" data-tab="log" role="tab" aria-label="Log" onclick="go('log')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="tl">Log</span></button><button class="tab" data-tab="cond" role="tab" aria-label="Forecast" onclick="goCond()"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 18c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 6c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1"/></svg><span class="tl">Forecast</span></button><button class="tab" data-tab="map" role="tab" aria-label="Map" onclick="go('map')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="tl">Map</span></button><button class="tab" data-tab="list" role="tab" aria-label="Catches" onclick="go('list')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-4-8 7"/></svg><span class="tl">Catches</span></button><button class="tab" data-tab="rays" role="tab" aria-label="Rays" onclick="go('rays')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5c5 0 10 4 10 6-2.500 1-5 1-6.500.8L12 20l-3.500-8.200C7 11.800 4.500 12 2 11c0-2 5-6 10-6z"/></svg><span class="tl">Rays</span></button><button class="tab" data-tab="stats" role="tab" aria-label="Stats" onclick="go('stats')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="tl">Stats</span></button></nav>
+  <nav class="tabs" role="tablist"><button class="tab active" data-tab="today" role="tab" aria-label="Today" onclick="go('today')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span class="tl">Today</span></button><button class="tab" data-tab="log" role="tab" aria-label="Log" onclick="go('log')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="tl">Log</span></button><button class="tab" data-tab="cond" role="tab" aria-label="Forecast" onclick="goCond()"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 18c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 6c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1"/></svg><span class="tl">Forecast</span></button><button class="tab" data-tab="map" role="tab" aria-label="Map" onclick="go('map')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="tl">Map</span></button><button class="tab" data-tab="list" role="tab" aria-label="Catches" onclick="go('list')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-4-8 7"/></svg><span class="tl">Catches</span></button><button class="tab" data-tab="rays" role="tab" aria-label="Diary" onclick="go('rays')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h12a2 2 0 012 2v16H7a2 2 0 01-2-2V3z"/><path d="M9 8h6M9 12h6"/></svg><span class="tl">Diary</span></button><button class="tab" data-tab="stats" role="tab" aria-label="Stats" onclick="go('stats')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="tl">Stats</span></button></nav>
 </div><!-- /app -->
 
 <!-- ══ CATCH VIEWER ══ -->
@@ -4025,7 +4010,6 @@ function _renderDayCard(dateStr, events, isToday) {
 // that does not exist in the HTML. Wave height is now shown via the marine data
 // strip (tideWaveRow) fetched from Open-Meteo in fetchMarineData().
 
-function drawCurve(cd) { _drawTideCurve(cd); } // keep old call-site working
 
 let _activeTideTile = null; // dateStr of the currently shown curve tile
 
@@ -4278,72 +4262,6 @@ async function fetchMarineData() {
 // ─────────────────────────────────────────────
 // TIDE DATE CHECKER — any past or future date
 // ─────────────────────────────────────────────
-function runTideCheck() {
-  const dateVal = document.getElementById('tideCheckDate').value;
-  const el = document.getElementById('tideCheckResult');
-  if (!el) return;
-  if (!dateVal) { el.innerHTML = ''; return; }
-  try {
-    const port = activePort;
-
-    // Build a NZ-aware noon for the chosen date (DST-safe reference)
-    const nzNoon = new Date(`${dateVal}T12:00:00${_nzISOOffset()}`);
-    if (!isFinite(nzNoon.getTime())) { el.innerHTML = ''; return; }
-
-    // Scan from midnight the previous day to catch early-morning tides
-    const scanFrom = new Date(nzNoon.getTime() - 20 * 3600000);
-
-    // Collect all events that fall on the chosen NZ calendar date
-    const allEvts = findTideEvents(scanFrom, 12, port);
-    const dayEvts = allEvts.filter(e => _nzDateStr(e.time.getTime()) === dateVal);
-
-    // Moon + sun for the day
-    const mo = moonAt(nzNoon);
-    const sun = _sunriseSunset(nzNoon, appLat, appLng);
-
-    // Header
-    const dayName = new Intl.DateTimeFormat('en-NZ',{weekday:'long',timeZone:'Pacific/Auckland'}).format(nzNoon);
-    const dateDisp = new Intl.DateTimeFormat('en-NZ',{day:'numeric',month:'long',year:'numeric',timeZone:'Pacific/Auckland'}).format(nzNoon);
-
-    if (!dayEvts.length) {
-      el.innerHTML = `<div style="font-size:13px;color:var(--hint);padding:10px 0;">No tide events found for this date at ${port.name}.</div>`;
-      return;
-    }
-
-    // Build event rows matching the live tide style
-    const rows = dayEvts.map(e => {
-      const isH = e.type === 'High';
-      const t   = _fmtTideTime(e.time);
-      const hm  = isFinite(e.h) ? e.h.toFixed(2) : '—';
-      const hft = isFinite(e.h) ? (e.h * 3.28084).toFixed(1) : '—';
-      return `<div class="tide-event-row">
-        <span class="tide-event-badge ${isH?'high':'low'}">${isH?'HIGH TIDE':'LOW TIDE'}</span>
-        <div style="flex:1;min-width:0;">
-          <div class="tide-event-time">${t}</div>
-          <div class="tide-event-ht">${hm}m (${hft}ft)<span class="tide-lat-badge">LAT</span></div>
-        </div>
-      </div>`;
-    }).join('');
-
-    el.innerHTML = `
-      <div class="tide-day-card" id="tidecard-${dateVal}" style="margin-bottom:0;">
-        <div class="tide-day-head">
-          <div class="tide-day-datestr">${dayName}, ${dateDisp}</div>
-          <div class="tide-day-meta" style="margin-top:6px;">
-            ${sun ? `<div class="tide-day-meta-row">🌅 ${sun.rise} – ${sun.set}</div>` : ''}
-            <div class="tide-day-meta-row">${mo.e} ${mo.n} · ${mo.il}% illumination</div>
-            <div class="tide-day-meta-row" style="font-size:11px;color:rgba(255,255,255,0.35);">Harmonic model · ${port.name}</div>
-          </div>
-        </div>
-        <div>${rows}</div>
-      </div>`;
-
-    showTideCurveForDate(dateVal);
-  } catch(e) {
-    if(el) el.innerHTML = '<div style="font-size:12px;color:var(--hint);">Could not calculate tides.</div>';
-  }
-}
-
 // ─────────────────────────────────────────────
 // SOLUNAR — John Alden Knight's theory (1926)
 // ─────────────────────────────────────────────
@@ -5078,7 +4996,7 @@ async function exportBackup() {
       app: 'NZ Fishing Log',
       catchCount: catches.length,
       catches: catches.map(({ photo, ...meta }) => meta), // metadata only (no in-memory blobs)
-      sightings, seaReadings, photos // { catchId: dataUrl, … }
+      sightings, seaReadings, diary, photos // { catchId: dataUrl, … }
     };
     const json = JSON.stringify(backup);
     const blob = new Blob([json], { type: 'application/json' });
@@ -5123,6 +5041,7 @@ async function importBackup(event) {
       return db - da;
     });
     if (Array.isArray(data.sightings)) { const sid=new Set(sightings.map(x=>x.id)); data.sightings.forEach(x=>{ if(!sid.has(x.id)) sightings.push(x); }); sightings.sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)); sgSave(); }
+    if (Array.isArray(data.diary)) { const did=new Set(diary.map(x=>x.id)); data.diary.forEach(x=>{ if(!did.has(x.id)) diary.push(x); }); dySave2(); }
     if (Array.isArray(data.seaReadings)) { const k=new Set(seaReadings.map(r=>r.ms+'|'+r.lat)); data.seaReadings.forEach(r=>{ if(!k.has(r.ms+'|'+r.lat)) seaReadings.push(r); }); seaSave(); }
     persist();
     // Restore photos into IndexedDB
@@ -6276,6 +6195,69 @@ function wxDaySheet(i){const D=wxData(),d=D&&D.daily;if(!d||!d.time||!d.time[i])
   <div class="tgrid">${_wT('Wind (max)',_kmh(wk),_kn(wk)+' '+(g('wind_direction_10m_dominant')!=null?windDir(g('wind_direction_10m_dominant')):''))}${_wT('Gusts (max)',_kmh(g('wind_gusts_10m_max')),_kn(g('wind_gusts_10m_max')))}${_wT('Rain',(g('precipitation_probability_max')??0)+'%',g('precipitation_sum')!=null?g('precipitation_sum')+' mm total':'')}${_wT('UV index',g('uv_index_max')!=null?Math.round(g('uv_index_max')):'—')}${_wT('Sunrise',tm('sunrise'))}${_wT('Sunset',tm('sunset'))}</div>
   ${rows?`<div class="stitle" style="margin:4px 0 4px">Through the day · tap an hour</div>${rows}`:''}`);}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')wxSheetClose();if((e.key==='Enter'||e.key===' ')&&e.target.getAttribute&&e.target.getAttribute('role')==='button'&&e.target.onclick){e.preventDefault();e.target.click();}});
+
+// ═══ FISHING DIARY ═══
+const DY_KEY='fishinglog_diary';let diary=[];try{diary=JSON.parse(localStorage.getItem(DY_KEY)||'[]');}catch(e){}
+function dySave2(){diary.sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));try{localStorage.setItem(DY_KEY,JSON.stringify(diary));}catch(e){showToast('Storage full — could not save entry','error');}}
+let _dyEditId=null,_dyRating=0,_dyPhotos=[],_dyRec=null,_dyForm=false,window_dyTab='diary';
+const DY_R=['','Dead','Slow','Fair','Good','Great'],DY_C=['','#e74c3c','#f39c12','#9aa0a6','#4fc3a1','#1f9d7c'];
+const _rr0=renderRays;
+renderRays=function(){dyTab(window_dyTab);};
+function dyTab(t){window_dyTab=t;document.querySelectorAll('#dySeg button').forEach((b,i)=>b.classList.toggle('on',(i===0)===(t==='diary')));
+  document.getElementById('dyWrap').style.display=t==='diary'?'block':'none';document.getElementById('raysWrap').style.display=t==='rays'?'block':'none';
+  if(t==='diary')dyRender();else _rr0();}
+function dyToday(){const n=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString();return [n.slice(0,10),n.slice(11,16)];}
+function dyRender(){const w=document.getElementById('dyWrap');
+  const form=_dyForm?`<div class="sec"><div class="stitle">${_dyEditId?'Edit entry':'New entry'}</div>
+   <div class="r2"><div><label>Date</label><input type="date" id="dyDate"></div><div><label>Time (optional)</label><input type="time" id="dyTime"></div></div>
+   <label>Where did you fish?</label><div style="display:flex;gap:8px"><input id="dySpot" list="dySpots" placeholder="Spot name" autocomplete="off" style="flex:1"><button type="button" class="gpsbtn" style="margin:0;min-height:44px;font-weight:600" onclick="dyGps()">Use GPS</button></div>
+   <datalist id="dySpots">${[...new Set([...catches.map(c=>c.nickname),...diary.map(d=>d.spot)].filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
+   <div id="dyGpsSt" class="cmeta" style="min-height:18px;margin-top:4px"></div><input type="hidden" id="dyLat"><input type="hidden" id="dyLng">
+   <label>How was the fishing?</label><div class="spq" style="flex-wrap:wrap">${DY_R.slice(1).map((r,i)=>`<button type="button" class="spchip dyr" data-r="${i+1}" onclick="dyRate(${i+1})">${r}</button>`).join('')}</div>
+   <label>Notes</label><textarea id="dyNotes" rows="6" placeholder="What happened? Bait, tide, weather, what worked…"></textarea>
+   <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><button type="button" class="gpsbtn dymic" id="dyMic" style="margin:0;min-height:44px;font-weight:600" onclick="dyMic()">Dictate</button><span id="dyMicSt" class="cmeta" style="flex:1"></span></div>
+   <label>Photos</label><div class="photobtns"><button type="button" class="gpsbtn" onclick="document.getElementById('dyCam').click()">Take photo</button><button type="button" class="gpsbtn" onclick="document.getElementById('dyLib').click()">Choose photos</button></div>
+   <div id="dyThumbs" class="xthumbs"></div><input type="file" id="dyCam" accept="image/*" capture="environment" onchange="dyPhotoPick(event)" style="display:none"><input type="file" id="dyLib" accept="image/*" multiple onchange="dyPhotoPick(event)" style="display:none">
+   <div style="display:flex;gap:8px;margin-top:14px"><button class="sbtn" style="flex:1" onclick="dyClose()">Cancel</button><button class="sbtn teal-btn" style="flex:2" onclick="dySave()">Save entry</button></div></div>`
+   :`<button class="sbtn teal-btn" style="margin-bottom:12px;font-size:16px;padding:14px" onclick="dyOpen()">New diary entry</button>`;
+  const list=diary.length?diary.map(e=>{const n=catches.filter(c=>c.date===e.date).length,wl=wxLine(e);return `<div class="ccard"><div class="cbody2"><div class="crow"><div style="min-width:0"><div class="cfish">${esc(e.spot||'Fishing day')}</div><div class="cmeta">${fmtWhen(e)}${n?' · '+n+' catch'+(n>1?'es':'')+' logged':''}</div></div><div class="cact"><button class="ibtn" aria-label="Edit entry" onclick="dyOpen('${e.id}')">Edit</button><button class="ibtn danger" aria-label="Delete entry" onclick="dyDel('${e.id}')">Delete</button></div></div>
+    ${e.rating?`<span class="tag" style="background:${DY_C[e.rating]};color:${e.rating===3?'#222':'#fff'};margin-top:8px;display:inline-block">${DY_R[e.rating]}</span>`:''}
+    ${e.notes?`<div style="font-size:15px;line-height:1.5;margin-top:10px;white-space:pre-wrap">${esc(e.notes)}</div>`:''}
+    ${e.np?`<div class="vthumbs" id="dyp-${e.id}"></div>`:''}
+    <div class="ctags">${e.tide&&e.tide!=='—'?`<span class="tag tg">${esc(e.tide)}</span>`:''}${e.moon&&e.moon!=='—'?`<span class="tag tp">${esc(e.moon)}</span>`:''}</div>${wl?`<div class="cmeta" style="margin-top:6px">${wl}</div>`:''}</div></div>`;}).join(''):'<div class="sec" style="text-align:center;padding:26px 16px"><div class="cfish">Your fishing diary</div><div class="cmeta" style="margin-top:6px">Record how each day went — notes, where you fished, photos. Tide, moon and weather are added automatically.</div></div>';
+  w.innerHTML=form+list;
+  if(_dyForm){const [d,t]=dyToday(),e=_dyEditId&&diary.find(x=>x.id===_dyEditId),q=id=>document.getElementById(id);
+    q('dyDate').value=e?e.date:d;q('dyTime').value=e?(e.time||''):t;if(e){q('dySpot').value=e.spot||'';q('dyNotes').value=e.notes||'';q('dyLat').value=e.lat||'';q('dyLng').value=e.lng||'';if(e.lat)q('dyGpsSt').textContent='Location saved';}
+    dyRate(_dyRating,1);dyThumbs();if(!e&&!_dyPhotos.length&&!q('dyLat').value)dyGps();}
+  diary.filter(e=>e.np).forEach(async e=>{const el=document.getElementById('dyp-'+e.id);if(!el)return;for(let i=0;i<e.np;i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)el.insertAdjacentHTML('beforeend',`<img src="${u}" alt="Diary photo" onclick="openLightbox(this.src)">`);}catch(x){}}});}
+async function dyOpen(id){_dyEditId=id||null;_dyForm=true;_dyRating=0;_dyPhotos=[];const e=id&&diary.find(x=>x.id===id);
+  if(e){_dyRating=e.rating||0;for(let i=0;i<(e.np||0);i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)_dyPhotos.push(u);}catch(x){}}}dyRender();window.scrollTo&&document.getElementById('pg-rays').scrollTo&&document.getElementById('pg-rays').scrollTo(0,0);}
+function dyClose(){if(_dyRec)_dyRec.stop();_dyForm=false;_dyEditId=null;dyRender();}
+function dyRate(r,keep){_dyRating=(!keep&&_dyRating===r)?0:r;document.querySelectorAll('.dyr').forEach(b=>b.classList.toggle('on',+b.dataset.r===_dyRating));}
+function dyThumbs(){const el=document.getElementById('dyThumbs');if(el)el.innerHTML=_dyPhotos.map((u,i)=>`<div class="xt"><img src="${u}" alt="Photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="_dyPhotos.splice(${i},1);dyThumbs()">✕</button></div>`).join('');}
+async function dyPhotoPick(ev){const fs=[...ev.target.files];ev.target.value='';for(const f of fs){if(_dyPhotos.length>=4){showToast('Up to 4 photos per entry','error');break;}
+  try{const r=await compressImage(f),u=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));if(u)_dyPhotos.push(u);}catch(e){showToast('Could not add a photo','error');}}dyThumbs();}
+function dyGps(){const st=document.getElementById('dyGpsSt');if(!st)return;if(!navigator.geolocation){st.textContent='GPS not available';return;}st.textContent='Finding you…';
+  navigator.geolocation.getCurrentPosition(p=>{document.getElementById('dyLat').value=p.coords.latitude;document.getElementById('dyLng').value=p.coords.longitude;st.textContent='Location saved (±'+Math.round(p.coords.accuracy)+' m)';},()=>{st.textContent='Could not get location — allow location access';},{enableHighAccuracy:true,timeout:15000});}
+function dyMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition,b=document.getElementById('dyMic'),ta=document.getElementById('dyNotes'),st=document.getElementById('dyMicSt');
+  if(!SR){st.textContent='Dictation isn’t available in this browser. Use the microphone key on your phone’s keyboard instead.';return;}
+  if(_dyRec){_dyRec.stop();return;}const r=new SR();r.lang='en-NZ';r.continuous=true;r.interimResults=true;_dyRec=r;let base=ta.value;const sp=()=>base&&!/\s$/.test(base)?' ':'';
+  r.onstart=()=>{b.classList.add('on');b.textContent='Stop';st.textContent='Listening…';};
+  r.onresult=e=>{let fin='',itm='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t;else itm+=t;}if(fin)base+=sp()+fin.trim();ta.value=base+(itm?sp()+itm.trim():'');};
+  r.onerror=e=>{st.textContent=e.error==='not-allowed'||e.error==='service-not-allowed'?'Microphone access is blocked — allow it in your browser settings.':'Dictation stopped ('+e.error+')';};
+  r.onend=()=>{_dyRec=null;b.classList.remove('on');b.textContent='Dictate';ta.value=base;if(st.textContent==='Listening…')st.textContent='';};
+  try{r.start();}catch(e){_dyRec=null;}}
+async function dySave(){const v=id=>document.getElementById(id).value,date=v('dyDate'),notes=v('dyNotes').trim();if(_dyRec)_dyRec.stop();
+  if(!date){showToast('Please choose a date.','error');return;}if(!notes&&!_dyPhotos.length&&!_dyRating){showToast('Add a note, rating or photo first.','error');return;}
+  const old=_dyEditId&&diary.find(x=>x.id===_dyEditId),id=old?old.id:'d'+Date.now(),time=v('dyTime'),dt=new Date(`${date}T${time||'12:00'}:00${_nzISOOffset()}`);let tide='—',moon='—';
+  try{tide=(_calcTideLabelForCatch(dt)||'—');}catch(e){}try{moon=moonAt(dt).n;}catch(e){}
+  const e=Object.assign(old||{},{id,date,time,lat:parseFloat(v('dyLat'))||null,lng:parseFloat(v('dyLng'))||null,spot:v('dySpot').trim(),rating:_dyRating,notes,tide,moon});
+  const prev=old?old.np||0:0;for(let i=0;i<prev;i++){try{await idbDel('dy_'+id+'#'+i);}catch(x){}}
+  for(let i=0;i<_dyPhotos.length;i++){try{await idbPut('dy_'+id+'#'+i,_dyPhotos[i]);}catch(x){showToast('A photo could not be saved','error');}}e.np=_dyPhotos.length;
+  const td=dyToday()[0];if(!e.wx&&date===td){const t=id=>((document.getElementById(id)||{}).textContent||'').trim(),w={temp:t('wxt'),wind:t('wxWindSpd'),dir:t('wxWindDir'),press:t('wxPressVal'),trend:t('wxPressTrend')};if(w.wind&&w.wind!=='—')e.wx=w;}
+  if(!old)diary.unshift(e);dySave2();vibrate([40,20,40]);showToast('Diary entry saved','success');_dyForm=false;_dyEditId=null;_dyPhotos=[];dyRender();
+  if(e.lat&&!e.sea)seaFill(e).then(()=>{dySave2();if(currentTab==='rays'&&window_dyTab==='diary')dyRender();});}
+async function dyDel(id){if(!confirm('Delete this diary entry?'))return;const e=diary.find(x=>x.id===id);for(let i=0;i<((e&&e.np)||0);i++){try{await idbDel('dy_'+id+'#'+i);}catch(x){}}diary=diary.filter(x=>x.id!==id);dySave2();dyRender();}
 </script>
 </body>
 </html>
