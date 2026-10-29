@@ -642,7 +642,6 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 
       <!-- sticky submit -->
       <div class="log-submit-bar">
-        <div class="sec"><div class="stitle">Water temperature (optional)</div><input type="number" step="0.1" id="fwtemp" inputmode="decimal" placeholder="Leave blank — filled in automatically"><div class="cmeta" style="margin-top:6px">A reading you type here is used as the most accurate source for nearby catches.</div></div>
         <button class="sbtn teal-btn" onclick="saveCatch()" style="font-size:17px;padding:15px;">🎣 Save Catch</button>
       </div>
       <div style="height:80px;"></div>
@@ -6010,7 +6009,7 @@ const _save0=saveCatch;
 saveCatch=async function(){const n=catches.length,ex=extraPhotos.slice(),d={};DEF_FIELDS.forEach(k=>d[k]=document.getElementById(k).value);
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
   const snap=document.getElementById('cdate').value===today?{temp:_tx('wxt'),wind:_tx('wxWindSpd'),dir:_tx('wxWindDir'),press:_tx('wxPressVal'),trend:_tx('wxPressTrend')}:null;
-  const wtv=parseFloat(document.getElementById('fwtemp').value); await _save0(); if(catches.length<=n)return; const c=catches[0]; document.getElementById('fwtemp').value='';
+  const wtv=NaN; await _save0(); if(catches.length<=n)return; const c=catches[0];
   if(wtv>0){seaAddReading(c.lat,c.lng,c.date,c.time,wtv);c.sea={v:wtv,src:'measured'};}else seaFill(c).then(()=>persist());
   try{localStorage.setItem(DEF_KEY,JSON.stringify(d));}catch(e){}
   if(snap&&snap.wind&&snap.wind!=='—')c.wx=snap;
@@ -6232,22 +6231,25 @@ function dyRender(){const w=document.getElementById('dyWrap');
   diary.filter(e=>e.np).forEach(async e=>{const el=document.getElementById('dyp-'+e.id);if(!el)return;for(let i=0;i<e.np;i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)el.insertAdjacentHTML('beforeend',`<img src="${u}" alt="Diary photo" onclick="openLightbox(this.src)">`);}catch(x){}}});}
 async function dyOpen(id){_dyEditId=id||null;_dyForm=true;_dyRating=0;_dyPhotos=[];const e=id&&diary.find(x=>x.id===id);
   if(e){_dyRating=e.rating||0;for(let i=0;i<(e.np||0);i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)_dyPhotos.push(u);}catch(x){}}}dyRender();window.scrollTo&&document.getElementById('pg-rays').scrollTo&&document.getElementById('pg-rays').scrollTo(0,0);}
-function dyClose(){if(_dyRec)_dyRec.stop();_dyForm=false;_dyEditId=null;dyRender();}
+function dyClose(){_dyWant=false;if(_dyRec)_dyRec.stop();_dyForm=false;_dyEditId=null;dyRender();}
 function dyRate(r,keep){_dyRating=(!keep&&_dyRating===r)?0:r;document.querySelectorAll('.dyr').forEach(b=>b.classList.toggle('on',+b.dataset.r===_dyRating));}
 function dyThumbs(){const el=document.getElementById('dyThumbs');if(el)el.innerHTML=_dyPhotos.map((u,i)=>`<div class="xt"><img src="${u}" alt="Photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="_dyPhotos.splice(${i},1);dyThumbs()">✕</button></div>`).join('');}
 async function dyPhotoPick(ev){const fs=[...ev.target.files];ev.target.value='';for(const f of fs){if(_dyPhotos.length>=4){showToast('Up to 4 photos per entry','error');break;}
   try{const r=await compressImage(f),u=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));if(u)_dyPhotos.push(u);}catch(e){showToast('Could not add a photo','error');}}dyThumbs();}
 function dyGps(){const st=document.getElementById('dyGpsSt');if(!st)return;if(!navigator.geolocation){st.textContent='GPS not available';return;}st.textContent='Finding you…';
   navigator.geolocation.getCurrentPosition(p=>{document.getElementById('dyLat').value=p.coords.latitude;document.getElementById('dyLng').value=p.coords.longitude;st.textContent='Location saved (±'+Math.round(p.coords.accuracy)+' m)';},()=>{st.textContent='Could not get location — allow location access';},{enableHighAccuracy:true,timeout:15000});}
+let _dyWant=false;
 function dyMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition,b=document.getElementById('dyMic'),ta=document.getElementById('dyNotes'),st=document.getElementById('dyMicSt');
   if(!SR){st.textContent='Dictation isn’t available in this browser. Use the microphone key on your phone’s keyboard instead.';return;}
-  if(_dyRec){_dyRec.stop();return;}const r=new SR();r.lang='en-NZ';r.continuous=true;r.interimResults=true;_dyRec=r;let base=ta.value;const sp=()=>base&&!/\s$/.test(base)?' ':'';
-  r.onstart=()=>{b.classList.add('on');b.textContent='Stop';st.textContent='Listening…';};
-  r.onresult=e=>{let fin='',itm='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript;if(e.results[i].isFinal)fin+=t;else itm+=t;}if(fin)base+=sp()+fin.trim();ta.value=base+(itm?sp()+itm.trim():'');};
-  r.onerror=e=>{st.textContent=e.error==='not-allowed'||e.error==='service-not-allowed'?'Microphone access is blocked — allow it in your browser settings.':'Dictation stopped ('+e.error+')';};
-  r.onend=()=>{_dyRec=null;b.classList.remove('on');b.textContent='Dictate';ta.value=base;if(st.textContent==='Listening…')st.textContent='';};
-  try{r.start();}catch(e){_dyRec=null;}}
-async function dySave(){const v=id=>document.getElementById(id).value,date=v('dyDate'),notes=v('dyNotes').trim();if(_dyRec)_dyRec.stop();
+  if(_dyWant){_dyWant=false;_dyWant=false;if(_dyRec)_dyRec.stop();return;}_dyWant=true;
+  const run=()=>{if(!_dyWant)return;let base=ta.value;const sp=()=>base&&!/\s$/.test(base)?' ':'',r=new SR();r.lang='en-NZ';r.continuous=false;r.interimResults=true;_dyRec=r;
+    r.onstart=()=>{b.classList.add('on');b.textContent='Stop';st.textContent='Listening…';};
+    r.onresult=e=>{const parts=[];for(let i=0;i<e.results.length;i++){const t=(e.results[i][0].transcript||'').trim();if(!t)continue;const l=parts.length-1;if(l>=0&&t.toLowerCase().startsWith(parts[l].toLowerCase()))parts[l]=t;else parts.push(t);}ta.value=base+(parts.length?sp()+parts.join(' '):'');};
+    r.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted')return;_dyWant=false;st.textContent=e.error==='not-allowed'||e.error==='service-not-allowed'?'Microphone access is blocked — allow it in your browser settings.':'Dictation stopped ('+e.error+')';};
+    r.onend=()=>{_dyRec=null;if(_dyWant){setTimeout(run,150);return;}b.classList.remove('on');b.textContent='Dictate';if(st.textContent==='Listening…')st.textContent='';};
+    try{r.start();}catch(e){_dyWant=false;_dyRec=null;}};
+  run();}
+async function dySave(){const v=id=>document.getElementById(id).value,date=v('dyDate'),notes=v('dyNotes').trim();_dyWant=false;if(_dyRec)_dyRec.stop();
   if(!date){showToast('Please choose a date.','error');return;}if(!notes&&!_dyPhotos.length&&!_dyRating){showToast('Add a note, rating or photo first.','error');return;}
   const old=_dyEditId&&diary.find(x=>x.id===_dyEditId),id=old?old.id:'d'+Date.now(),time=v('dyTime'),dt=new Date(`${date}T${time||'12:00'}:00${_nzISOOffset()}`);let tide='—',moon='—';
   try{tide=(_calcTideLabelForCatch(dt)||'—');}catch(e){}try{moon=moonAt(dt).n;}catch(e){}
