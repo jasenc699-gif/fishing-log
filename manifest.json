@@ -26,5 +26,29 @@
   "categories": [
     "sports",
     "lifestyle"
+  ],
+  "shortcuts": [
+    {
+      "name": "Log a catch",
+      "short_name": "Log catch",
+      "url": "./index.html?go=log",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "New diary entry",
+      "short_name": "Diary",
+      "url": "./index.html?go=diary-new",
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

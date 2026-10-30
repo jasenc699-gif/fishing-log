@@ -431,6 +431,34 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 .wxhero{display:flex;align-items:center;gap:14px;padding:4px}.wxrow{display:flex;align-items:center;gap:12px;padding:10px 4px;min-height:48px;border-bottom:0.5px solid var(--border);cursor:pointer}.wxrt{width:40px;font-size:13px;color:var(--muted)}
 .dymic.on{background:#e74c3c!important;color:#fff!important;border-color:#e74c3c!important}
 .dymap{border-radius:12px;overflow:hidden;margin-top:8px}.dypin div{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#4fc3a1;border:2px solid #0a5c43;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+
+/* ═══ DESIGN SYSTEM POLISH ═══ */
+@font-face{font-family:'Inter';src:url(vendor/fonts/inter.woff2) format('woff2');font-weight:100 900;font-style:normal;font-display:swap}
+html{color-scheme:light dark}
+body,button,input,select,textarea{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-feature-settings:'cv11','ss03'}
+.htitle,.tgreet,.cfish,.wxt{letter-spacing:-.02em}.tv,.cstats b,.bn,.vcount{font-variant-numeric:tabular-nums}
+.header{background:linear-gradient(180deg,#2f3437,#262b2e)}
+.sec,.ccard,.ttile,.wcard{border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.05),0 2px 8px rgba(16,24,40,.05);border:1px solid var(--border)}
+.sec,.ccard{margin-bottom:12px}
+input:focus,select:focus,textarea:focus{border-color:var(--teal)!important;box-shadow:var(--ring);outline:none}
+.wic{vertical-align:-.2em;display:inline-block}
+button,.tab,.wx-cell,.ccard{transition:transform .12s ease,background-color .15s,box-shadow .2s,opacity .15s}
+button:active:not(:disabled),.wx-cell:active,.wxrow:active{transform:scale(.97)}
+.ccard:active{box-shadow:0 0 0 rgba(0,0,0,0)}
+.skel{background:linear-gradient(90deg,var(--surf) 25%,var(--surf2) 50%,var(--surf) 75%);background-size:200% 100%;animation:shim 1.2s linear infinite;border-radius:8px;color:transparent}
+@keyframes shim{to{background-position:-200% 0}}
+/* Today hero */
+.thero{border-radius:22px;padding:18px 18px 16px;margin-bottom:12px;color:#fff;position:relative;overflow:hidden;box-shadow:0 6px 20px rgba(16,24,40,.18)}
+.thero::after{content:"";position:absolute;right:-30px;top:-30px;width:150px;height:150px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.28),rgba(255,255,255,0) 70%)}
+.thero[data-tod=dawn]{background:linear-gradient(160deg,#f6a65a,#c4527a 60%,#3b3f7a)}.thero[data-tod=day]{background:linear-gradient(160deg,#3a9ad9,#1b5f9a)}
+.thero[data-tod=dusk]{background:linear-gradient(160deg,#e0793f,#8a3f7f 60%,#2b2f6e)}.thero[data-tod=night]{background:linear-gradient(160deg,#1c2b4a,#0c1424)}
+.thero .tgreet{font-size:30px;font-weight:800;margin:2px 0}.thero .tsub{color:rgba(255,255,255,.82);margin-bottom:0}
+.thero .verdict{margin:14px 0 0;background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.38);color:#fff;backdrop-filter:blur(6px)}
+/* undo + offline */
+.undo{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom));max-width:406px;margin:0 auto;background:#1f2326;color:#fff;padding:12px 14px;border-radius:14px;display:flex;justify-content:space-between;align-items:center;z-index:9998;box-shadow:0 8px 28px rgba(0,0,0,.35);transform:translateY(20px);opacity:0;pointer-events:none;transition:transform .2s,opacity .2s}
+.undo.show{transform:none;opacity:1;pointer-events:auto}.undo button{background:none;border:none;color:var(--teal);font-weight:700;font-size:15px;min-height:40px;padding:0 8px}
+.offpill{position:fixed;top:calc(env(safe-area-inset-top) + 6px);left:50%;transform:translate(-50%,-60px);background:#3a3f43;color:#fff;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;z-index:9997;transition:transform .25s}.offpill.show{transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -4313,17 +4341,19 @@ function windDir(deg) {
 }
 
 function omIcon(code) {
-  if(code===0) return '☀️';
-  if(code<=2) return '🌤';
-  if(code===3) return '☁️';
-  if(code<=49) return '🌫';
-  if(code<=59) return '🌦';
-  if(code<=69) return '🌧';
-  if(code<=79) return '❄️';
-  if(code<=82) return '🌧';
-  if(code<=84) return '🌨';
-  if(code<=99) return '⛈';
-  return '⛅';
+  const W=i=>`<svg class="wic" viewBox="0 0 24 24" width="1.1em" height="1.1em" aria-hidden="true">${i}</svg>`,
+    cl=(f,t)=>`<path transform="${t||''}" d="M7 19h10a4 4 0 000-8 5.5 5.5 0 00-10.7-1.2A4.6 4.6 0 007 19z" fill="${f||'#b3c1d1'}"/>`,
+    sun=(x,y,r)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#f5b83d"/><g stroke="#f5b83d" stroke-width="1.6" stroke-linecap="round">${[0,45,90,135,180,225,270,315].map(a=>{const q=Math.PI*a/180,c=Math.cos(q),n=Math.sin(q);return `<line x1="${(x+c*(r+2)).toFixed(1)}" y1="${(y+n*(r+2)).toFixed(1)}" x2="${(x+c*(r+3.8)).toFixed(1)}" y2="${(y+n*(r+3.8)).toFixed(1)}"/>`;}).join('')}</g>`,
+    drops=c=>`<g stroke="${c}" stroke-width="1.8" stroke-linecap="round"><line x1="8.5" y1="19.5" x2="7.5" y2="22.5"/><line x1="12.5" y1="19.5" x2="11.5" y2="22.5"/><line x1="16.5" y1="19.5" x2="15.5" y2="22.5"/></g>`;
+  if(code===0) return W(sun(12,12,4.2));
+  if(code<=2) return W(sun(9,9,3.4)+cl('#c9d4e0','translate(1.5 0)'));
+  if(code===3) return W(cl('#9fb0c3','translate(0 1)'));
+  if(code<=49) return W(`<g stroke="#a9b7c7" stroke-width="2" stroke-linecap="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="6" y1="13" x2="18" y2="13"/><line x1="4" y1="17" x2="16" y2="17"/></g>`);
+  if(code<=59) return W(cl('#a9b7c7','translate(0 -2)')+drops('#6bb5e6'));
+  if(code<=69) return W(cl('#8fa1b5','translate(0 -2)')+drops('#3f95d6'));
+  if(code<=79) return W(cl('#c3ced9','translate(0 -2)')+`<g fill="#7fb8e8"><circle cx="8" cy="21" r="1.2"/><circle cx="12" cy="21" r="1.2"/><circle cx="16" cy="21" r="1.2"/></g>`);
+  if(code<=84) return W(sun(8,7,2.8)+cl('#8fa1b5','translate(1 -1)')+drops('#3f95d6'));
+  return W(cl('#6f7f93','translate(0 -2)')+`<path d="M12.8 14l-3 4.6h2.6l-1.2 4 4.4-5.6h-2.7l1.1-3z" fill="#f5c542"/>`);
 }
 
 function omDesc(code) {
@@ -6013,7 +6043,7 @@ saveCatch=async function(){const n=catches.length,ex=extraPhotos.slice(),d={};DE
   for(let i=0;i<ex.length;i++){try{await idbPut(c.id+'#'+(i+1),ex[i]);c.extra=i+1;}catch(e){}}
   persist(); extraPhotos=[]; renderThumbs(); applyDefaults(); renderSpQuick(); if(currentTab==='today')renderToday();};
 // today
-function renderToday(){const el=document.getElementById('todayContent');if(!el)return;const now=new Date();
+function renderToday(){const el=document.getElementById('todayContent');if(!el)return;const now=new Date(),hh=now.getHours(),tod=hh<5?'night':hh<8?'dawn':hh<17?'day':hh<20?'dusk':'night',greet=hh<5?'Late night':hh<12?'Good morning':hh<17?'Good afternoon':'Good evening';
   const wind=parseFloat(_tx('wxWindSpd')),has=!isNaN(wind);
   const v=!has?['load','Checking conditions…']:wind<=15?['good','Good conditions for fishing']:wind<=22?['warn','Fishable, but take care']:['bad','Strong wind — stay safe'];
   let tide='—',moon='—',bite='—';
@@ -6025,8 +6055,8 @@ function renderToday(){const el=document.getElementById('todayContent');if(!el)r
   }catch(e){}
   const tile=(l,x,s)=>`<div class="ttile"><div class="tl2">${l}</div><div class="tv">${esc(x)}</div>${s?`<div class="ts">${esc(s)}</div>`:''}</div>`;
   const ym=now.toISOString().slice(0,7),mc=catches.filter(c=>(c.date||'').startsWith(ym)).length,last=catches[0];
-  el.innerHTML=`<div class="tgreet">${now.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'})}</div><div class="tsub">${esc(_tx('wxl')||'')}</div>
-  <div class="verdict ${v[0]}">${v[1]}${has?' · wind '+esc(_tx('wxWindSpd')):''}</div>
+  el.innerHTML=`<div class="thero" data-tod="${tod}"><div class="tsub" style="margin:0">${now.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'})}</div><div class="tgreet">${greet}</div><div class="tsub">${esc((/could not|network|error|loading/i.test(_tx('wxl'))?'':_tx('wxl'))||'')}</div>
+  <div class="verdict ${v[0]}">${v[1]}${has?' · wind '+esc(_tx('wxWindSpd')):''}</div></div>
   <div class="tgrid">${tile('Temp',_tx('wxt')||'—',_tx('wxd'))}${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,'').slice(0,22))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}${seaTile()}</div>
   <button class="sbtn teal-btn" style="margin:4px 0 12px;font-size:17px;padding:16px" onclick="go('log')">Log a catch</button>
   <div class="sec"><div class="stitle">Your fishing</div>${last?`<div class="cfish">${esc(last.fish)}${last.length?' · '+esc(last.length)+' cm':''}</div><div class="cmeta">Last catch · ${fmtWhen(last)}</div><div class="cmeta" style="margin-top:6px">${mc} catch${mc!==1?'es':''} this month · ${catches.length} total</div>`:'<div class="cmeta">No catches yet. Your first one will show up here.</div>'}</div>`;}
@@ -6064,7 +6094,7 @@ function wxLine(c){const w=c.wx,a=[];if(c.sea)a.push('Sea '+(+c.sea.v).toFixed(1
   if(w){if(w.wind&&w.wind!=='—')a.push('Wind '+w.wind+(w.dir&&w.dir!=='—'?' '+w.dir:''));if(w.press&&w.press!=='—')a.push(w.press+' hPa'+(w.trend&&w.trend!=='—'?' · '+w.trend:''));if(w.temp&&w.temp!=='—')a.push(w.temp);}
   return a.map(esc).join(' · ');}
 let _seaNow=null,_seaBusy=false;
-function seaTile(){const n=_seaNow;return `<div class="ttile" style="grid-column:1/-1"><div class="tl2">Sea temperature</div><div class="tv">${n?(+n.v).toFixed(1)+'°C':'—'}</div><div class="ts">${n?esc(seaLbl(n))+(n.adj?' ('+(n.adj>0?'+':'')+n.adj+'° from your readings)':''):'Looking up…'}</div></div>`;}
+function seaTile(){const n=_seaNow;return `<div class="ttile" style="grid-column:1/-1"><div class="tl2">Sea temperature</div><div class="tv">${n?(+n.v).toFixed(1)+'°C':'<span class="skel" style="display:inline-block;width:72px">&nbsp;</span>'}</div><div class="ts">${n?esc(seaLbl(n))+(n.adj?' ('+(n.adj>0?'+':'')+n.adj+'° from your readings)':''):'Looking up…'}</div></div>`;}
 const _rt0=renderToday;
 renderToday=function(){_rt0();if(_seaBusy||(_seaNow&&Date.now()-_seaNow.t<18e5))return;_seaBusy=true;const n=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString();
   seaTemp(appLat,appLng,n.slice(0,10),n.slice(11,16)).then(r=>{_seaBusy=false;if(r){_seaNow=Object.assign({t:Date.now()},r);if(currentTab==='today')_rt0();}}).catch(()=>{_seaBusy=false;});};
@@ -6140,12 +6170,16 @@ function dyRender(){dyDestroyMaps();const w=document.getElementById('dyWrap');
   w.innerHTML=form+dyAllBtn()+list;
   if(_dyForm){const [d,t]=dyToday(),e=_dyEditId&&diary.find(x=>x.id===_dyEditId),q=id=>document.getElementById(id);
     q('dyDate').value=e?e.date:d;q('dyTime').value=e?(e.time||''):t;if(e){q('dySpot').value=e.spot||'';q('dyNotes').value=e.notes||'';q('dyLat').value=e.lat||'';q('dyLng').value=e.lng||'';if(e.lat)q('dyGpsSt').textContent='Location saved';}
-    dyRate(_dyRating,1);dyThumbs();_dyRay=!!(e&&e.ray);dyRayUi();_dyLocSrc=e?(e.locSrc||''):'';dyFormMapInit();if(!e&&!_dyPhotos.length&&!q('dyLat').value)dyGps();}
+    dyRate(_dyRating,1);dyThumbs();_dyRay=!!(e&&e.ray);dyRayUi();
+    if(!e){try{const d=JSON.parse(localStorage.getItem(DY_DRAFT)||'null');if(d){q('dySpot').value=d.spot||'';q('dyNotes').value=d.notes||'';_dyRay=!!d.ray;dyRayUi();dyRate(d.rating||0,1);showToast('Draft restored','success');}}catch(x){}}
+    ['dySpot','dyNotes'].forEach(i=>q(i).addEventListener('input',dyDraftSave));_dyLocSrc=e?(e.locSrc||''):'';dyFormMapInit();if(!e&&!_dyPhotos.length&&!q('dyLat').value)dyGps();}
   diary.filter(e=>e.np).forEach(async e=>{const el=document.getElementById('dyp-'+e.id);if(!el)return;for(let i=0;i<e.np;i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)el.insertAdjacentHTML('beforeend',`<img src="${u}" alt="Diary photo" onclick="openLightbox(this.src)">`);}catch(x){}}});}
 async function dyOpen(id){_dyEditId=id||null;_dyForm=true;_dyRating=0;_dyPhotos=[];const e=id&&diary.find(x=>x.id===id);
   if(e){_dyRating=e.rating||0;for(let i=0;i<(e.np||0);i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)_dyPhotos.push(u);}catch(x){}}}dyRender();window.scrollTo&&document.getElementById('pg-diary').scrollTo&&document.getElementById('pg-diary').scrollTo(0,0);}
-function dyClose(){_dyWant=false;if(_dyRec)_dyRec.stop();_dyForm=false;_dyEditId=null;dyRender();}
-function dyRate(r,keep){_dyRating=(!keep&&_dyRating===r)?0:r;document.querySelectorAll('.dyr').forEach(b=>b.classList.toggle('on',+b.dataset.r===_dyRating));}
+const DY_DRAFT='fishinglog_diary_draft';
+function dyDraftSave(){if(_dyEditId||!document.getElementById('dyNotes'))return;const d={spot:document.getElementById('dySpot').value,notes:document.getElementById('dyNotes').value,rating:_dyRating,ray:_dyRay};try{if(d.spot||d.notes||d.rating||d.ray)localStorage.setItem(DY_DRAFT,JSON.stringify(d));}catch(e){}}
+function dyClose(){localStorage.removeItem(DY_DRAFT);_dyWant=false;if(_dyRec)_dyRec.stop();_dyForm=false;_dyEditId=null;dyRender();}
+function dyRate(r,keep){_dyRating=(!keep&&_dyRating===r)?0:r;setTimeout(dyDraftSave,0);document.querySelectorAll('.dyr').forEach(b=>b.classList.toggle('on',+b.dataset.r===_dyRating));}
 function dyThumbs(){const el=document.getElementById('dyThumbs');if(el)el.innerHTML=_dyPhotos.map((u,i)=>`<div class="xt"><img src="${u}" alt="Photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="_dyPhotos.splice(${i},1);dyThumbs()">✕</button></div>`).join('');}
 async function dyPhotoPick(ev){const fs=[...ev.target.files];ev.target.value='';for(const f of fs){if(_dyPhotos.length>=4){showToast('Up to 4 photos per entry','error');break;}
   let g=null,dt=null;try{if(typeof exifr!=='undefined'){g=await exifr.gps(f);const x=await exifr.parse(f,['DateTimeOriginal']);dt=x&&x.DateTimeOriginal;}}catch(e){}
@@ -6173,9 +6207,10 @@ async function dySave(){const v=id=>document.getElementById(id).value,date=v('dy
   const prev=old?old.np||0:0;for(let i=0;i<prev;i++){try{await idbDel('dy_'+id+'#'+i);}catch(x){}}
   for(let i=0;i<_dyPhotos.length;i++){try{await idbPut('dy_'+id+'#'+i,_dyPhotos[i]);}catch(x){showToast('A photo could not be saved','error');}}e.np=_dyPhotos.length;
   const td=dyToday()[0];if(!e.wx&&date===td){const t=id=>((document.getElementById(id)||{}).textContent||'').trim(),w={temp:t('wxt'),wind:t('wxWindSpd'),dir:t('wxWindDir'),press:t('wxPressVal'),trend:t('wxPressTrend')};if(w.wind&&w.wind!=='—')e.wx=w;}
-  if(!old)diary.unshift(e);dySave2();vibrate([40,20,40]);showToast('Diary entry saved','success');_dyForm=false;_dyEditId=null;_dyPhotos=[];dyRender();
+  if(!old)diary.unshift(e);dySave2();localStorage.removeItem(DY_DRAFT);vibrate([40,20,40]);showToast('Diary entry saved','success');_dyForm=false;_dyEditId=null;_dyPhotos=[];dyRender();
   if(e.lat&&!e.sea)seaFill(e).then(()=>{dySave2();if(currentTab==='diary')dyRender();});}
-async function dyDel(id){if(!confirm('Delete this diary entry?'))return;const e=diary.find(x=>x.id===id);for(let i=0;i<((e&&e.np)||0);i++){try{await idbDel('dy_'+id+'#'+i);}catch(x){}}diary=diary.filter(x=>x.id!==id);dySave2();dyRender();}
+async function dyDel(id){const i=diary.findIndex(x=>x.id===id);if(i<0)return;const e=diary[i];diary.splice(i,1);dySave2();dyRender();
+  undoBar('Entry deleted',()=>{diary.push(e);dySave2();dyRender();},async()=>{for(let k=0;k<(e.np||0);k++){try{await idbDel('dy_'+id+'#'+k);}catch(x){}}});}
 
 // ── diary maps, ray flag, migration of old sightings ──
 let _dyFormMap=null,_dyPin=null,_dyLocSrc='',_dyRay=false,_dyMaps={};
@@ -6186,7 +6221,7 @@ function dyFormMapInit(){const el=document.getElementById('dyFormMap');if(!el||t
   _dyPin.on('dragend',()=>{const q=_dyPin.getLatLng();dyMapSet(q.lat,q.lng,'map','Pin moved');});_dyFormMap.on('click',e=>dyMapSet(e.latlng.lat,e.latlng.lng,'map','Location set on map'));setTimeout(()=>_dyFormMap&&_dyFormMap.invalidateSize(),200);}
 function dyMapSet(lat,lng,src,msg){document.getElementById('dyLat').value=lat;document.getElementById('dyLng').value=lng;_dyLocSrc=src;const st=document.getElementById('dyGpsSt');if(st)st.textContent=msg||'';
   if(_dyFormMap&&_dyPin){_dyPin.setLatLng([lat,lng]).setOpacity(1);_dyFormMap.setView([lat,lng],Math.max(_dyFormMap.getZoom(),15));}}
-function dyRay(){_dyRay=!_dyRay;dyRayUi();}function dyRayUi(){const b=document.getElementById('dyRayBtn');if(b)b.classList.toggle('on',_dyRay);}
+function dyRay(){_dyRay=!_dyRay;dyRayUi();dyDraftSave();}function dyRayUi(){const b=document.getElementById('dyRayBtn');if(b)b.classList.toggle('on',_dyRay);}
 function dyCardMap(id){const el=document.getElementById('dyc-'+id),e=diary.find(x=>x.id===id);if(!el||!e)return;const b=el.previousElementSibling;
   if(_dyMaps[id]){try{_dyMaps[id].remove();}catch(x){}delete _dyMaps[id];el.style.display='none';b.textContent=e.locSrc==='photo'?'Show photo location':'Show map';return;}
   el.style.display='block';const m=L.map(el).setView([e.lat,e.lng],15);_dyTile().addTo(m);L.marker([e.lat,e.lng],{icon:_dyIcon()}).addTo(m).bindPopup(e.locSrc==='photo'?'Where the photo was taken':'Location');_dyMaps[id]=m;b.textContent='Hide map';setTimeout(()=>m.invalidateSize(),150);}
@@ -6201,6 +6236,20 @@ function sgToDiary(e){const t=[(e.count>1?e.count+' × ':'')+'Shorttail stingray
 async function dyMigrate(list){const have=new Set(diary.map(x=>x.id));let n=0;for(const e of list){const d=sgToDiary(e);if(have.has(d.id))continue;
   if(e.has){try{const u=await idbGet('sg_'+e.id);if(u)await idbPut('dy_'+d.id+'#0',u);else d.np=0;}catch(x){d.np=0;}}diary.push(d);have.add(d.id);n++;}if(n)dySave2();return n;}
 document.addEventListener('DOMContentLoaded',()=>setTimeout(async()=>{try{if(localStorage.getItem('fishinglog_sg_migrated'))return;const old=JSON.parse(localStorage.getItem('fishinglog_sightings')||'[]');if(old.length){await dyMigrate(old);if(currentTab==='diary')dyRender();}localStorage.setItem('fishinglog_sg_migrated','1');}catch(e){}},1500));
+
+// ═══ POLISH: undo bar, sheet swipe-down, offline pill, app shortcuts ═══
+let _undoT=null,_undoCommit=null;
+function undoBar(msg,onUndo,onCommit){if(_undoCommit)_undoCommit();clearTimeout(_undoT);_undoCommit=onCommit;let el=document.getElementById('undoBar');if(!el){el=document.createElement('div');el.id='undoBar';el.className='undo';document.body.appendChild(el);}
+  el.innerHTML=`<span>${esc(msg)}</span><button type="button">Undo</button>`;el.classList.add('show');
+  el.querySelector('button').onclick=()=>{clearTimeout(_undoT);_undoCommit=null;el.classList.remove('show');onUndo();};
+  _undoT=setTimeout(()=>{el.classList.remove('show');const c=_undoCommit;_undoCommit=null;if(c)c();},6000);}
+(()=>{let y0=null,dy=0,sh=null;
+  document.addEventListener('touchstart',e=>{sh=e.target.closest&&e.target.closest('#wxSheet');y0=sh&&sh.scrollTop<=0?e.touches[0].clientY:null;dy=0;},{passive:true});
+  document.addEventListener('touchmove',e=>{if(y0==null)return;dy=e.touches[0].clientY-y0;if(dy>0){sh.style.transition='none';sh.style.transform=`translateY(${dy}px)`;}},{passive:true});
+  document.addEventListener('touchend',()=>{if(y0==null)return;sh.style.transition='transform .2s';sh.style.transform='';if(dy>90)wxSheetClose();y0=null;});})();
+(()=>{const pill=document.createElement('div');pill.className='offpill';pill.textContent='Offline — showing saved data';document.body.appendChild(pill);
+  const u=()=>pill.classList.toggle('show',!navigator.onLine);addEventListener('online',u);addEventListener('offline',u);u();})();
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{const g=new URLSearchParams(location.search).get('go');if(g==='log')go('log');else if(g==='diary-new'){go('diary');dyOpen();}},700));
 </script>
 </body>
 </html>
