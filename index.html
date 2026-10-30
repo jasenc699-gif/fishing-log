@@ -3038,6 +3038,7 @@ async function _buildQuickViewPopup(c) {
 // MAP FILTERS
 // ─────────────────────────────────────────────
 function _catchMatchesFilters(c) {
+  if (c.locApprox) return false;
   // Species — OR within group
   if (mapFilters.species.size > 0 && !mapFilters.species.has(c.fish)) return false;
   // Tide — OR within group
@@ -5431,7 +5432,7 @@ function renderList() {
     <div class="ccard" id="card-${c.id}">
       ${c.photo?`<img src="${c.photo}" class="chero" alt="${esc(c.fish)} catch" onclick="openViewer('${c.id}')">`:''}${c.extra?`<span class="cbadge">+${c.extra} photo${c.extra>1?'s':''}</span>`:''}
       <div class="cbody2">
-        <div class="crow"><div style="cursor:pointer;flex:1;min-width:0" onclick="openViewer('${c.id}')"><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)} · ${esc(c.nickname||c.location||'')}</div></div>
+        <div class="crow"><div style="cursor:pointer;flex:1;min-width:0" onclick="openViewer('${c.id}')"><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)} · ${esc(c.nickname||c.location||'')}${c.locApprox?' · approx. location':''}</div></div>
           <div class="cact"><button class="ibtn" aria-label="Edit catch" onclick="editCatch('${c.id}')">Edit</button><button class="ibtn danger" aria-label="Delete catch" onclick="delCatch('${c.id}')">Delete</button></div></div>
         <div class="cstats">${c.length?`<div><b>${unitNum(c.length,'len')}</b><span>${units.len}</span></div>`:''}${c.weight?`<div><b>${unitNum(c.weight,'wt')}</b><span>${units.wt}</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
         ${(c.method||c.platform)?`<div class="cmeta">${esc([c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · '))}</div>`:''}
@@ -6046,7 +6047,7 @@ const _save0=saveCatch;
 saveCatch=async function(){const n=catches.length,ex=extraPhotos.slice(),d={};DEF_FIELDS.forEach(k=>d[k]=document.getElementById(k).value);
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
   const snap=document.getElementById('cdate').value===today?{temp:_tx('wxt'),wind:_tx('wxWindSpd'),dir:_tx('wxWindDir'),press:_tx('wxPressVal'),trend:_tx('wxPressTrend')}:null;
-  const wtv=NaN; await _save0(); if(catches.length<=n)return; const c=catches[0];
+  const wtv=NaN; await _save0(); if(catches.length<=n)return; const c=catches[0]; if(isDefLoc(c.lat,c.lng)){c.locApprox=1;showToast('Saved with an approximate location — edit the catch to set the spot','error');}
   if(wtv>0){seaAddReading(c.lat,c.lng,c.date,c.time,wtv);c.sea={v:wtv,src:'measured'};}else seaFill(c).then(()=>persist());
   try{localStorage.setItem(DEF_KEY,JSON.stringify(d));}catch(e){}
   if(snap&&snap.wind&&snap.wind!=='—')c.wx=snap;
@@ -6120,7 +6121,7 @@ document.addEventListener('DOMContentLoaded',()=>{setTimeout(async()=>{if(!navig
 
 // ═══ FORECAST DETAIL SHEETS (tap an hour or a day) ═══
 function wxData(){if(window._wxData)return window._wxData;try{return JSON.parse(localStorage.getItem('fishinglog_wxdata'));}catch(e){return null;}}
-const _kn=k=>k==null?'—':Math.round(k/1.852)+' kn',_kmh=k=>k==null?'—':Math.round(k)+' km/h',_h12=h=>h===0?'12am':h<12?h+'am':h===12?'12pm':(h-12)+'pm';
+const _kn=k=>k==null?'—':units.wind==='kn'?Math.round(k)+' km/h':Math.round(k/1.852)+' kn',_kmh=k=>k==null?'—':units.wind==='kn'?Math.round(k/1.852)+' kn':Math.round(k)+' km/h',_h12=h=>h===0?'12am':h<12?h+'am':h===12?'12pm':(h-12)+'pm';
 const _wT=(l,v,s,id)=>`<div class="ttile"><div class="tl2">${l}</div><div class="tv" style="font-size:18px">${v}</div>${s||id?`<div class="ts"${id?` id="${id}"`:''}>${s||''}</div>`:''}</div>`;
 function wxSheetOpen(html){let bg=document.getElementById('wxSheetBg');if(!bg){bg=document.createElement('div');bg.id='wxSheetBg';bg.className='wxbg';bg.onclick=e=>{if(e.target===bg)wxSheetClose();};bg.innerHTML='<div class="wxsheet" role="dialog" aria-modal="true" id="wxSheet"></div>';document.body.appendChild(bg);}
   const sh=document.getElementById('wxSheet');sh.innerHTML=html;bg.classList.add('open');sh.scrollTop=0;}
@@ -6164,7 +6165,7 @@ function dyRender(){dyDestroyMaps();const w=document.getElementById('dyWrap');
    <datalist id="dySpots">${[...new Set([...catches.map(c=>c.nickname),...diary.map(d=>d.spot)].filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
    <div id="dyGpsSt" class="cmeta" style="min-height:18px;margin-top:4px"></div><input type="hidden" id="dyLat"><input type="hidden" id="dyLng">
    <div id="dyFormMap" class="dymap" style="height:190px"></div><div class="cmeta" style="margin-top:4px">Tap the map or drag the pin to adjust the location.</div>
-   <button type="button" class="spchip" id="dyRayBtn" style="margin-top:10px" onclick="dyRay()">Saw shorttail rays</button>
+   <button type="button" class="spchip" id="dyRayBtn" style="margin-top:10px" onclick="dyRay()">Saw shorttail rays</button> <button type="button" class="spchip" id="dyBlankBtn" style="margin-top:10px" onclick="dyBlank()">Caught nothing</button>
    <label>How was the fishing?</label><div class="spq" style="flex-wrap:wrap">${DY_R.slice(1).map((r,i)=>`<button type="button" class="spchip dyr" data-r="${i+1}" onclick="dyRate(${i+1})">${r}</button>`).join('')}</div>
    <label>Notes</label><textarea id="dyNotes" rows="6" placeholder="What happened? Bait, tide, weather, what worked…"></textarea>
    <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><button type="button" class="gpsbtn dymic" id="dyMic" style="margin:0;min-height:44px;font-weight:600" onclick="dyMic()">Dictate</button><span id="dyMicSt" class="cmeta" style="flex:1"></span></div>
@@ -6177,11 +6178,11 @@ function dyRender(){dyDestroyMaps();const w=document.getElementById('dyWrap');
     ${e.notes?`<div class="noemoji" style="font-size:15px;line-height:1.5;margin-top:10px;white-space:pre-wrap">${esc(e.notes)}</div>`:''}
     ${e.np?`<div class="vthumbs" id="dyp-${e.id}"></div>`:''}
     ${e.lat?`<button class="maptoggle" onclick="dyCardMap('${e.id}')">${e.locSrc==='photo'?'Show photo location':'Show map'}</button><div class="dymap" id="dyc-${e.id}" style="display:none;height:180px"></div>`:''}
-    <div class="ctags">${e.ray?'<span class="tag ta">Rays seen</span>':''}${e.tide&&e.tide!=='—'?`<span class="tag tg">${esc(e.tide)}</span>`:''}${e.moon&&e.moon!=='—'?`<span class="tag tp">${esc(e.moon)}</span>`:''}</div>${wl?`<div class="cmeta" style="margin-top:6px">${wl}</div>`:''}</div></div>`;}).join(''):emptyArt('book','Your fishing diary','Record how each day went — notes, where you fished and photos. Tide, moon and weather are added automatically.','New diary entry','dyOpen()');
+    <div class="ctags">${e.blank?'<span class="tag">Caught nothing</span>':''}${e.ray?'<span class="tag ta">Rays seen</span>':''}${e.tide&&e.tide!=='—'?`<span class="tag tg">${esc(e.tide)}</span>`:''}${e.moon&&e.moon!=='—'?`<span class="tag tp">${esc(e.moon)}</span>`:''}</div>${wl?`<div class="cmeta" style="margin-top:6px">${wl}</div>`:''}</div></div>`;}).join(''):emptyArt('book','Your fishing diary','Record how each day went — notes, where you fished and photos. Tide, moon and weather are added automatically.','New diary entry','dyOpen()');
   w.innerHTML=form+dyAllBtn()+list;
   if(_dyForm){const [d,t]=dyToday(),e=_dyEditId&&diary.find(x=>x.id===_dyEditId),q=id=>document.getElementById(id);
     q('dyDate').value=e?e.date:d;q('dyTime').value=e?(e.time||''):t;if(e){q('dySpot').value=e.spot||'';q('dyNotes').value=e.notes||'';q('dyLat').value=e.lat||'';q('dyLng').value=e.lng||'';if(e.lat)q('dyGpsSt').textContent='Location saved';}
-    dyRate(_dyRating,1);dyThumbs();_dyRay=!!(e&&e.ray);dyRayUi();
+    dyRate(_dyRating,1);dyThumbs();_dyRay=!!(e&&e.ray);dyRayUi();_dyBlank=!!(e&&e.blank);dyBlankUi();
     if(!e){try{const d=JSON.parse(localStorage.getItem(DY_DRAFT)||'null');if(d){q('dySpot').value=d.spot||'';q('dyNotes').value=d.notes||'';_dyRay=!!d.ray;dyRayUi();dyRate(d.rating||0,1);showToast('Draft restored','success');}}catch(x){}}
     ['dySpot','dyNotes'].forEach(i=>q(i).addEventListener('input',dyDraftSave));_dyLocSrc=e?(e.locSrc||''):'';dyFormMapInit();if(!e&&!_dyPhotos.length&&!q('dyLat').value)dyGps();}
   diary.filter(e=>e.np).forEach(async e=>{const el=document.getElementById('dyp-'+e.id);if(!el)return;for(let i=0;i<e.np;i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)el.insertAdjacentHTML('beforeend',`<img src="${u}" alt="Diary photo" onclick="openLightbox(this.src)">`);}catch(x){}}});}
@@ -6214,7 +6215,7 @@ async function dySave(){const v=id=>document.getElementById(id).value,date=v('dy
   if(!date){showToast('Please choose a date.','error');return;}if(!notes&&!_dyPhotos.length&&!_dyRating){showToast('Add a note, rating or photo first.','error');return;}
   const old=_dyEditId&&diary.find(x=>x.id===_dyEditId),id=old?old.id:'d'+Date.now(),time=v('dyTime'),dt=new Date(`${date}T${time||'12:00'}:00${_nzISOOffset()}`);let tide='—',moon='—';
   try{tide=(_calcTideLabelForCatch(dt)||'—');}catch(e){}try{moon=moonAt(dt).n;}catch(e){}
-  const e=Object.assign(old||{},{id,date,time,lat:parseFloat(v('dyLat'))||null,lng:parseFloat(v('dyLng'))||null,spot:v('dySpot').trim(),rating:_dyRating,notes,tide,moon,locSrc:_dyLocSrc,ray:_dyRay?1:0});
+  const e=Object.assign(old||{},{id,date,time,lat:parseFloat(v('dyLat'))||null,lng:parseFloat(v('dyLng'))||null,spot:v('dySpot').trim(),rating:_dyRating,notes,tide,moon,locSrc:_dyLocSrc,ray:_dyRay?1:0,blank:_dyBlank?1:0});
   const prev=old?old.np||0:0;for(let i=0;i<prev;i++){try{await idbDel('dy_'+id+'#'+i);}catch(x){}}
   for(let i=0;i<_dyPhotos.length;i++){try{await idbPut('dy_'+id+'#'+i,_dyPhotos[i]);}catch(x){showToast('A photo could not be saved','error');}}e.np=_dyPhotos.length;
   const td=dyToday()[0];if(!e.wx&&date===td){const t=id=>((document.getElementById(id)||{}).textContent||'').trim(),w={temp:t('wxt'),wind:t('wxWindSpd'),dir:t('wxWindDir'),press:t('wxPressVal'),trend:t('wxPressTrend')};if(w.wind&&w.wind!=='—')e.wx=w;}
@@ -6263,15 +6264,15 @@ function undoBar(msg,onUndo,onCommit){if(_undoCommit)_undoCommit();clearTimeout(
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{const g=new URLSearchParams(location.search).get('go');if(g==='log')go('log');else if(g==='diary-new'){go('diary');dyOpen();}},700));
 
 // ═══ UNITS ═══
-const UK='fishinglog_units';let units={len:'cm',wt:'kg'};try{Object.assign(units,JSON.parse(localStorage.getItem(UK)||'{}'));}catch(e){}
+const UK='fishinglog_units';let units={len:'cm',wt:'kg',wind:'kmh'};try{Object.assign(units,JSON.parse(localStorage.getItem(UK)||'{}'));}catch(e){}
 const unitNum=(v,t)=>{v=parseFloat(v);return isNaN(v)?'—':t==='len'&&units.len==='in'?(v/2.54).toFixed(1):t==='wt'&&units.wt==='lb'?(v*2.2046).toFixed(1):String(v);};
 const fmtLen=v=>isNaN(parseFloat(v))?'':unitNum(v,'len')+' '+units.len,fmtWt=v=>isNaN(parseFloat(v))?'':unitNum(v,'wt')+' '+units.wt;
 function unitsHtml(){const b=(t,v,l)=>`<button type="button" class="${units[t]===v?'on':''}" onclick="setUnit('${t}','${v}',this)">${l}</button>`;
-  return `<div class="sec" id="unitsCard"><div class="stitle">Units</div><label>Length</label><div class="seg" style="margin:0 0 10px">${b('len','cm','Centimetres')}${b('len','in','Inches')}</div><label>Weight</label><div class="seg" style="margin:0 0 8px">${b('wt','kg','Kilograms')}${b('wt','lb','Pounds')}</div><div class="cmeta">Saved catches use these units. The entry fields on the Log tab stay in cm and kg.</div></div>`;}
+  return `<div class="sec" id="unitsCard"><div class="stitle">Units</div><label>Length</label><div class="seg" style="margin:0 0 10px">${b('len','cm','Centimetres')}${b('len','in','Inches')}</div><label>Weight</label><div class="seg" style="margin:0 0 8px">${b('wt','kg','Kilograms')}${b('wt','lb','Pounds')}</div><label>Wind speed</label><div class="seg" style="margin:0 0 8px">${b('wind','kmh','km/h')}${b('wind','kn','Knots')}</div><div class="cmeta">Saved catches use these units. The entry fields on the Log tab stay in cm and kg.</div></div>`;}
 function setUnit(t,v,b){units[t]=v;try{localStorage.setItem(UK,JSON.stringify(units));}catch(e){}b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
 function regroupSettings(){const pg=document.getElementById('pg-settings');if(!pg||pg.dataset.grouped)return;pg.dataset.grouped=1;
   const card=t=>{const e=[...pg.querySelectorAll('.stitle')].find(x=>x.textContent.includes(t));return e&&e.closest('.sec');},hd=t=>{const h=document.createElement('div');h.className='sgroup';h.textContent=t;return h;},mk=h=>{const d=document.createElement('div');d.innerHTML=h;return d.firstElementChild;};
-  [hd('Preferences'),mk(unitsHtml()),card('Fishing Region'),hd('Tide data'),card('Step 1'),card('Step 2'),card('Current Status'),hd('Your data'),card('Backup'),card('Storage Health'),hd('App'),mk('<div class="sec"><div class="stitle">About</div><button class="sbtn" onclick="showTour()">Replay the intro tour</button><div class="cmeta" style="margin-top:8px">Fishing Log · your personal fishing journal</div></div>')].filter(Boolean).forEach(n=>pg.appendChild(n));}
+  [hd('Preferences'),mk(unitsHtml()),card('Fishing Region'),hd('Tide data'),card('Step 1'),card('Step 2'),card('Current Status'),hd('Your data'),mk(bkHtml()),card('Backup'),card('Storage Health'),hd('App'),mk('<div class="sec"><div class="stitle">About</div><button class="sbtn" onclick="showTour()">Replay the intro tour</button><div class="cmeta" style="margin-top:8px">Fishing Log · version '+APP_VER+'</div><button class="sbtn" style="margin-top:10px" onclick="showWhatsNew()">What’s new</button></div>')].filter(Boolean).forEach(n=>pg.appendChild(n));}
 // ═══ EMOJI → ICONS (moon phases and common labels), applied everywhere automatically ═══
 (()=>{const S=(d,x)=>`<svg class="ei" viewBox="0 0 24 24" width="1.05em" height="1.05em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}${x||''}</svg>`,
   dot=c=>`<svg class="ei" viewBox="0 0 24 24" width=".85em" height=".85em" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="${c}"/></svg>`,
@@ -6301,7 +6302,7 @@ function statsPlus(){const pg=document.getElementById('pg-stats');if(!pg)return;
     td=tods.map((k,i)=>[k,catches.filter(c=>c.time&&todOf(parseInt(c.time,10))===i).length]),sp={};catches.forEach(c=>{if(c.fish)sp[c.fish]=(sp[c.fish]||0)+1;});
   const spR=Object.entries(sp).sort((a,b)=>b[1]-a[1]).slice(0,6),pb={};catches.forEach(c=>{const w=parseFloat(c.weight);if(w>0&&(!pb[c.fish]||w>pb[c.fish].w))pb[c.fish]={w,l:c.length,d:c.date};});
   const pbR=Object.entries(pb).sort((a,b)=>b[1].w-a[1].w).slice(0,5);
-  el.innerHTML=monthChart()+`<div id="calBox">${calHtml()}</div>`+sgBars('By species',spR)+sgBars('By tide',tide)+sgBars('Time of day',td)+(pbR.length?`<div class="sec"><div class="stitle">Personal bests</div>${pbR.map(([f,v])=>`<div class="wxrow" style="cursor:default"><span style="flex:1;font-weight:700">${esc(f)}</span><b>${esc(fmtWt(v.w))}</b><span class="cmeta" style="width:70px;text-align:right">${v.l?esc(fmtLen(v.l)):''}</span></div>`).join('')}</div>`:'');}
+  el.innerHTML=monthChart()+tripStats()+`<div id="calBox">${calHtml()}</div>`+sgBars('By species',spR)+sgBars('By tide',tide)+sgBars('Time of day',td)+windBars()+(pbR.length?`<div class="sec"><div class="stitle">Personal bests</div>${pbR.map(([f,v])=>`<div class="wxrow" style="cursor:default"><span style="flex:1;font-weight:700">${esc(f)}</span><b>${esc(fmtWt(v.w))}</b><span class="cmeta" style="width:70px;text-align:right">${v.l?esc(fmtLen(v.l)):''}</span></div>`).join('')}</div>`:'');}
 const _rs1=renderStats;renderStats=function(){_rs1();try{statsPlus();}catch(e){}};
 // ═══ PHOTO CAROUSEL + SHARE IMAGE ═══
 function vCarFill(c,a){const car=document.getElementById('vc-'+c.id),dots=document.getElementById('vd-'+c.id);if(!car||!a.length)return;
@@ -6356,9 +6357,46 @@ function wxSunRender(){const D=wxData();if(!D||!D.daily||!D.daily.sunrise)return
   <div class="tv" style="font-size:16px;margin:4px 0 10px">${next[0]} at ${f(next[1])} · in ${dl(next[1]-now)}</div>
   <div class="tgrid" style="margin-bottom:6px">${_wT('Sunrise',f(sr))}${_wT('Sunset',f(ss))}${_wT('First light',f(sr-30*6e4),'about 30 min before sunrise')}${_wT('Last light',f(ss+30*6e4),'about 30 min after sunset')}</div>
   <div class="cmeta">Daylight ${dl(ss-sr)}${d.sunrise[i+1]?' · Tomorrow '+f(T(i+1))+' – '+f(U(i+1)):''}</div>`;}
-const _fom=fetchOpenMeteo;fetchOpenMeteo=async function(){try{return await _fom.apply(this,arguments);}finally{setTimeout(wxSunRender,200);}};
+const _fom=fetchOpenMeteo;fetchOpenMeteo=async function(){const b0=window._wxData;try{return await _fom.apply(this,arguments);}finally{if(window._wxData!==b0){try{localStorage.setItem('fishinglog_wxdata_at',String(Date.now()));}catch(e){}}setTimeout(wxSunRender,200);}};
 const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setTimeout(wxSunRender,50);return r;};
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
+
+// ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
+const APP_VER='2026.11';
+const WHATS_NEW=['Diary trips: tick “Caught nothing” so Stats shows your real catch rate by tide and time of day','Catches with a guessed location are flagged and kept off the map and heatmap','Wind, pressure and temperature are added to older catches automatically','Backup status, reminders and CSV export in Settings','Wind speed units (km/h or knots)','New app icon'];
+const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
+let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;dyBlankUi();}
+function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.date===e.date)}));if(!T.length)return '';
+  const tideOf=e=>/Incoming/.test(e.tide||'')?'Incoming tide':/Outgoing/.test(e.tide||'')?'Outgoing tide':/High/.test(e.tide||'')?'High tide':/Low/.test(e.tide||'')?'Low tide':null,todOf=h=>h>=4&&h<7?'Dawn':h<11?'Morning':h<14?'Midday':h<17?'Afternoon':h<20?'Dusk':'Night';
+  const grp=f=>{const m={};T.forEach(t=>{const k=f(t.e);if(!k)return;m[k]=m[k]||[0,0];m[k][1]++;if(t.got)m[k][0]++;});return Object.entries(m).map(([k,v])=>({k,got:v[0],n:v[1]}));},byT=grp(tideOf),byD=grp(e=>e.time?todOf(parseInt(e.time,10)):null),all=T.filter(t=>t.got).length,
+    best=[...byT,...byD].filter(x=>x.n>=3).sort((a,b)=>b.got/b.n-a.got/a.n||b.n-a.n)[0];
+  const bars=(t,r)=>r.length?`<div class="sec"><div class="stitle">${t}</div>${r.map(x=>`<div class="brow"><span class="bl" style="width:112px">${esc(x.k)} (${x.n})</span><div class="bt"><i style="width:${x.got/x.n*100}%"></i></div><span class="bn" style="width:40px">${Math.round(x.got/x.n*100)}%</span></div>`).join('')}</div>`:'';
+  return `<div class="sec"><div class="stitle">Your fishing trips</div><div class="cstats"><div><b>${T.length}</b><span>trips</span></div><div><b>${all}</b><span>with fish</span></div><div><b>${Math.round(all/T.length*100)}%</b><span>success</span></div></div>${best?`<div class="cmeta" style="margin-top:6px;font-weight:600;color:var(--text)">Best so far: ${esc(best.k)} — fish on ${best.got} of ${best.n} trips</div>`:'<div class="cmeta">Add a diary entry for each trip, including the blank ones, and your best conditions will appear here.</div>'}</div>`+bars('Catch rate by tide',byT)+bars('Catch rate by time of day',byD);}
+function windBars(){const W=catches.filter(c=>c.wx&&parseFloat(c.wx.wind)>=0);if(W.length<3)return '';const B=['Under 6 kn','6–12 kn','12–20 kn','20+ kn'],b=v=>v<6?B[0]:v<12?B[1]:v<20?B[2]:B[3],pr={Rising:0,Steady:0,Falling:0};W.forEach(c=>{if(pr[c.wx.trend]!=null)pr[c.wx.trend]++;});
+  return sgBars('Catches by wind',B.map(k=>[k,W.filter(c=>b(parseFloat(c.wx.wind))===k).length]))+sgBars('Catches by pressure trend',Object.entries(pr));}
+async function wxHist(c){if(c.wx||c.lat==null||!c.date)return;const age=(Date.now()-new Date(c.date+'T12:00:00'))/864e5,base=age<=80?'https://api.open-meteo.com/v1/forecast':'https://archive-api.open-meteo.com/v1/archive';
+  try{const r=await fetch(`${base}?latitude=${c.lat}&longitude=${c.lng}&start_date=${c.date}&end_date=${c.date}&hourly=temperature_2m,pressure_msl,wind_speed_10m,wind_direction_10m&wind_speed_unit=kn&timezone=Pacific%2FAuckland`);if(!r.ok)return;const H=(await r.json()).hourly,h=parseInt((c.time||'12:00').slice(0,2),10);
+    if(!H||H.wind_speed_10m[h]==null)return;const p=H.pressure_msl[h],p3=H.pressure_msl[Math.max(0,h-3)];
+    c.wx={temp:Math.round(H.temperature_2m[h])+'°',wind:Math.round(H.wind_speed_10m[h])+' kn',dir:windDir(H.wind_direction_10m[h]),press:String(Math.round(p)),trend:p!=null&&p3!=null?(p-p3>1?'Rising':p-p3<-1?'Falling':'Steady'):'—',hist:1};}catch(e){}}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(async()=>{let m=0;catches.forEach(c=>{if(!c.locApprox&&isDefLoc(c.lat,c.lng)){c.locApprox=1;m++;}});if(m)persist();
+  if(!navigator.onLine)return;let n=0;for(const o of [...catches,...diary]){if(n>=6)break;if(o.wx||o.locApprox||o.lat==null||!o.date)continue;await wxHist(o);if(o.wx)n++;}if(n){persist();dySave2();}},9000));
+// backup status, reminder, CSV
+const LB='fishinglog_lastbackup',bkAge=()=>{const t=parseInt(localStorage.getItem(LB)||'0',10);return t?Math.floor((Date.now()-t)/864e5):null;},bkText=()=>{const a=bkAge();return a==null?'You haven’t backed up yet.':'Last backed up '+(a===0?'today':a===1?'yesterday':a+' days ago')+'.';};
+const _eb0=exportBackup;exportBackup=async function(){const r=await _eb0.apply(this,arguments);try{localStorage.setItem(LB,String(Date.now()));}catch(e){}const el=document.getElementById('bkInfo');if(el)el.textContent=bkText();const nd=document.getElementById('todayNudge');if(nd)nd.remove();return r;};
+function bkHtml(){return `<div class="sec"><div class="stitle">Backup status</div><div id="bkInfo" class="tv" style="font-size:16px">${bkText()}</div><div class="cmeta" style="margin:6px 0 10px">Your data lives only on this phone. Back up regularly and keep the file somewhere safe.</div><div style="display:flex;gap:8px"><button class="sbtn teal-btn" style="flex:1" onclick="exportBackup()">Back up now</button><button class="sbtn" style="flex:1" onclick="csvExport()">Export CSV</button></div></div>`;}
+function csvExport(){const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"',R=[['type','date','time','species_or_spot','length_cm','weight_kg','lat','lng','tide','moon','sea_temp_c','wind','pressure','notes']];
+  catches.forEach(c=>R.push(['catch',c.date,c.time,c.fish,c.length,c.weight,c.locApprox?'':c.lat,c.locApprox?'':c.lng,c.tide,c.moon,c.sea?c.sea.v:'',c.wx?c.wx.wind:'',c.wx?c.wx.press:'',c.notes||'']));
+  diary.forEach(e=>R.push(['diary',e.date,e.time,e.spot,'','',e.lat,e.lng,e.tide,e.moon,e.sea?e.sea.v:'',e.wx?e.wx.wind:'',e.wx?e.wx.press:'',e.notes||'']));
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([R.map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'}));a.download='fishing-log.csv';a.click();showToast('CSV downloaded','success');}
+function nudgeHtml(){const a=bkAge(),at=parseInt(localStorage.getItem('fishinglog_wxdata_at')||'0',10),mins=at?Math.round((Date.now()-at)/6e4):null;let h='';
+  if(catches.length+diary.length>0&&(a==null?catches.length>=3:a>=30))h+=`<div class="sec" style="display:flex;align-items:center;gap:10px"><div style="flex:1"><b>Back up your data</b><div class="cmeta">${bkText()}</div></div><button class="maptoggle" style="margin:0" onclick="exportBackup()">Back up</button></div>`;
+  h+=`<div class="cmeta" style="text-align:center;margin:0 0 10px">${mins==null?'Weather not loaded yet':mins<2?'Weather updated just now':mins<90?'Weather updated '+mins+' min ago':'Weather is '+Math.round(mins/60)+' h old — connect to refresh'}</div>`;return h;}
+function nudgeInject(){const t=document.getElementById('todayContent');if(!t)return;const g=t.querySelector('.tgrid');if(!g)return;let e=document.getElementById('todayNudge');if(!e){e=document.createElement('div');e.id='todayNudge';g.insertAdjacentElement('beforebegin',e);}e.innerHTML=nudgeHtml();}
+const _rt3=renderToday;renderToday=function(){_rt3();nudgeInject();};
+document.addEventListener('DOMContentLoaded',()=>{const t=document.getElementById('todayContent');if(t)new MutationObserver(()=>{if(!document.getElementById('todayNudge'))nudgeInject();}).observe(t,{childList:true});setTimeout(nudgeInject,1200);});
+// version + what's new
+function showWhatsNew(){wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">What’s new</div><div class="cmeta">Version ${APP_VER}</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div><div style="padding:4px 4px 22px">${WHATS_NEW.map(x=>`<div style="display:flex;gap:10px;margin:10px 0"><span style="color:var(--teal);font-weight:800">•</span><span style="font-size:15px;line-height:1.45">${esc(x)}</span></div>`).join('')}</div>`);}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{const seen=localStorage.getItem('fishinglog_ver');if(seen!==APP_VER){if(seen&&!document.getElementById('tour')||seen&&document.getElementById('tour').style.display==='none')showWhatsNew();try{localStorage.setItem('fishinglog_ver',APP_VER);}catch(e){}}},2500));
 </script>
 </body>
 </html>
