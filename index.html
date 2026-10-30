@@ -459,6 +459,20 @@ button:active:not(:disabled),.wx-cell:active,.wxrow:active{transform:scale(.97)}
 .undo.show{transform:none;opacity:1;pointer-events:auto}.undo button{background:none;border:none;color:var(--teal);font-weight:700;font-size:15px;min-height:40px;padding:0 8px}
 .offpill{position:fixed;top:calc(env(safe-area-inset-top) + 6px);left:50%;transform:translate(-50%,-60px);background:#3a3f43;color:#fff;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;z-index:9997;transition:transform .25s}.offpill.show{transform:translate(-50%,0)}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* carousel, stats, tour, empty states, settings groups */
+.vcar{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;scrollbar-width:none}.vcar::-webkit-scrollbar{display:none}.vcar .chero{flex:0 0 100%;scroll-snap-align:center;aspect-ratio:16/10;object-fit:cover;width:100%}
+.vdots{display:flex;justify-content:center;gap:6px;margin:-20px 0 8px;position:relative;z-index:1}.vdots i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.5)}.vdots i.on{background:#fff}.vdots:empty{display:none}
+.vacts button:first-child{background:var(--teal);color:#06382b;border-color:var(--teal)}
+.calh{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}.calg{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;text-align:center}.calg span{font-size:11px;color:var(--hint);font-weight:700}
+.cd{aspect-ratio:1;border:none;border-radius:10px;background:var(--surf);color:var(--text);font:600 13px inherit;font-family:inherit;position:relative;min-height:36px}
+.cd.l1{background:rgba(79,195,161,.35)}.cd.l2{background:rgba(79,195,161,.6)}.cd.l3{background:rgba(31,157,124,.85);color:#fff}.cd.l4{background:#0f7b61;color:#fff}.cd.dd::after{content:"";position:absolute;bottom:4px;left:50%;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#f5b83d}
+.empty2{display:flex;flex-direction:column;align-items:center;text-align:center;padding:28px 12px}
+.sgroup{font-size:12px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);margin:20px 4px 8px}
+.ei{vertical-align:-.15em;display:inline-block}
+.tour{position:fixed;inset:0;z-index:9600;background:linear-gradient(160deg,#15283a,#0a1420);color:#fff;display:none;flex-direction:column;align-items:center;justify-content:space-between;padding:max(env(safe-area-inset-top),20px) 24px max(env(safe-area-inset-bottom),24px)}
+.tbody{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;max-width:340px}.tbody svg{width:230px;height:auto}.tbody h2{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:18px 0 8px}.tbody p{font-size:16px;line-height:1.5;color:rgba(255,255,255,.78)}
+.tskip{align-self:flex-end;background:none;border:none;color:rgba(255,255,255,.7);font-size:15px;min-height:44px;padding:0 8px}.tdots{display:flex;gap:8px;margin:8px 0 18px}.tdots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3)}.tdots i.on{background:#4fc3a1;width:22px;border-radius:4px}.tnext{width:100%;max-width:340px;padding:16px;font-size:17px}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -1449,7 +1463,7 @@ function doInstall() {
   }
 }
 window.addEventListener('appinstalled', () => { document.getElementById('ibar').style.display='none'; });
-if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('./sw.js');
+if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;navigator.serviceWorker.register('./sw.js').then(r=>document.addEventListener('visibilitychange',()=>{if(!document.hidden)r.update();}));
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had)return;const b=document.createElement('div');b.className='upd';b.innerHTML='A new version is ready <button onclick="location.reload()">Reload</button>';document.body.appendChild(b);});}
 
 // ─────────────────────────────────────────────
@@ -4673,7 +4687,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
     }
 
     // ── Update UI ─────────────────────────────────────────────────────────────
-    setText('wxi', omIcon(code));
+    { const _wi=document.getElementById('wxi'); if(_wi) _wi.innerHTML=omIcon(code); }
     setText('wxt', temp + '°C');
     setText('wxd', omDesc(code));
     setText('wxl', displayLoc);
@@ -5397,11 +5411,7 @@ function renderList() {
     (bestW.length ? ' · Best: ' + Math.max(...bestW).toFixed(1) + 'kg' : '');
 
   if(!catches.length){
-    document.getElementById('clist').innerHTML=`<div class="empty">
-      <img src="icon-192.png" style="width:80px;height:80px;border-radius:18px;opacity:0.35;margin-bottom:4px;mix-blend-mode:normal;" alt="">
-      <div style="font-size:15px;font-weight:600;color:var(--muted);">No catches yet</div>
-      <button class="sbtn teal-btn" style="width:auto;padding:12px 22px;margin-top:10px" onclick="go('log')">Log your first catch</button>
-    </div>`;
+    document.getElementById('clist').innerHTML=emptyArt('fish','No catches yet','Log your first catch and it will appear here with its tide, moon and weather.','Log your first catch',"go('log')");
     return;
   }
 
@@ -5423,7 +5433,7 @@ function renderList() {
       <div class="cbody2">
         <div class="crow"><div style="cursor:pointer;flex:1;min-width:0" onclick="openViewer('${c.id}')"><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)} · ${esc(c.nickname||c.location||'')}</div></div>
           <div class="cact"><button class="ibtn" aria-label="Edit catch" onclick="editCatch('${c.id}')">Edit</button><button class="ibtn danger" aria-label="Delete catch" onclick="delCatch('${c.id}')">Delete</button></div></div>
-        <div class="cstats">${c.length?`<div><b>${esc(c.length)}</b><span>cm</span></div>`:''}${c.weight?`<div><b>${esc(c.weight)}</b><span>kg</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
+        <div class="cstats">${c.length?`<div><b>${unitNum(c.length,'len')}</b><span>${units.len}</span></div>`:''}${c.weight?`<div><b>${unitNum(c.weight,'wt')}</b><span>${units.wt}</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
         ${(c.method||c.platform)?`<div class="cmeta">${esc([c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · '))}</div>`:''}
         ${wxLine(c)?`<div class="cmeta">${wxLine(c)}</div>`:''}
         ${c.notes?`<div class="cnote" onclick="this.classList.toggle('open')">${esc(c.notes)}</div>`:''}
@@ -5983,22 +5993,22 @@ initStorage(); // async: migrates legacy photos + hydrates IDB photos into memor
 // ── CATCH VIEWER (swipe through catches) ──
 let _vList=[],_vIdx=0,_vRaf=0;
 function vSlide(c){return `<div class="vslide">
-  ${c.photo?`<img src="${c.photo}" class="chero" alt="${esc(c.fish)}" onclick="openLightboxId('${c.id}')">`:''}
+  ${c.photo?`<div class="vcar" id="vc-${c.id}"><img src="${c.photo}" class="chero" alt="${esc(c.fish)}" onclick="openLightbox(this.src)"></div><div class="vdots" id="vd-${c.id}"></div>`:''}
   <div class="cbody2"><div class="cfish">${esc(c.fish)}</div><div class="cmeta">${fmtWhen(c)}${(c.nickname||c.location)?' · '+esc(c.nickname||c.location):''}</div>
-  <div class="cstats">${c.length?`<div><b>${esc(c.length)}</b><span>cm</span></div>`:''}${c.weight?`<div><b>${esc(c.weight)}</b><span>kg</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
+  <div class="cstats">${c.length?`<div><b>${unitNum(c.length,'len')}</b><span>${units.len}</span></div>`:''}${c.weight?`<div><b>${unitNum(c.weight,'wt')}</b><span>${units.wt}</span></div>`:''}${(!c.length&&!c.weight)?'<span class="cmeta">Size not recorded</span>':''}</div>
   ${(c.method||c.platform)?`<div class="cmeta">${esc([c.method,c.platform,c.fly,c.flycol,c.rig].filter(Boolean).join(' · '))}</div>`:''}
   ${wxLine(c)?`<div class="cmeta">${wxLine(c)}</div>`:''}
   <div class="vthumbs" id="vx-${c.id}"></div>
   ${c.notes?`<div class="cnote">${esc(c.notes)}</div>`:''}
   <div class="ctags"><span class="tag tg">${esc(c.tide||'—')}</span><span class="tag tp">${esc(c.moon||'—')}</span>${c.bite&&c.bite!=='Between periods'?`<span class="tag ta">${esc(c.bite)}</span>`:''}</div>
-  <div class="vacts"><button onclick="vAct('edit','${c.id}')">Edit</button><button class="danger" onclick="vAct('del','${c.id}')">Delete</button></div></div></div>`;}
+  <div class="vacts"><button onclick="shareCatch('${c.id}')">Share</button><button onclick="vAct('edit','${c.id}')">Edit</button><button class="danger" onclick="vAct('del','${c.id}')">Delete</button></div></div></div>`;}
 function openViewer(id){
   _vList=(window._vList&&window._vList.length)?window._vList:catches;
   _vIdx=Math.max(0,_vList.findIndex(c=>String(c.id)===String(id)));
   const t=document.getElementById('vtrack'); t.innerHTML=_vList.map(vSlide).join('');
   const sp=[...new Set(_vList.map(c=>c.fish))]; document.getElementById('vtitle').textContent=sp.length===1?sp[0]:'Catches';
   document.getElementById('viewer').classList.add('open');
-  _vList.forEach(c=>loadExtras(c).then(a=>{const el=document.getElementById('vx-'+c.id);if(el&&a.length)el.innerHTML=a.map((u,i)=>`<img src="${u}" alt="Photo ${i+2}" onclick="openLightbox(this.src)">`).join('');}));
+  _vList.forEach(c=>loadExtras(c).then(a=>vCarFill(c,a)));
   t.style.scrollBehavior='auto'; t.scrollLeft=_vIdx*_vW(); t.style.scrollBehavior=''; _vUpdate();
 }
 function _vW(){const t=document.getElementById('vtrack'),f=t.children[0];return f?f.offsetWidth+10:1;}
@@ -6059,7 +6069,7 @@ function renderToday(){const el=document.getElementById('todayContent');if(!el)r
   <div class="verdict ${v[0]}">${v[1]}${has?' · wind '+esc(_tx('wxWindSpd')):''}</div></div>
   <div class="tgrid">${tile('Temp',_tx('wxt')||'—',_tx('wxd'))}${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,'').slice(0,22))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}${seaTile()}</div>
   <button class="sbtn teal-btn" style="margin:4px 0 12px;font-size:17px;padding:16px" onclick="go('log')">Log a catch</button>
-  <div class="sec"><div class="stitle">Your fishing</div>${last?`<div class="cfish">${esc(last.fish)}${last.length?' · '+esc(last.length)+' cm':''}</div><div class="cmeta">Last catch · ${fmtWhen(last)}</div><div class="cmeta" style="margin-top:6px">${mc} catch${mc!==1?'es':''} this month · ${catches.length} total</div>`:'<div class="cmeta">No catches yet. Your first one will show up here.</div>'}</div>`;}
+  <div class="sec"><div class="stitle">Your fishing</div>${last?`<div class="cfish">${esc(last.fish)}${last.length?' · '+esc(fmtLen(last.length)):''}</div><div class="cmeta">Last catch · ${fmtWhen(last)}</div><div class="cmeta" style="margin-top:6px">${mc} catch${mc!==1?'es':''} this month · ${catches.length} total</div>`:'<div class="cmeta">No catches yet. Your first one will show up here.</div>'}</div>`;}
 document.addEventListener('DOMContentLoaded',()=>{renderToday();renderSpQuick();applyDefaults();setTimeout(renderToday,1500);
   const t=document.getElementById('wxt');if(t)new MutationObserver(()=>{if(currentTab==='today')renderToday();}).observe(t,{childList:true,characterData:true,subtree:true});});
 
@@ -6163,10 +6173,10 @@ function dyRender(){dyDestroyMaps();const w=document.getElementById('dyWrap');
    :`<button class="sbtn teal-btn" style="margin-bottom:12px;font-size:16px;padding:14px" onclick="dyOpen()">New diary entry</button>`;
   const list=diary.length?diary.map(e=>{const n=catches.filter(c=>c.date===e.date).length,wl=wxLine(e);return `<div class="ccard"><div class="cbody2"><div class="crow"><div style="min-width:0"><div class="cfish">${esc(e.spot||'Fishing day')}</div><div class="cmeta">${fmtWhen(e)}${n?' · '+n+' catch'+(n>1?'es':'')+' logged':''}</div></div><div class="cact"><button class="ibtn" aria-label="Edit entry" onclick="dyOpen('${e.id}')">Edit</button><button class="ibtn danger" aria-label="Delete entry" onclick="dyDel('${e.id}')">Delete</button></div></div>
     ${e.rating?`<span class="tag" style="background:${DY_C[e.rating]};color:${e.rating===3?'#222':'#fff'};margin-top:8px;display:inline-block">${DY_R[e.rating]}</span>`:''}
-    ${e.notes?`<div style="font-size:15px;line-height:1.5;margin-top:10px;white-space:pre-wrap">${esc(e.notes)}</div>`:''}
+    ${e.notes?`<div class="noemoji" style="font-size:15px;line-height:1.5;margin-top:10px;white-space:pre-wrap">${esc(e.notes)}</div>`:''}
     ${e.np?`<div class="vthumbs" id="dyp-${e.id}"></div>`:''}
     ${e.lat?`<button class="maptoggle" onclick="dyCardMap('${e.id}')">${e.locSrc==='photo'?'Show photo location':'Show map'}</button><div class="dymap" id="dyc-${e.id}" style="display:none;height:180px"></div>`:''}
-    <div class="ctags">${e.ray?'<span class="tag ta">Rays seen</span>':''}${e.tide&&e.tide!=='—'?`<span class="tag tg">${esc(e.tide)}</span>`:''}${e.moon&&e.moon!=='—'?`<span class="tag tp">${esc(e.moon)}</span>`:''}</div>${wl?`<div class="cmeta" style="margin-top:6px">${wl}</div>`:''}</div></div>`;}).join(''):'<div class="sec" style="text-align:center;padding:26px 16px"><div class="cfish">Your fishing diary</div><div class="cmeta" style="margin-top:6px">Record how each day went — notes, where you fished, photos. Tide, moon and weather are added automatically.</div></div>';
+    <div class="ctags">${e.ray?'<span class="tag ta">Rays seen</span>':''}${e.tide&&e.tide!=='—'?`<span class="tag tg">${esc(e.tide)}</span>`:''}${e.moon&&e.moon!=='—'?`<span class="tag tp">${esc(e.moon)}</span>`:''}</div>${wl?`<div class="cmeta" style="margin-top:6px">${wl}</div>`:''}</div></div>`;}).join(''):emptyArt('book','Your fishing diary','Record how each day went — notes, where you fished and photos. Tide, moon and weather are added automatically.','New diary entry','dyOpen()');
   w.innerHTML=form+dyAllBtn()+list;
   if(_dyForm){const [d,t]=dyToday(),e=_dyEditId&&diary.find(x=>x.id===_dyEditId),q=id=>document.getElementById(id);
     q('dyDate').value=e?e.date:d;q('dyTime').value=e?(e.time||''):t;if(e){q('dySpot').value=e.spot||'';q('dyNotes').value=e.notes||'';q('dyLat').value=e.lat||'';q('dyLng').value=e.lng||'';if(e.lat)q('dyGpsSt').textContent='Location saved';}
@@ -6250,6 +6260,75 @@ function undoBar(msg,onUndo,onCommit){if(_undoCommit)_undoCommit();clearTimeout(
 (()=>{const pill=document.createElement('div');pill.className='offpill';pill.textContent='Offline — showing saved data';document.body.appendChild(pill);
   const u=()=>pill.classList.toggle('show',!navigator.onLine);addEventListener('online',u);addEventListener('offline',u);u();})();
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{const g=new URLSearchParams(location.search).get('go');if(g==='log')go('log');else if(g==='diary-new'){go('diary');dyOpen();}},700));
+
+// ═══ UNITS ═══
+const UK='fishinglog_units';let units={len:'cm',wt:'kg'};try{Object.assign(units,JSON.parse(localStorage.getItem(UK)||'{}'));}catch(e){}
+const unitNum=(v,t)=>{v=parseFloat(v);return isNaN(v)?'—':t==='len'&&units.len==='in'?(v/2.54).toFixed(1):t==='wt'&&units.wt==='lb'?(v*2.2046).toFixed(1):String(v);};
+const fmtLen=v=>isNaN(parseFloat(v))?'':unitNum(v,'len')+' '+units.len,fmtWt=v=>isNaN(parseFloat(v))?'':unitNum(v,'wt')+' '+units.wt;
+function unitsHtml(){const b=(t,v,l)=>`<button type="button" class="${units[t]===v?'on':''}" onclick="setUnit('${t}','${v}',this)">${l}</button>`;
+  return `<div class="sec" id="unitsCard"><div class="stitle">Units</div><label>Length</label><div class="seg" style="margin:0 0 10px">${b('len','cm','Centimetres')}${b('len','in','Inches')}</div><label>Weight</label><div class="seg" style="margin:0 0 8px">${b('wt','kg','Kilograms')}${b('wt','lb','Pounds')}</div><div class="cmeta">Saved catches use these units. The entry fields on the Log tab stay in cm and kg.</div></div>`;}
+function setUnit(t,v,b){units[t]=v;try{localStorage.setItem(UK,JSON.stringify(units));}catch(e){}b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
+function regroupSettings(){const pg=document.getElementById('pg-settings');if(!pg||pg.dataset.grouped)return;pg.dataset.grouped=1;
+  const card=t=>{const e=[...pg.querySelectorAll('.stitle')].find(x=>x.textContent.includes(t));return e&&e.closest('.sec');},hd=t=>{const h=document.createElement('div');h.className='sgroup';h.textContent=t;return h;},mk=h=>{const d=document.createElement('div');d.innerHTML=h;return d.firstElementChild;};
+  [hd('Preferences'),mk(unitsHtml()),card('Fishing Region'),hd('Tide data'),card('Step 1'),card('Step 2'),card('Current Status'),hd('Your data'),card('Backup'),card('Storage Health'),hd('App'),mk('<div class="sec"><div class="stitle">About</div><button class="sbtn" onclick="showTour()">Replay the intro tour</button><div class="cmeta" style="margin-top:8px">Fishing Log · your personal fishing journal</div></div>')].filter(Boolean).forEach(n=>pg.appendChild(n));}
+// ═══ EMOJI → ICONS (moon phases and common labels), applied everywhere automatically ═══
+(()=>{const S=(d,x)=>`<svg class="ei" viewBox="0 0 24 24" width="1.05em" height="1.05em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}${x||''}</svg>`,
+  dot=c=>`<svg class="ei" viewBox="0 0 24 24" width=".85em" height=".85em" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="${c}"/></svg>`,
+  moon=(f,w)=>{const L=w?0:1,T=f<0.5?1-L:L,rx=(9*Math.abs(1-2*f)).toFixed(2);return `<svg class="ei" viewBox="0 0 24 24" width="1.05em" height="1.05em" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="#3a4556" stroke="#8a97ab"/>${f<0.02?'':f>0.98?'<circle cx="12" cy="12" r="9" fill="#f4e9b8"/>':`<path d="M12 3A9 9 0 0 ${L} 12 21A${rx} 9 0 0 ${T} 12 3z" fill="#f4e9b8"/>`}</svg>`;},
+  M={'🌑':moon(0,1),'🌒':moon(.25,1),'🌓':moon(.5,1),'🌔':moon(.75,1),'🌕':moon(1,1),'🌖':moon(.75,0),'🌗':moon(.5,0),'🌘':moon(.25,0),
+  '🌡':S('<path d="M10 14V5a2 2 0 014 0v9a4 4 0 11-4 0z"/>'),'💨':S('<path d="M3 9h11a3 3 0 10-3-3M3 15h15a3 3 0 11-3 3M3 12h7"/>'),'🌊':S('<path d="M2 9c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 15c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1"/>'),
+  '💧':S('<path d="M12 3s6 6.5 6 11a6 6 0 01-12 0c0-4.5 6-11 6-11z"/>'),'📍':S('<path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>'),'📷':S('<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'),
+  '⚠':S('<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/>'),'✅':S('<circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/>'),'🎣':S('<path d="M6 3v13a4 4 0 008 0v-2"/><path d="M14 14l3-2"/>'),'⭐':S('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>'),'🔴':dot('#e74c3c'),'🟡':dot('#f5b83d'),'🟢':dot('#4fc3a1')},
+  keys=Object.keys(M),rt=new RegExp('('+keys.join('|')+')\uFE0F?'),rg=new RegExp('('+keys.join('|')+')\uFE0F?','g'),skip='textarea,input,option,script,style,.noemoji,.cnote,title';
+  let busy=false;const conv=root=>{if(!root||root.nodeType===8||!root.isConnected)return;const w=document.createTreeWalker(root.nodeType===3?root.parentNode:root,NodeFilter.SHOW_TEXT),L=[];let n;while((n=w.nextNode())){if(rt.test(n.nodeValue)&&n.parentElement&&!n.parentElement.closest(skip))L.push(n);}
+    if(!L.length)return;busy=true;L.forEach(t=>{const sp=document.createElement('span');sp.innerHTML=esc(t.nodeValue).replace(rg,(m,k)=>M[k]);t.replaceWith(...sp.childNodes);});busy=false;};
+  let q=[],raf=0;new MutationObserver(ms=>{if(busy)return;ms.forEach(m=>m.addedNodes.forEach(a=>q.push(a)));if(!raf)raf=requestAnimationFrame(()=>{raf=0;const x=q;q=[];x.forEach(conv);});}).observe(document.body,{childList:true,subtree:true,characterData:false});
+  document.addEventListener('DOMContentLoaded',()=>conv(document.body));setTimeout(()=>conv(document.body),300);})();
+// ═══ STATS: charts, fishing-days calendar, personal bests ═══
+const MON3=['J','F','M','A','M','J','J','A','S','O','N','D'];let _calY=null,_calM=null;
+function monthChart(){const n=new Date(),ms=[];for(let i=11;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);ms.push({k:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),l:MON3[d.getMonth()],n:0});}
+  catches.forEach(c=>{const m=ms.find(x=>(c.date||'').startsWith(x.k));if(m)m.n++;});const mx=Math.max(1,...ms.map(m=>m.n));
+  return `<div class="sec"><div class="stitle">Catches per month</div><svg viewBox="0 0 312 118" width="100%" role="img" aria-label="Catches per month">${ms.map((m,i)=>{const h=Math.round(m.n/mx*76),x=i*26+4;return `<rect x="${x}" y="${90-h}" width="18" height="${m.n?Math.max(h,3):0}" rx="4" fill="#4fc3a1"/><text x="${x+9}" y="106" text-anchor="middle" font-size="10" fill="#8a8f94">${m.l}</text>${m.n?`<text x="${x+9}" y="${85-h}" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">${m.n}</text>`:''}`;}).join('')}</svg></div>`;}
+function calHtml(){const n=new Date();if(_calY==null){_calY=n.getFullYear();_calM=n.getMonth();}const first=new Date(_calY,_calM,1),days=new Date(_calY,_calM+1,0).getDate(),off=(first.getDay()+6)%7,cnt={},dia={};
+  catches.forEach(c=>{if(c.date)cnt[c.date]=(cnt[c.date]||0)+1;});diary.forEach(e=>{dia[e.date]=1;});let cells='';for(let i=0;i<off;i++)cells+='<i></i>';
+  for(let d=1;d<=days;d++){const k=_calY+'-'+String(_calM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'),c=cnt[k]||0;cells+=`<button type="button" class="cd l${Math.min(c,4)}${dia[k]?' dd':''}" onclick="calPick('${k}')">${d}</button>`;}
+  return `<div class="sec"><div class="stitle">Fishing days</div><div class="calh"><button class="wxn" onclick="calStep(-1)" aria-label="Previous month">‹</button><b>${first.toLocaleDateString('en-NZ',{month:'long',year:'numeric'})}</b><button class="wxn" onclick="calStep(1)" aria-label="Next month">›</button></div><div class="calg">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}${cells}</div><div id="calInfo" class="cmeta" style="margin-top:8px">Darker teal means more catches. A dot means a diary entry. Tap a day.</div></div>`;}
+function calStep(d){_calM+=d;if(_calM<0){_calM=11;_calY--;}if(_calM>11){_calM=0;_calY++;}document.getElementById('calBox').innerHTML=calHtml();}
+function calPick(k){const c=catches.filter(x=>x.date===k),d=diary.filter(x=>x.date===k);document.getElementById('calInfo').textContent=new Date(k+'T12:00:00').toLocaleDateString('en-NZ',{weekday:'short',day:'numeric',month:'short'})+': '+(c.length?c.length+' catch'+(c.length>1?'es':'')+' ('+[...new Set(c.map(x=>x.fish))].join(', ')+')':'no catches')+(d.length?' · diary entry':'');}
+function statsPlus(){const pg=document.getElementById('pg-stats');if(!pg)return;let el=document.getElementById('statsPlus');if(!catches.length){if(el)el.remove();return;}if(!el){el=document.createElement('div');el.id='statsPlus';pg.appendChild(el);}
+  const tide=['Incoming','High','Outgoing','Low'].map(k=>[k==='High'||k==='Low'?k+' tide':k,catches.filter(c=>new RegExp(k).test(c.tide||'')).length]),tods=['Dawn','Morning','Midday','Afternoon','Dusk','Night'],todOf=h=>h>=4&&h<7?0:h>=7&&h<11?1:h>=11&&h<14?2:h>=14&&h<17?3:h>=17&&h<20?4:5,
+    td=tods.map((k,i)=>[k,catches.filter(c=>c.time&&todOf(parseInt(c.time,10))===i).length]),sp={};catches.forEach(c=>{if(c.fish)sp[c.fish]=(sp[c.fish]||0)+1;});
+  const spR=Object.entries(sp).sort((a,b)=>b[1]-a[1]).slice(0,6),pb={};catches.forEach(c=>{const w=parseFloat(c.weight);if(w>0&&(!pb[c.fish]||w>pb[c.fish].w))pb[c.fish]={w,l:c.length,d:c.date};});
+  const pbR=Object.entries(pb).sort((a,b)=>b[1].w-a[1].w).slice(0,5);
+  el.innerHTML=monthChart()+`<div id="calBox">${calHtml()}</div>`+sgBars('By species',spR)+sgBars('By tide',tide)+sgBars('Time of day',td)+(pbR.length?`<div class="sec"><div class="stitle">Personal bests</div>${pbR.map(([f,v])=>`<div class="wxrow" style="cursor:default"><span style="flex:1;font-weight:700">${esc(f)}</span><b>${esc(fmtWt(v.w))}</b><span class="cmeta" style="width:70px;text-align:right">${v.l?esc(fmtLen(v.l)):''}</span></div>`).join('')}</div>`:'');}
+const _rs1=renderStats;renderStats=function(){_rs1();try{statsPlus();}catch(e){}};
+// ═══ PHOTO CAROUSEL + SHARE IMAGE ═══
+function vCarFill(c,a){const car=document.getElementById('vc-'+c.id),dots=document.getElementById('vd-'+c.id);if(!car||!a.length)return;
+  a.forEach((u,i)=>car.insertAdjacentHTML('beforeend',`<img src="${u}" class="chero" alt="Photo ${i+2}" onclick="openLightbox(this.src)">`));
+  dots.innerHTML=Array.from({length:a.length+1},(_,i)=>`<i class="${i?'':'on'}"></i>`).join('');
+  car.addEventListener('scroll',()=>{const i=Math.round(car.scrollLeft/car.clientWidth);dots.querySelectorAll('i').forEach((d,k)=>d.classList.toggle('on',k===i));},{passive:true});}
+async function shareCatch(id){const c=catches.find(x=>String(x.id)===String(id));if(!c)return;showToast('Making your image…','success');
+  try{await document.fonts.load('800 84px Inter');}catch(e){}
+  const W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;const g=cv.getContext('2d');g.fillStyle='#0f1a24';g.fillRect(0,0,W,H);
+  if(c.photo){try{const im=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=c.photo;}),r=Math.max(W/im.width,980/im.height),w=im.width*r,h=im.height*r;g.save();g.beginPath();g.rect(0,0,W,980);g.clip();g.drawImage(im,(W-w)/2,(980-h)/2,w,h);g.restore();}catch(e){}}
+  const gr=g.createLinearGradient(0,700,0,H);gr.addColorStop(0,'rgba(15,26,36,0)');gr.addColorStop(.35,'rgba(15,26,36,.92)');gr.addColorStop(1,'#0f1a24');g.fillStyle=gr;g.fillRect(0,700,W,H-700);
+  const F='Inter,system-ui,sans-serif';g.fillStyle='#fff';g.font='800 84px '+F;g.fillText(c.fish||'',64,1090);g.fillStyle='#4fc3a1';g.font='700 52px '+F;g.fillText([fmtLen(c.length),fmtWt(c.weight)].filter(Boolean).join('   ·   '),64,1160);
+  g.fillStyle='rgba(255,255,255,.75)';g.font='500 34px '+F;g.fillText((c.date||'')+(c.time?'  '+c.time:''),64,1222);
+  const tag=[c.tide&&c.tide!=='—'?c.tide.replace(/^[^A-Za-z]+/,''):'',c.moon&&c.moon!=='—'?c.moon:''].filter(Boolean).join('   ·   ');if(tag)g.fillText(tag,64,1272);
+  g.fillStyle='rgba(255,255,255,.5)';g.font='600 28px '+F;g.textAlign='right';g.fillText('Fishing Log',W-64,1304);
+  const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.9)),f=new File([blob],'catch.jpg',{type:'image/jpeg'});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:c.fish});return;}catch(e){if(e&&e.name==='AbortError')return;}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='catch.jpg';a.click();showToast('Image saved','success');}
+// ═══ ILLUSTRATED EMPTY STATES + FIRST-RUN TOUR ═══
+const ART_I={fish:'<path d="M52 46c8-12 22-14 34-6l12-8v28l-12-8c-12 8-26 6-34-6z" fill="rgba(79,195,161,.28)"/><circle cx="64" cy="44" r="1.8" fill="#4fc3a1"/>',book:'<path d="M60 22h40a4 4 0 014 4v38H64a4 4 0 01-4-4V22z" fill="rgba(79,195,161,.28)"/><path d="M68 34h28M68 44h22"/>',wave:'<circle cx="80" cy="36" r="10" fill="rgba(245,184,61,.5)" stroke="#f5b83d"/>',chart:'<path d="M58 62V44M74 62V28M90 62V38M106 62V22" stroke-width="6"/>'};
+const artSvg=k=>`<svg viewBox="0 0 160 110" width="170" aria-hidden="true"><circle cx="80" cy="52" r="46" fill="rgba(79,195,161,.14)"/><g fill="none" stroke="#4fc3a1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M10 80c10-8 20-8 30 0s20 8 30 0 20-8 30 0 20 8 30 0"/><path d="M10 94c10-8 20-8 30 0s20 8 30 0 20-8 30 0 20 8 30 0" opacity=".5"/>${ART_I[k]||''}</g></svg>`;
+function emptyArt(k,t,d,b,fn){return `<div class="empty2">${artSvg(k)}<div class="cfish" style="margin-top:8px">${t}</div><div class="cmeta" style="margin:6px 0 14px;max-width:270px">${d}</div><button class="sbtn teal-btn" style="width:auto;padding:12px 22px" onclick="${fn}">${b}</button></div>`;}
+const TOUR=[{a:'fish',t:'Welcome to Fishing Log',d:'Log every catch with a photo. Tide, moon, weather and sea temperature are filled in for you.'},{a:'wave',t:'Know before you go',d:'The Today and Forecast tabs show conditions, tides and the best bite windows.'},{a:'book',t:'Keep a fishing diary',d:'Write or dictate notes about each day, add photos, and see where they were taken.'},{a:'chart',t:'See what works',d:'Stats and the map show your best times, tides and spots. Back up your data from Settings.'}];
+let _tourI=0;
+function showTour(){_tourI=0;let el=document.getElementById('tour');if(!el){el=document.createElement('div');el.id='tour';el.className='tour';document.body.appendChild(el);}el.style.display='flex';tourDraw();}
+function tourDraw(){const s=TOUR[_tourI],last=_tourI===TOUR.length-1;document.getElementById('tour').innerHTML=`<button class="tskip" onclick="tourEnd()">Skip</button><div class="tbody">${artSvg(s.a)}<h2>${s.t}</h2><p>${s.d}</p></div><div class="tdots">${TOUR.map((_,i)=>`<i class="${i===_tourI?'on':''}"></i>`).join('')}</div><button class="sbtn teal-btn tnext" onclick="${last?'tourEnd()':'_tourI++;tourDraw()'}">${last?'Get started':'Next'}</button>`;}
+function tourEnd(){document.getElementById('tour').style.display='none';try{localStorage.setItem('fishinglog_toured','1');}catch(e){}}
+document.addEventListener('DOMContentLoaded',()=>{regroupSettings();setTimeout(()=>{if(!localStorage.getItem('fishinglog_toured')){if(!catches.length&&!diary.length)showTour();else localStorage.setItem('fishinglog_toured','1');}},900);});
 </script>
 </body>
 </html>
