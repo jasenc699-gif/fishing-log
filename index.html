@@ -6084,12 +6084,14 @@ const seaLbl=x=>x.src==='measured'?'measured':(x.src==='satellite'?'satellite':'
 function seaBias(lat,lng,ms,k){const rs=seaReadings.filter(r=>r[k]!=null&&seaKm(lat,lng,r.lat,r.lng)<=50&&Math.abs(ms-r.ms)<120*864e5);if(!rs.length)return 0;let sw=0,sb=0;
   rs.forEach(r=>{const w=1/(1+Math.abs(ms-r.ms)/864e5/14)/(1+seaKm(lat,lng,r.lat,r.lng)/10);sw+=w;sb+=w*(r.v-r[k]);});return Math.max(-3,Math.min(3,(sb/sw)*(rs.length/(rs.length+1))));}
 function seaAddReading(lat,lng,d,t,v){if(lat==null||lng==null||isNaN(v))return;const r={ms:seaMs(d,t),lat,lng,v};seaReadings.push(r);seaSave();seaSat(lat,lng,d).then(x=>{if(x!=null){r.sat=x;seaSave();}});seaModel(lat,lng,d,t).then(x=>{if(x!=null){r.mod=x;seaSave();}});}
+function erddapJsonp(url){return new Promise((ok,no)=>{const cb='_erd'+Math.random().toString(36).slice(2,9),sc=document.createElement('script'),end=()=>{clearTimeout(to);delete window[cb];sc.remove();},to=setTimeout(()=>{end();no(new Error('timeout'));},8000);
+  window[cb]=d=>{end();ok(d);};sc.onerror=()=>{end();no(new Error('blocked'));};sc.src=url+'&.jsonp='+cb;document.head.appendChild(sc);});}
 async function seaSat(lat,lng,d){const k=lat.toFixed(2)+','+lng.toFixed(2)+','+d;if(k in seaCache)return seaCache[k];if(!navigator.onLine)return null;
-  const b=0.03,f=x=>x.toFixed(3),q=t=>`https://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41.json?analysed_sst[${t}][(${f(lat-b)}):1:(${f(lat+b)})][(${f(lng-b)}):1:(${f(lng+b)})]`;
+  const b=0.03,f=x=>x.toFixed(3),q=t=>`https://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41.json?analysed_sst%5B${t}%5D%5B(${f(lat-b)}):1:(${f(lat+b)})%5D%5B(${f(lng-b)}):1:(${f(lng+b)})%5D`;
   for(const t of ['('+d+'T09:00:00Z)','(last)']){if(t==='(last)'&&Date.now()-seaMs(d)>4*864e5)break;
-    try{const r=await fetch(q(t));if(!r.ok)continue;const j=await r.json(),ro=j.table.rows.filter(x=>x[3]!=null);if(!ro.length)continue;
-      ro.sort((a,c)=>seaKm(lat,lng,a[1],a[2])-seaKm(lat,lng,c[1],c[2]));const v=Math.round(ro[0][3]*10)/10;seaCache[k]=v;seaSave();return v;}catch(e){}}
-  return null;}
+    try{const j=await erddapJsonp(q(t)),ro=j.table.rows.filter(x=>x[3]!=null);if(!ro.length)continue;
+      ro.sort((a,c)=>seaKm(lat,lng,a[1],a[2])-seaKm(lat,lng,c[1],c[2]));const v=Math.round(ro[0][3]*10)/10;seaCache[k]=v;seaSave();window._seaSatFail=false;return v;}catch(e){}}
+  window._seaSatFail=true;return null;}
 async function seaModel(lat,lng,d,t){try{const r=await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&start_date=${d}&end_date=${d}&timezone=Pacific%2FAuckland&hourly=sea_surface_temperature`);if(!r.ok)return null;const j=await r.json(),v=j.hourly&&j.hourly.sea_surface_temperature&&j.hourly.sea_surface_temperature[parseInt((t||'12:00').slice(0,2),10)];return v==null?null:Math.round(v*10)/10;}catch(e){return null;}}
 async function seaTemp(lat,lng,d,t){if(lat==null||lng==null||!d)return null;const ms=seaMs(d,t);
   const m=seaReadings.filter(r=>Math.abs(r.ms-ms)<=12*36e5&&seaKm(lat,lng,r.lat,r.lng)<=15).sort((a,b)=>Math.abs(a.ms-ms)-Math.abs(b.ms-ms))[0];
@@ -6103,7 +6105,7 @@ function wxLine(c){const w=c.wx,a=[];if(c.sea)a.push('Sea '+(+c.sea.v).toFixed(1
   if(w){if(w.wind&&w.wind!=='—')a.push('Wind '+w.wind+(w.dir&&w.dir!=='—'?' '+w.dir:''));if(w.press&&w.press!=='—')a.push(w.press+' hPa'+(w.trend&&w.trend!=='—'?' · '+w.trend:''));if(w.temp&&w.temp!=='—')a.push(w.temp);}
   return a.map(esc).join(' · ');}
 let _seaNow=null,_seaBusy=false;
-function seaTile(){const n=_seaNow;return `<div class="ttile" role="button" tabindex="0" onclick="seaAsk()" style="grid-column:1/-1;cursor:pointer"><div class="tl2">Sea temperature</div><div class="tv">${n?(+n.v).toFixed(1)+'°C':'<span class="skel" style="display:inline-block;width:72px">&nbsp;</span>'}</div><div class="ts">${n?esc(seaLbl(n))+(n.adj?' ('+(n.adj>0?'+':'')+n.adj+'°)':''):'Looking up…'}</div><div class="ts" style="color:var(--teal-d);font-weight:600;margin-top:4px">Tap to add your own reading</div></div>`;}
+function seaTile(){const n=_seaNow;return `<div class="ttile" role="button" tabindex="0" onclick="seaAsk()" style="grid-column:1/-1;cursor:pointer"><div class="tl2">Sea temperature</div><div class="tv">${n?(+n.v).toFixed(1)+'°C':'<span class="skel" style="display:inline-block;width:72px">&nbsp;</span>'}</div><div class="ts">${n?esc(seaLbl(n))+(window._seaSatFail&&n.src==='model'?' · satellite unreachable':'')+(n.adj?' ('+(n.adj>0?'+':'')+n.adj+'°)':''):'Looking up…'}</div><div class="ts" style="color:var(--teal-d);font-weight:600;margin-top:4px">Tap to add your own reading</div></div>`;}
 const _rt0=renderToday;
 renderToday=function(){_rt0();if(_seaBusy||(_seaNow&&Date.now()-_seaNow.t<18e5))return;_seaBusy=true;const n=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString();
   seaTemp(appLat,appLng,n.slice(0,10),n.slice(11,16)).then(r=>{_seaBusy=false;if(r){_seaNow=Object.assign({t:Date.now()},r);if(currentTab==='today')_rt0();}}).catch(()=>{_seaBusy=false;});};
@@ -6113,7 +6115,7 @@ renderStats=function(){_rs0();try{const B=['Under 14°C','14–16°C','16–18°
 // automatic backfill of anything missing a sea temperature
 document.addEventListener('DOMContentLoaded',()=>{setTimeout(async()=>{if(!navigator.onLine)return;let n=0,ch=0;
   for(const r of seaReadings.filter(x=>x.sat==null||x.mod==null).slice(0,5)){const iso=new Date(r.ms+12*36e5).toISOString(),d=iso.slice(0,10),h=iso.slice(11,16);if(r.sat==null){const v=await seaSat(r.lat,r.lng,d);if(v!=null){r.sat=v;ch=1;}}if(r.mod==null){const m=await seaModel(r.lat,r.lng,d,h);if(m!=null){r.mod=m;ch=1;}}}
-  for(const o of [...catches,...diary]){if(o.sea||o.lat==null||n>=10)continue;await seaFill(o);if(o.sea)n++;}
+  for(const o of [...catches,...diary]){if(o.sea&&o.sea.src==='model'&&window._seaSatFail===false&&n<10)delete o.sea;if(o.sea||o.lat==null||n>=10)continue;await seaFill(o);if(o.sea)n++;}
   if(ch)seaSave();if(n){persist();dySave2();if(currentTab==='list')renderList();if(currentTab==='diary')dyRender();}},6000);});
 
 // ═══ FORECAST DETAIL SHEETS (tap an hour or a day) ═══
@@ -6337,6 +6339,26 @@ function seaSaveReading(){const v=parseFloat(document.getElementById('seaIn').va
   const done=(la,ln)=>{const n=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString();seaAddReading(la,ln,n.slice(0,10),n.slice(11,16),v);_seaNow={v,src:'measured',t:Date.now()};wxSheetClose();showToast('Reading saved — estimates near here will improve','success');if(currentTab==='today')renderToday();};
   document.getElementById('seaMsg').textContent='Getting your location…';
   if(!navigator.geolocation){done(appLat,appLng);return;}navigator.geolocation.getCurrentPosition(p=>done(p.coords.latitude,p.coords.longitude),()=>done(appLat,appLng),{timeout:6000,maximumAge:60000});}
+
+// ═══ SUNRISE / SUNSET CARD (Forecast → Weather) ═══
+function wxSunRender(){const D=wxData();if(!D||!D.daily||!D.daily.sunrise)return;const rib=document.getElementById('wxRibbon');if(!rib)return;
+  let el=document.getElementById('wxSun');if(!el){el=document.createElement('div');el.id='wxSun';el.className='sec';(rib.closest('.sec')||rib.parentNode).insertAdjacentElement('afterend',el);}
+  const d=D.daily,now=Date.now(),iso=new Date(now-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10),i=Math.max(0,d.time.indexOf(iso)),T=k=>Date.parse(d.sunrise[k]),U=k=>Date.parse(d.sunset[k]);
+  const sr=T(i),ss=U(i);if(isNaN(sr)||isNaN(ss))return;
+  const f=t=>new Date(t).toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'}),dl=ms=>{const m=Math.max(0,Math.round(ms/6e4));return Math.floor(m/60)+'h '+(m%60)+'m';};
+  const up=now>=sr&&now<=ss,t=Math.min(1,Math.max(0,(now-sr)/(ss-sr))),x=(150-130*Math.cos(Math.PI*t)).toFixed(1),y=(96-80*Math.sin(Math.PI*t)).toFixed(1);
+  const nx=d.sunrise[i+1]?T(i+1):sr+864e5,next=now<sr?['Sunrise',sr]:now<ss?['Sunset',ss]:['Sunrise tomorrow',nx],arc='M20 96 A130 80 0 0 1 280 96';
+  el.innerHTML=`<div class="stitle">Sun</div>
+  <svg viewBox="0 0 300 118" width="100%" role="img" aria-label="Sun position today"><line x1="8" y1="96" x2="292" y2="96" stroke="var(--border)"/>
+    <path d="${arc}" fill="none" stroke="var(--border)" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round"/><path d="${arc}" pathLength="1" fill="none" stroke="#f5b83d" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="${t} 1"/>
+    ${up?`<circle cx="${x}" cy="${y}" r="16" fill="#f5b83d" opacity=".25"/><circle cx="${x}" cy="${y}" r="8" fill="#f5b83d"/>`:''}
+    <text x="6" y="113" font-size="12" fill="var(--muted)" text-anchor="start">${f(sr)}</text><text x="294" y="113" font-size="12" fill="var(--muted)" text-anchor="end">${f(ss)}</text></svg>
+  <div class="tv" style="font-size:16px;margin:4px 0 10px">${next[0]} at ${f(next[1])} · in ${dl(next[1]-now)}</div>
+  <div class="tgrid" style="margin-bottom:6px">${_wT('Sunrise',f(sr))}${_wT('Sunset',f(ss))}${_wT('First light',f(sr-30*6e4),'about 30 min before sunrise')}${_wT('Last light',f(ss+30*6e4),'about 30 min after sunset')}</div>
+  <div class="cmeta">Daylight ${dl(ss-sr)}${d.sunrise[i+1]?' · Tomorrow '+f(T(i+1))+' – '+f(U(i+1)):''}</div>`;}
+const _fom=fetchOpenMeteo;fetchOpenMeteo=async function(){try{return await _fom.apply(this,arguments);}finally{setTimeout(wxSunRender,200);}};
+const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setTimeout(wxSunRender,50);return r;};
+document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 </script>
 </body>
 </html>
