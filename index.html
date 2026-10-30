@@ -6068,7 +6068,6 @@ function renderToday(){const el=document.getElementById('todayContent');if(!el)r
   el.innerHTML=`<div class="thero" data-tod="${tod}"><div class="tsub" style="margin:0">${now.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'})}</div><div class="tgreet">${greet}</div><div class="tsub">${esc((/could not|network|error|loading/i.test(_tx('wxl'))?'':_tx('wxl'))||'')}</div>
   <div class="verdict ${v[0]}">${v[1]}${has?' · wind '+esc(_tx('wxWindSpd')):''}</div></div>
   <div class="tgrid">${tile('Temp',_tx('wxt')||'—',_tx('wxd'))}${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,'').slice(0,22))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}${seaTile()}</div>
-  <button class="sbtn teal-btn" style="margin:4px 0 12px;font-size:17px;padding:16px" onclick="go('log')">Log a catch</button>
   <div class="sec"><div class="stitle">Your fishing</div>${last?`<div class="cfish">${esc(last.fish)}${last.length?' · '+esc(fmtLen(last.length)):''}</div><div class="cmeta">Last catch · ${fmtWhen(last)}</div><div class="cmeta" style="margin-top:6px">${mc} catch${mc!==1?'es':''} this month · ${catches.length} total</div>`:'<div class="cmeta">No catches yet. Your first one will show up here.</div>'}</div>`;}
 document.addEventListener('DOMContentLoaded',()=>{renderToday();renderSpQuick();applyDefaults();setTimeout(renderToday,1500);
   const t=document.getElementById('wxt');if(t)new MutationObserver(()=>{if(currentTab==='today')renderToday();}).observe(t,{childList:true,characterData:true,subtree:true});});
@@ -6081,8 +6080,10 @@ let seaReadings=[],seaCache={};try{seaReadings=JSON.parse(localStorage.getItem(S
 function seaSave(){try{localStorage.setItem(SEA_R,JSON.stringify(seaReadings));localStorage.setItem(SEA_C,JSON.stringify(Object.fromEntries(Object.entries(seaCache).slice(-300))));}catch(e){}}
 const seaMs=(d,t)=>new Date(`${d}T${t||'12:00'}:00${_nzISOOffset()}`).getTime();
 function seaKm(a,b,c,d){const r=Math.PI/180,x=(c-a)*r,y=(d-b)*r*Math.cos(a*r);return 6371*Math.sqrt(x*x+y*y);}
-const seaLbl=x=>x.src==='measured'?'measured':x.src==='satellite'?(x.adj?'satellite, adjusted':'satellite'):'model';
-function seaAddReading(lat,lng,d,t,v){if(lat==null||lng==null||isNaN(v))return;const r={ms:seaMs(d,t),lat,lng,v};seaReadings.push(r);seaSave();seaSat(lat,lng,d).then(x=>{if(x!=null){r.sat=x;seaSave();}});}
+const seaLbl=x=>x.src==='measured'?'measured':(x.src==='satellite'?'satellite':'model')+(x.adj?', adjusted':'');
+function seaBias(lat,lng,ms,k){const rs=seaReadings.filter(r=>r[k]!=null&&seaKm(lat,lng,r.lat,r.lng)<=50&&Math.abs(ms-r.ms)<120*864e5);if(!rs.length)return 0;let sw=0,sb=0;
+  rs.forEach(r=>{const w=1/(1+Math.abs(ms-r.ms)/864e5/14)/(1+seaKm(lat,lng,r.lat,r.lng)/10);sw+=w;sb+=w*(r.v-r[k]);});return Math.max(-3,Math.min(3,(sb/sw)*(rs.length/(rs.length+1))));}
+function seaAddReading(lat,lng,d,t,v){if(lat==null||lng==null||isNaN(v))return;const r={ms:seaMs(d,t),lat,lng,v};seaReadings.push(r);seaSave();seaSat(lat,lng,d).then(x=>{if(x!=null){r.sat=x;seaSave();}});seaModel(lat,lng,d,t).then(x=>{if(x!=null){r.mod=x;seaSave();}});}
 async function seaSat(lat,lng,d){const k=lat.toFixed(2)+','+lng.toFixed(2)+','+d;if(k in seaCache)return seaCache[k];if(!navigator.onLine)return null;
   const b=0.03,f=x=>x.toFixed(3),q=t=>`https://coastwatch.pfeg.noaa.gov/erddap/griddap/jplMURSST41.json?analysed_sst[${t}][(${f(lat-b)}):1:(${f(lat+b)})][(${f(lng-b)}):1:(${f(lng+b)})]`;
   for(const t of ['('+d+'T09:00:00Z)','(last)']){if(t==='(last)'&&Date.now()-seaMs(d)>4*864e5)break;
@@ -6094,17 +6095,15 @@ async function seaTemp(lat,lng,d,t){if(lat==null||lng==null||!d)return null;cons
   const m=seaReadings.filter(r=>Math.abs(r.ms-ms)<=12*36e5&&seaKm(lat,lng,r.lat,r.lng)<=15).sort((a,b)=>Math.abs(a.ms-ms)-Math.abs(b.ms-ms))[0];
   if(m)return {v:m.v,src:'measured'};
   const s=await seaSat(lat,lng,d);
-  if(s!=null){const bs=seaReadings.filter(r=>r.sat!=null&&seaKm(lat,lng,r.lat,r.lng)<=50&&Math.abs(ms-r.ms)<120*864e5).map(r=>r.v-r.sat).sort((a,b)=>a-b);
-    if(bs.length>=2){const a=Math.max(-3,Math.min(3,bs[Math.floor(bs.length/2)]));return {v:Math.round((s+a)*10)/10,src:'satellite',adj:Math.round(a*10)/10};}
-    return {v:s,src:'satellite'};}
-  const mo=await seaModel(lat,lng,d,t);return mo!=null?{v:mo,src:'model'}:null;}
+  if(s!=null){const a=seaBias(lat,lng,ms,'sat');return {v:Math.round((s+a)*10)/10,src:'satellite',adj:a?Math.round(a*10)/10:undefined};}
+  const mo=await seaModel(lat,lng,d,t);if(mo==null)return null;const a=seaBias(lat,lng,ms,'mod');return {v:Math.round((mo+a)*10)/10,src:'model',adj:a?Math.round(a*10)/10:undefined};}
 async function seaFill(o){if(o.sea||o.lat==null||o.lng==null)return;const r=await seaTemp(o.lat,o.lng,o.date,o.time);if(r)o.sea=r;}
 // display helpers
 function wxLine(c){const w=c.wx,a=[];if(c.sea)a.push('Sea '+(+c.sea.v).toFixed(1)+'°C ('+seaLbl(c.sea)+')');
   if(w){if(w.wind&&w.wind!=='—')a.push('Wind '+w.wind+(w.dir&&w.dir!=='—'?' '+w.dir:''));if(w.press&&w.press!=='—')a.push(w.press+' hPa'+(w.trend&&w.trend!=='—'?' · '+w.trend:''));if(w.temp&&w.temp!=='—')a.push(w.temp);}
   return a.map(esc).join(' · ');}
 let _seaNow=null,_seaBusy=false;
-function seaTile(){const n=_seaNow;return `<div class="ttile" style="grid-column:1/-1"><div class="tl2">Sea temperature</div><div class="tv">${n?(+n.v).toFixed(1)+'°C':'<span class="skel" style="display:inline-block;width:72px">&nbsp;</span>'}</div><div class="ts">${n?esc(seaLbl(n))+(n.adj?' ('+(n.adj>0?'+':'')+n.adj+'° from your readings)':''):'Looking up…'}</div></div>`;}
+function seaTile(){const n=_seaNow;return `<div class="ttile" role="button" tabindex="0" onclick="seaAsk()" style="grid-column:1/-1;cursor:pointer"><div class="tl2">Sea temperature</div><div class="tv">${n?(+n.v).toFixed(1)+'°C':'<span class="skel" style="display:inline-block;width:72px">&nbsp;</span>'}</div><div class="ts">${n?esc(seaLbl(n))+(n.adj?' ('+(n.adj>0?'+':'')+n.adj+'°)':''):'Looking up…'}</div><div class="ts" style="color:var(--teal-d);font-weight:600;margin-top:4px">Tap to add your own reading</div></div>`;}
 const _rt0=renderToday;
 renderToday=function(){_rt0();if(_seaBusy||(_seaNow&&Date.now()-_seaNow.t<18e5))return;_seaBusy=true;const n=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString();
   seaTemp(appLat,appLng,n.slice(0,10),n.slice(11,16)).then(r=>{_seaBusy=false;if(r){_seaNow=Object.assign({t:Date.now()},r);if(currentTab==='today')_rt0();}}).catch(()=>{_seaBusy=false;});};
@@ -6113,7 +6112,7 @@ renderStats=function(){_rs0();try{const B=['Under 14°C','14–16°C','16–18°
   if(!rows.some(r=>r[1])){if(el)el.remove();return;}if(!el){el=document.createElement('div');el.id='seaStatCard';document.getElementById('pg-stats').appendChild(el);}el.innerHTML=sgBars('Catches by sea temperature',rows);}catch(e){}};
 // automatic backfill of anything missing a sea temperature
 document.addEventListener('DOMContentLoaded',()=>{setTimeout(async()=>{if(!navigator.onLine)return;let n=0,ch=0;
-  for(const r of seaReadings.filter(x=>x.sat==null).slice(0,5)){const d=new Date(r.ms+12*36e5).toISOString().slice(0,10),v=await seaSat(r.lat,r.lng,d);if(v!=null){r.sat=v;ch=1;}}
+  for(const r of seaReadings.filter(x=>x.sat==null||x.mod==null).slice(0,5)){const iso=new Date(r.ms+12*36e5).toISOString(),d=iso.slice(0,10),h=iso.slice(11,16);if(r.sat==null){const v=await seaSat(r.lat,r.lng,d);if(v!=null){r.sat=v;ch=1;}}if(r.mod==null){const m=await seaModel(r.lat,r.lng,d,h);if(m!=null){r.mod=m;ch=1;}}}
   for(const o of [...catches,...diary]){if(o.sea||o.lat==null||n>=10)continue;await seaFill(o);if(o.sea)n++;}
   if(ch)seaSave();if(n){persist();dySave2();if(currentTab==='list')renderList();if(currentTab==='diary')dyRender();}},6000);});
 
@@ -6329,6 +6328,15 @@ function showTour(){_tourI=0;let el=document.getElementById('tour');if(!el){el=d
 function tourDraw(){const s=TOUR[_tourI],last=_tourI===TOUR.length-1;document.getElementById('tour').innerHTML=`<button class="tskip" onclick="tourEnd()">Skip</button><div class="tbody">${artSvg(s.a)}<h2>${s.t}</h2><p>${s.d}</p></div><div class="tdots">${TOUR.map((_,i)=>`<i class="${i===_tourI?'on':''}"></i>`).join('')}</div><button class="sbtn teal-btn tnext" onclick="${last?'tourEnd()':'_tourI++;tourDraw()'}">${last?'Get started':'Next'}</button>`;}
 function tourEnd(){document.getElementById('tour').style.display='none';try{localStorage.setItem('fishinglog_toured','1');}catch(e){}}
 document.addEventListener('DOMContentLoaded',()=>{regroupSettings();setTimeout(()=>{if(!localStorage.getItem('fishinglog_toured')){if(!catches.length&&!diary.length)showTour();else localStorage.setItem('fishinglog_toured','1');}},900);});
+
+// ── add your own water temperature reading (improves every estimate nearby) ──
+function seaAsk(){wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">Add a water temperature</div><div class="cmeta">Your readings correct the estimates for this area</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
+  <label>Temperature (°C)</label><input type="number" step="0.1" inputmode="decimal" id="seaIn" placeholder="e.g. 18.5" style="font-size:22px;font-weight:700"><div id="seaMsg" class="cmeta" style="margin:8px 0 12px">Uses your current location when you save.</div>
+  <button class="sbtn teal-btn" onclick="seaSaveReading()" style="margin-bottom:6px">Save reading</button>`);setTimeout(()=>{const i=document.getElementById('seaIn');if(i)i.focus();},250);}
+function seaSaveReading(){const v=parseFloat(document.getElementById('seaIn').value);if(!(v>0&&v<40)){document.getElementById('seaMsg').textContent='Enter a temperature between 0 and 40.';return;}
+  const done=(la,ln)=>{const n=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString();seaAddReading(la,ln,n.slice(0,10),n.slice(11,16),v);_seaNow={v,src:'measured',t:Date.now()};wxSheetClose();showToast('Reading saved — estimates near here will improve','success');if(currentTab==='today')renderToday();};
+  document.getElementById('seaMsg').textContent='Getting your location…';
+  if(!navigator.geolocation){done(appLat,appLng);return;}navigator.geolocation.getCurrentPosition(p=>done(p.coords.latitude,p.coords.longitude),()=>done(appLat,appLng),{timeout:6000,maximumAge:60000});}
 </script>
 </body>
 </html>
