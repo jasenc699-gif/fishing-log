@@ -420,7 +420,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 .vthumbs{display:flex;gap:8px;overflow-x:auto;margin:8px 0}.vthumbs:empty{display:none}.vthumbs img{width:72px;height:72px;object-fit:cover;border-radius:10px;cursor:zoom-in}
 
 .brow{display:flex;align-items:center;gap:8px;margin:6px 0}.bl{width:96px;font-size:13px;color:var(--muted);flex-shrink:0}.bt{flex:1;height:10px;background:var(--surf);border-radius:5px;overflow:hidden}.bt i{display:block;height:100%;background:var(--teal);border-radius:5px;min-width:0}.bn{width:24px;text-align:right;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
-.spchip.on{background:var(--teal);color:#06382b;border-color:var(--teal)}#sgCam,#sgLib{display:none}.tab{min-width:0;padding:0 2px}
+.spchip.on{background:var(--teal);color:#06382b;border-color:var(--teal)}.tab{min-width:0;padding:0 2px}
 
 .wx-cell{cursor:pointer}.wx-cell:active{transform:scale(.96)}
 .wxbg{position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center}.wxbg.open{display:flex;animation:fadeIn .18s ease}
@@ -430,6 +430,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 .wxx,.wxn{width:44px;height:44px;border:none;background:none;font-size:22px;color:var(--muted);cursor:pointer;flex-shrink:0}.wxn:disabled{opacity:.25}
 .wxhero{display:flex;align-items:center;gap:14px;padding:4px}.wxrow{display:flex;align-items:center;gap:12px;padding:10px 4px;min-height:48px;border-bottom:0.5px solid var(--border);cursor:pointer}.wxrt{width:40px;font-size:13px;color:var(--muted)}
 .dymic.on{background:#e74c3c!important;color:#fff!important;border-color:#e74c3c!important}
+.dymap{border-radius:12px;overflow:hidden;margin-top:8px}.dypin div{width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#4fc3a1;border:2px solid #0a5c43;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -1040,12 +1041,8 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
     </div>
 
     <!-- ══ STATS ══ -->
-    <div class="pg" id="pg-rays">
-      <div class="seg" id="dySeg" style="margin:0 0 10px"><button class="on" onclick="dyTab('diary')">Diary</button><button onclick="dyTab('rays')">Rays</button></div>
+    <div class="pg" id="pg-diary">
       <div id="dyWrap"></div>
-      <div id="raysWrap" style="display:none">
-      <div class="seg" id="sgSeg" style="margin:0 0 10px"><button class="on" onclick="sgShow('log')">Log</button><button onclick="sgShow('hist')">History</button><button onclick="sgShow('pat')">Patterns</button></div>
-      <div id="sgLog"></div><div id="sgHist" style="display:none"></div><div id="sgPat" style="display:none"></div></div>
     </div>
     <div class="pg" id="pg-stats">
       <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;">Fishing Insights</div>
@@ -1154,7 +1151,7 @@ button:focus-visible,.tab:focus-visible,input:focus-visible{outline:2px solid va
 
   </div><!-- /pages -->
 
-  <nav class="tabs" role="tablist"><button class="tab active" data-tab="today" role="tab" aria-label="Today" onclick="go('today')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span class="tl">Today</span></button><button class="tab" data-tab="log" role="tab" aria-label="Log" onclick="go('log')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="tl">Log</span></button><button class="tab" data-tab="cond" role="tab" aria-label="Forecast" onclick="goCond()"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 18c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 6c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1"/></svg><span class="tl">Forecast</span></button><button class="tab" data-tab="map" role="tab" aria-label="Map" onclick="go('map')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="tl">Map</span></button><button class="tab" data-tab="list" role="tab" aria-label="Catches" onclick="go('list')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-4-8 7"/></svg><span class="tl">Catches</span></button><button class="tab" data-tab="rays" role="tab" aria-label="Diary" onclick="go('rays')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h12a2 2 0 012 2v16H7a2 2 0 01-2-2V3z"/><path d="M9 8h6M9 12h6"/></svg><span class="tl">Diary</span></button><button class="tab" data-tab="stats" role="tab" aria-label="Stats" onclick="go('stats')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="tl">Stats</span></button></nav>
+  <nav class="tabs" role="tablist"><button class="tab active" data-tab="today" role="tab" aria-label="Today" onclick="go('today')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span class="tl">Today</span></button><button class="tab" data-tab="log" role="tab" aria-label="Log" onclick="go('log')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span class="tl">Log</span></button><button class="tab" data-tab="cond" role="tab" aria-label="Forecast" onclick="goCond()"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 18c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1M2 6c2.5-3 5-3 7.5 0s5 3 7.5 0 3-2 5-1"/></svg><span class="tl">Forecast</span></button><button class="tab" data-tab="map" role="tab" aria-label="Map" onclick="go('map')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span class="tl">Map</span></button><button class="tab" data-tab="list" role="tab" aria-label="Catches" onclick="go('list')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 16l-5-4-8 7"/></svg><span class="tl">Catches</span></button><button class="tab" data-tab="diary" role="tab" aria-label="Diary" onclick="go('diary')"><svg class="ti" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h12a2 2 0 012 2v16H7a2 2 0 01-2-2V3z"/><path d="M9 8h6M9 12h6"/></svg><span class="tl">Diary</span></button><button class="tab" data-tab="stats" role="tab" aria-label="Stats" onclick="go('stats')"><svg class="ti" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="tl">Stats</span></button></nav>
 </div><!-- /app -->
 
 <!-- ══ CATCH VIEWER ══ -->
@@ -1947,7 +1944,7 @@ function go(p) {
   if(p==='map') setTimeout(initMainMap, 100);
   if(p==='list') renderList();
   if(p==='stats') renderStats();
-  if(p==='rays') renderRays();
+  if(p==='diary') dyRender();
 }
 
 // On load: hide/show settings tab based on whether a key is saved,
@@ -4995,7 +4992,7 @@ async function exportBackup() {
       app: 'NZ Fishing Log',
       catchCount: catches.length,
       catches: catches.map(({ photo, ...meta }) => meta), // metadata only (no in-memory blobs)
-      sightings, seaReadings, diary, photos // { catchId: dataUrl, … }
+      seaReadings, diary, photos // { catchId: dataUrl, … }
     };
     const json = JSON.stringify(backup);
     const blob = new Blob([json], { type: 'application/json' });
@@ -5039,7 +5036,7 @@ async function importBackup(event) {
       const db = new Date((b.date || '1970-01-01') + 'T' + (b.time || '00:00'));
       return db - da;
     });
-    if (Array.isArray(data.sightings)) { const sid=new Set(sightings.map(x=>x.id)); data.sightings.forEach(x=>{ if(!sid.has(x.id)) sightings.push(x); }); sightings.sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time)); sgSave(); }
+    if (Array.isArray(data.sightings)) { await dyMigrate(data.sightings); }
     if (Array.isArray(data.diary)) { const did=new Set(diary.map(x=>x.id)); data.diary.forEach(x=>{ if(!did.has(x.id)) diary.push(x); }); dySave2(); }
     if (Array.isArray(data.seaReadings)) { const k=new Set(seaReadings.map(r=>r.ms+'|'+r.lat)); data.seaReadings.forEach(r=>{ if(!k.has(r.ms+'|'+r.lat)) seaReadings.push(r); }); seaSave(); }
     persist();
@@ -6036,77 +6033,7 @@ function renderToday(){const el=document.getElementById('todayContent');if(!el)r
 document.addEventListener('DOMContentLoaded',()=>{renderToday();renderSpQuick();applyDefaults();setTimeout(renderToday,1500);
   const t=document.getElementById('wxt');if(t)new MutationObserver(()=>{if(currentTab==='today')renderToday();}).observe(t,{childList:true,characterData:true,subtree:true});});
 
-// ═══ SHORTTAIL STINGRAY SIGHTINGS ═══
-const SG_KEY='fishinglog_sightings'; let sightings=[]; try{sightings=JSON.parse(localStorage.getItem(SG_KEY)||'[]');}catch(e){}
-function sgSave(){try{localStorage.setItem(SG_KEY,JSON.stringify(sightings));}catch(e){showToast('Storage full — could not save sighting','error');}}
-let sgPhoto=null,sgBeh='';
-const SG_BEH=['Cruising','Feeding','Resting','In a group','Spooked'],SG_MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const sgTod=h=>h>=4&&h<7?'Dawn':h>=7&&h<11?'Morning':h>=11&&h<14?'Midday':h>=14&&h<17?'Afternoon':h>=17&&h<20?'Dusk':'Night';
-const sgOpts=a=>a.map(x=>`<option>${x}</option>`).join('');
-function sgBuildForm(){const n=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString();
-  document.getElementById('sgLog').innerHTML=`<div class="sec"><div class="stitle">When and where</div>
-  <div class="r2"><div><label>Date</label><input type="date" id="sgDate" value="${n.slice(0,10)}"></div><div><label>Time</label><input type="time" id="sgTime" value="${n.slice(11,16)}"></div></div>
-  <button type="button" class="gpsbtn" style="min-height:44px;font-weight:600" onclick="sgGps()">Use my location</button><div id="sgGpsStat" class="cmeta" style="min-height:18px;margin-top:4px"></div>
-  <input type="hidden" id="sgLat"><input type="hidden" id="sgLng">
-  <label>Spot name</label><input id="sgSpot" list="sgSpots" placeholder="e.g. Pilot Bay" autocomplete="off"><datalist id="sgSpots">${[...new Set(catches.map(c=>c.nickname).filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join('')}</datalist></div>
-  <div class="sec"><div class="stitle">The sighting</div>
-  <label>How many?</label><div style="display:flex;gap:8px;align-items:center"><button type="button" class="spchip" style="width:48px" onclick="sgCnt(-1)" aria-label="Fewer">−</button><input type="number" id="sgCount" value="1" min="1" inputmode="numeric" style="text-align:center"><button type="button" class="spchip" style="width:48px" onclick="sgCnt(1)" aria-label="More">+</button></div>
-  <label>Size (disc width)</label><select id="sgSize">${sgOpts(['Not sure','Small (under 1 m)','Medium (1–1.5 m)','Large (over 1.5 m)'])}</select>
-  <label>Behaviour</label><div class="spq" style="flex-wrap:wrap">${SG_BEH.map(b=>`<button type="button" class="spchip" onclick="sgPick(this)">${b}</button>`).join('')}</div>
-  <div class="r2"><div><label>Depth</label><select id="sgDepth">${sgOpts(['Shallows (under 1 m)','1–3 m','Over 3 m'])}</select></div><div><label>Clarity</label><select id="sgClar">${sgOpts(['Clear','Slightly murky','Murky'])}</select></div></div>
-  <label>Water temp °C (optional)</label><input type="number" step="0.1" id="sgWt" inputmode="decimal" placeholder="Blank = sea model estimate">
-  <label>Photo (optional)</label><div class="photobtns"><button type="button" class="gpsbtn" onclick="document.getElementById('sgCam').click()">Take photo</button><button type="button" class="gpsbtn" onclick="document.getElementById('sgLib').click()">Choose photo</button></div>
-  <div id="sgThumb" class="xthumbs"></div><input type="file" id="sgCam" accept="image/*" capture="environment" onchange="sgPhotoPick(event)"><input type="file" id="sgLib" accept="image/*" onchange="sgPhotoPick(event)">
-  <label>Notes</label><textarea id="sgNotes" rows="2" placeholder="Anything else worth noting"></textarea></div>
-  <button class="sbtn teal-btn" style="margin-bottom:14px" onclick="sgSaveEntry()">Save sighting</button>`;sgBeh='';sgPhoto=null;}
-function sgCnt(d){const i=document.getElementById('sgCount');i.value=Math.max(1,(parseInt(i.value)||1)+d);}
-function sgPick(b){const on=b.classList.contains('on');document.querySelectorAll('#sgLog .spq .spchip').forEach(x=>x.classList.remove('on'));if(!on){b.classList.add('on');sgBeh=b.textContent;}else sgBeh='';}
-function sgGps(){const st=document.getElementById('sgGpsStat');if(!navigator.geolocation){st.textContent='GPS not available';return;}st.textContent='Finding you…';
-  navigator.geolocation.getCurrentPosition(p=>{document.getElementById('sgLat').value=p.coords.latitude;document.getElementById('sgLng').value=p.coords.longitude;st.textContent='Location saved (±'+Math.round(p.coords.accuracy)+' m)';},()=>{st.textContent='Could not get location — allow location access';},{enableHighAccuracy:true,timeout:15000});}
-async function sgPhotoPick(ev){const f=ev.target.files[0];ev.target.value='';if(!f)return;try{const r=await compressImage(f);sgPhoto=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));
-  document.getElementById('sgThumb').innerHTML=sgPhoto?`<div class="xt"><img src="${sgPhoto}" alt="Sighting photo"><button type="button" aria-label="Remove photo" onclick="sgPhoto=null;this.parentNode.remove()">✕</button></div>`:'';}catch(e){showToast('Could not add that photo','error');}}
-async function sgEnv(e){if(!e.lat||e.env)return;const hr=parseInt(e.time.slice(0,2),10),q=`latitude=${e.lat}&longitude=${e.lng}&start_date=${e.date}&end_date=${e.date}&timezone=Pacific%2FAuckland`;
-  const j=u=>fetch(u).then(r=>r.ok?r.json():null).catch(()=>null);
-  const [w,m]=await Promise.all([j(`https://api.open-meteo.com/v1/forecast?${q}&hourly=temperature_2m,pressure_msl,wind_speed_10m,wind_direction_10m&wind_speed_unit=kn`),j(`https://marine-api.open-meteo.com/v1/marine?${q}&hourly=sea_surface_temperature`)]);
-  const g=(o,k)=>{const v=o&&o.hourly&&o.hourly[k]&&o.hourly[k][hr];return v==null?null:v;};
-  const env={temp:g(w,'temperature_2m'),press:g(w,'pressure_msl'),wind:g(w,'wind_speed_10m'),dir:g(w,'wind_direction_10m'),sst:g(m,'sea_surface_temperature')};
-  if(Object.values(env).some(v=>v!=null)){env.press=env.press!=null?Math.round(env.press):null;env.wind=env.wind!=null?Math.round(env.wind):null;e.env=env;}}
-async function sgSaveEntry(){const v=id=>document.getElementById(id).value,date=v('sgDate'),time=v('sgTime');
-  if(!date||!time){showToast('Please enter the date and time.','error');return;}
-  const dt=new Date(`${date}T${time}:00${_nzISOOffset()}`),id='s'+Date.now();let tide='—',moon='—';
-  try{tide=_calcTideLabelForCatch(dt)||'—';}catch(e){} try{moon=moonAt(dt).n;}catch(e){}
-  const e={id,date,time,lat:parseFloat(v('sgLat'))||null,lng:parseFloat(v('sgLng'))||null,spot:v('sgSpot').trim(),count:parseInt(v('sgCount'))||1,size:v('sgSize'),beh:sgBeh,depth:v('sgDepth'),clar:v('sgClar'),wt:parseFloat(v('sgWt'))||null,notes:v('sgNotes').trim(),tide,moon,tod:sgTod(parseInt(time.slice(0,2),10)),has:!!sgPhoto};
-  if(e.wt&&e.lat)seaAddReading(e.lat,e.lng,date,time,e.wt);
-  sightings.unshift(e);sightings.sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));sgSave();
-  if(sgPhoto){try{await idbPut('sg_'+id,sgPhoto);}catch(x){showToast('Photo could not be saved','error');}}
-  vibrate([40,20,40]);showToast(e.lat?'Sighting logged':'Sighting logged (no GPS location)','success');sgBuildForm();sgShow('hist');
-  sgEnv(e).then(()=>e.wt?0:seaFill(e)).then(()=>{sgSave();if(currentTab==='rays')renderRays();});}
-function sgDel(id){if(!confirm('Delete this sighting?'))return;sightings=sightings.filter(x=>x.id!==id);sgSave();idbDel('sg_'+id).catch(()=>{});renderRays();}
-function sgShow(v){document.querySelectorAll('#sgSeg button').forEach((b,i)=>b.classList.toggle('on',['log','hist','pat'][i]===v));
-  ['log','hist','pat'].forEach(k=>document.getElementById('sg'+{log:'Log',hist:'Hist',pat:'Pat'}[k]).style.display=k===v?'block':'none');
-  if(v==='hist')sgHist();if(v==='pat')sgPat();if(v==='log'&&!document.getElementById('sgLat').value)sgGps();}
-function renderRays(){if(!document.getElementById('sgDate'))sgBuildForm();const on=[...document.querySelectorAll('#sgSeg button')].findIndex(b=>b.classList.contains('on'));sgShow(['log','hist','pat'][on<0?0:on]);}
-const sgWt=e=>e.wt!=null?e.wt:(e.sea?e.sea.v:(e.env&&e.env.sst!=null?e.env.sst:null));
-function sgHist(){const el=document.getElementById('sgHist');
-  if(!sightings.length){el.innerHTML='<div class="sec" style="text-align:center;padding:28px 16px"><div class="cfish">No sightings yet</div><div class="cmeta" style="margin:6px 0 14px">Log your first shorttail and the patterns will build up over time.</div><button class="sbtn teal-btn" style="width:auto;padding:12px 22px" onclick="sgShow(\'log\')">Log a sighting</button></div>';return;}
-  el.innerHTML=sightings.map(e=>{const w=sgWt(e),bits=[e.env&&e.env.wind!=null?'Wind '+e.env.wind+' kn':'',e.env&&e.env.press!=null?e.env.press+' hPa':'',e.env&&e.env.temp!=null?Math.round(e.env.temp)+'°C air':''].filter(Boolean).join(' · ');
-    return `<div class="ccard"><img id="sgp-${e.id}" class="chero" style="display:none" alt="Sighting photo" onclick="openLightbox(this.src)"><div class="cbody2"><div class="crow"><div><div class="cfish">${e.count>1?e.count+' × ':''}Shorttail stingray</div><div class="cmeta">${fmtWhen(e)}${e.spot?' · '+esc(e.spot):''}</div></div><button class="ibtn danger" aria-label="Delete sighting" onclick="sgDel('${e.id}')">Delete</button></div>
-    <div class="cmeta" style="margin-top:8px">${[e.tod,e.size!=='Not sure'?e.size:'',e.beh,e.depth,e.clar].filter(Boolean).map(esc).join(' · ')}</div>
-    <div class="cmeta" style="margin-top:4px">${w!=null?'Water '+(+w).toFixed(1)+'°C'+(e.wt==null?' ('+seaLbl(e.sea||{src:'model'})+')':' (measured)'):''}${w!=null&&bits?' · ':''}${esc(bits)}</div>
-    ${e.notes?`<div class="cnote open">${esc(e.notes)}</div>`:''}<div class="ctags"><span class="tag tg">${esc(e.tide)}</span><span class="tag tp">${esc(e.moon)}</span><span class="tag ta">${SG_MON[parseInt(e.date.slice(5,7),10)-1]}</span></div>${!e.lat?'<div class="cmeta" style="margin-top:6px">No GPS location saved</div>':''}</div></div>`;}).join('');
-  sightings.filter(e=>e.has).forEach(async e=>{try{const u=await idbGet('sg_'+e.id),i=document.getElementById('sgp-'+e.id);if(u&&i){i.src=u;i.style.display='block';}}catch(x){}});}
 function sgBars(t,rows){const mx=Math.max(1,...rows.map(r=>r[1]));return `<div class="sec"><div class="stitle">${t}</div>${rows.map(([l,n])=>`<div class="brow"><span class="bl">${esc(l)}</span><div class="bt"><i style="width:${n/mx*100}%"></i></div><span class="bn">${n}</span></div>`).join('')}</div>`;}
-function sgPat(){const el=document.getElementById('sgPat'),S=sightings;
-  if(S.length<1){el.innerHTML='<div class="sec cmeta" style="text-align:center;padding:24px">Patterns appear once you have logged a few sightings.</div>';return;}
-  const cnt=(keys,f)=>keys.map(k=>[k,S.filter(e=>f(e)===k).length]),tdl=e=>/Incoming/.test(e.tide)?'Incoming':/Outgoing/.test(e.tide)?'Outgoing':/High/.test(e.tide)?'High tide':/Low/.test(e.tide)?'Low tide':'Unknown';
-  const wb=e=>{const w=sgWt(e);return w==null?null:w<14?'Under 14°C':w<16?'14–16°C':w<18?'16–18°C':w<20?'18–20°C':'20°C+';},wk=e=>e.env&&e.env.wind!=null?(e.env.wind<6?'Under 6 kn':e.env.wind<12?'6–12 kn':e.env.wind<20?'12–20 kn':'20+ kn'):null;
-  const top=r=>{const m=[...r].sort((a,b)=>b[1]-a[1])[0];return m&&m[1]?m[0]:null;};
-  const mo=cnt(SG_MON,e=>SG_MON[parseInt(e.date.slice(5,7),10)-1]),td=cnt(['Dawn','Morning','Midday','Afternoon','Dusk','Night'],e=>e.tod),ti=cnt(['Incoming','High tide','Outgoing','Low tide','Unknown'],tdl).filter(r=>r[0]!=='Unknown'||r[1]);
-  const wtR=cnt(['Under 14°C','14–16°C','16–18°C','18–20°C','20°C+'],wb),wR=cnt(['Under 6 kn','6–12 kn','12–20 kn','20+ kn'],wk),moons=[...new Set(S.map(e=>e.moon).filter(x=>x&&x!=='—'))].map(m=>[m,S.filter(e=>e.moon===m).length]).sort((a,b)=>b[1]-a[1]);
-  const sum=[top(mo),top(td),top(ti),top(wtR)].filter(Boolean).join(' · '),n=S.reduce((a,e)=>a+e.count,0),dts=S.map(e=>e.date).sort();
-  el.innerHTML=`<div class="sec"><div class="stitle">Summary</div><div class="cstats"><div><b>${S.length}</b><span>sightings</span></div><div><b>${n}</b><span>rays</span></div></div><div class="cmeta">First seen ${esc(dts[0])} · last seen ${esc(dts[dts.length-1])}</div>${sum?`<div class="cmeta" style="margin-top:6px;font-weight:600;color:var(--text)">Most often: ${esc(sum)}</div>`:''}</div>`
-  +sgMapCard()+sgBars('By month',mo)+sgBars('Time of day',td)+sgBars('Tide',ti)+(wtR.some(r=>r[1])?sgBars('Water temperature',wtR):'')+(wR.some(r=>r[1])?sgBars('Wind',wR):'')+(moons.length?sgBars('Moon phase',moons):'');sgMapInit();}
-document.addEventListener('DOMContentLoaded',()=>{setTimeout(async()=>{if(!navigator.onLine)return;let ch=0;for(const e of sightings.filter(x=>!x.env&&x.lat).slice(0,5)){await sgEnv(e);if(e.env)ch=1;}if(ch)sgSave();},4000);});
 
 // ═══ SEA TEMPERATURE — shared lookup: measured → satellite (bias-adjusted) → model ═══
 const SEA_R='fishinglog_sea_readings',SEA_C='fishinglog_sea_cache';
@@ -6147,20 +6074,8 @@ renderStats=function(){_rs0();try{const B=['Under 14°C','14–16°C','16–18°
 // automatic backfill of anything missing a sea temperature
 document.addEventListener('DOMContentLoaded',()=>{setTimeout(async()=>{if(!navigator.onLine)return;let n=0,ch=0;
   for(const r of seaReadings.filter(x=>x.sat==null).slice(0,5)){const d=new Date(r.ms+12*36e5).toISOString().slice(0,10),v=await seaSat(r.lat,r.lng,d);if(v!=null){r.sat=v;ch=1;}}
-  for(const o of [...catches,...sightings]){if(o.sea||o.lat==null||n>=10)continue;await seaFill(o);if(o.sea)n++;}
-  if(ch)seaSave();if(n){persist();sgSave();if(currentTab==='list')renderList();if(currentTab==='rays')renderRays();}},6000);});
-
-// ── sightings map (Patterns tab) ──
-let _sgMap=null,_sgHeat=false;
-function sgMapCard(){const n=sightings.filter(e=>e.lat&&e.lng).length;
-  return `<div class="sec"><div class="stitle">Where they were seen</div>${n?`<div class="seg" style="margin:0 0 8px"><button class="on" onclick="_sgHeat=false;sgMapInit()">Pins</button><button onclick="_sgHeat=true;sgMapInit()">Heat</button></div><div id="sgMapBox" style="height:280px;border-radius:12px;overflow:hidden"></div><div class="cmeta" style="margin-top:6px">${n} of ${sightings.length} sighting${sightings.length>1?'s':''} ha${n>1?'ve':'s'} a GPS location. Bigger circles mean more rays. Tap a circle for details.</div>`:'<div class="cmeta">No sightings with a GPS location yet.</div>'}</div>`;}
-function sgMapInit(){const box=document.getElementById('sgMapBox');if(_sgMap){try{_sgMap.remove();}catch(e){}_sgMap=null;}
-  if(!box||typeof L==='undefined')return;const pts=sightings.filter(e=>e.lat&&e.lng);if(!pts.length)return;
-  box.previousElementSibling.querySelectorAll('button').forEach((b,i)=>b.classList.toggle('on',(i===1)===_sgHeat));
-  _sgMap=L.map(box);L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(_sgMap);
-  if(_sgHeat&&L.heatLayer)L.heatLayer(pts.map(e=>[e.lat,e.lng,Math.min(1,0.4+0.15*e.count)]),{radius:32,blur:22,maxZoom:8,max:1.2,minOpacity:0.35,gradient:{0.3:'#4fc3a1',0.6:'#f1c40f',1:'#e74c3c'}}).addTo(_sgMap);
-  else pts.forEach(e=>{const w=sgWt(e);L.circleMarker([e.lat,e.lng],{radius:7+Math.min(e.count,6)*2,color:'#0a5c43',weight:2,fillColor:'#4fc3a1',fillOpacity:0.6}).addTo(_sgMap).bindPopup(`<b>${e.count>1?e.count+' × ':''}Shorttail stingray</b><br>${fmtWhen(e)}${e.spot?'<br>'+esc(e.spot):''}<br>${esc(e.tod)} · ${esc(e.tide)}${w!=null?'<br>Water '+(+w).toFixed(1)+'°C':''}`);});
-  _sgMap.fitBounds(L.latLngBounds(pts.map(e=>[e.lat,e.lng])).pad(0.3),{maxZoom:15});setTimeout(()=>_sgMap&&_sgMap.invalidateSize(),150);}
+  for(const o of [...catches,...diary]){if(o.sea||o.lat==null||n>=10)continue;await seaFill(o);if(o.sea)n++;}
+  if(ch)seaSave();if(n){persist();dySave2();if(currentTab==='list')renderList();if(currentTab==='diary')dyRender();}},6000);});
 
 // ═══ FORECAST DETAIL SHEETS (tap an hour or a day) ═══
 function wxData(){if(window._wxData)return window._wxData;try{return JSON.parse(localStorage.getItem('fishinglog_wxdata'));}catch(e){return null;}}
@@ -6198,20 +6113,17 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')wxSheetClose();if((e
 // ═══ FISHING DIARY ═══
 const DY_KEY='fishinglog_diary';let diary=[];try{diary=JSON.parse(localStorage.getItem(DY_KEY)||'[]');}catch(e){}
 function dySave2(){diary.sort((a,b)=>(b.date+(b.time||'')).localeCompare(a.date+(a.time||'')));try{localStorage.setItem(DY_KEY,JSON.stringify(diary));}catch(e){showToast('Storage full — could not save entry','error');}}
-let _dyEditId=null,_dyRating=0,_dyPhotos=[],_dyRec=null,_dyForm=false,window_dyTab='diary';
+let _dyEditId=null,_dyRating=0,_dyPhotos=[],_dyRec=null,_dyForm=false;
 const DY_R=['','Dead','Slow','Fair','Good','Great'],DY_C=['','#e74c3c','#f39c12','#9aa0a6','#4fc3a1','#1f9d7c'];
-const _rr0=renderRays;
-renderRays=function(){dyTab(window_dyTab);};
-function dyTab(t){window_dyTab=t;document.querySelectorAll('#dySeg button').forEach((b,i)=>b.classList.toggle('on',(i===0)===(t==='diary')));
-  document.getElementById('dyWrap').style.display=t==='diary'?'block':'none';document.getElementById('raysWrap').style.display=t==='rays'?'block':'none';
-  if(t==='diary')dyRender();else _rr0();}
 function dyToday(){const n=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString();return [n.slice(0,10),n.slice(11,16)];}
-function dyRender(){const w=document.getElementById('dyWrap');
+function dyRender(){dyDestroyMaps();const w=document.getElementById('dyWrap');
   const form=_dyForm?`<div class="sec"><div class="stitle">${_dyEditId?'Edit entry':'New entry'}</div>
    <div class="r2"><div><label>Date</label><input type="date" id="dyDate"></div><div><label>Time (optional)</label><input type="time" id="dyTime"></div></div>
    <label>Where did you fish?</label><div style="display:flex;gap:8px"><input id="dySpot" list="dySpots" placeholder="Spot name" autocomplete="off" style="flex:1"><button type="button" class="gpsbtn" style="margin:0;min-height:44px;font-weight:600" onclick="dyGps()">Use GPS</button></div>
    <datalist id="dySpots">${[...new Set([...catches.map(c=>c.nickname),...diary.map(d=>d.spot)].filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
    <div id="dyGpsSt" class="cmeta" style="min-height:18px;margin-top:4px"></div><input type="hidden" id="dyLat"><input type="hidden" id="dyLng">
+   <div id="dyFormMap" class="dymap" style="height:190px"></div><div class="cmeta" style="margin-top:4px">Tap the map or drag the pin to adjust the location.</div>
+   <button type="button" class="spchip" id="dyRayBtn" style="margin-top:10px" onclick="dyRay()">Saw shorttail rays</button>
    <label>How was the fishing?</label><div class="spq" style="flex-wrap:wrap">${DY_R.slice(1).map((r,i)=>`<button type="button" class="spchip dyr" data-r="${i+1}" onclick="dyRate(${i+1})">${r}</button>`).join('')}</div>
    <label>Notes</label><textarea id="dyNotes" rows="6" placeholder="What happened? Bait, tide, weather, what worked…"></textarea>
    <div style="display:flex;gap:8px;align-items:center;margin-top:6px"><button type="button" class="gpsbtn dymic" id="dyMic" style="margin:0;min-height:44px;font-weight:600" onclick="dyMic()">Dictate</button><span id="dyMicSt" class="cmeta" style="flex:1"></span></div>
@@ -6223,21 +6135,25 @@ function dyRender(){const w=document.getElementById('dyWrap');
     ${e.rating?`<span class="tag" style="background:${DY_C[e.rating]};color:${e.rating===3?'#222':'#fff'};margin-top:8px;display:inline-block">${DY_R[e.rating]}</span>`:''}
     ${e.notes?`<div style="font-size:15px;line-height:1.5;margin-top:10px;white-space:pre-wrap">${esc(e.notes)}</div>`:''}
     ${e.np?`<div class="vthumbs" id="dyp-${e.id}"></div>`:''}
-    <div class="ctags">${e.tide&&e.tide!=='—'?`<span class="tag tg">${esc(e.tide)}</span>`:''}${e.moon&&e.moon!=='—'?`<span class="tag tp">${esc(e.moon)}</span>`:''}</div>${wl?`<div class="cmeta" style="margin-top:6px">${wl}</div>`:''}</div></div>`;}).join(''):'<div class="sec" style="text-align:center;padding:26px 16px"><div class="cfish">Your fishing diary</div><div class="cmeta" style="margin-top:6px">Record how each day went — notes, where you fished, photos. Tide, moon and weather are added automatically.</div></div>';
-  w.innerHTML=form+list;
+    ${e.lat?`<button class="maptoggle" onclick="dyCardMap('${e.id}')">${e.locSrc==='photo'?'Show photo location':'Show map'}</button><div class="dymap" id="dyc-${e.id}" style="display:none;height:180px"></div>`:''}
+    <div class="ctags">${e.ray?'<span class="tag ta">Rays seen</span>':''}${e.tide&&e.tide!=='—'?`<span class="tag tg">${esc(e.tide)}</span>`:''}${e.moon&&e.moon!=='—'?`<span class="tag tp">${esc(e.moon)}</span>`:''}</div>${wl?`<div class="cmeta" style="margin-top:6px">${wl}</div>`:''}</div></div>`;}).join(''):'<div class="sec" style="text-align:center;padding:26px 16px"><div class="cfish">Your fishing diary</div><div class="cmeta" style="margin-top:6px">Record how each day went — notes, where you fished, photos. Tide, moon and weather are added automatically.</div></div>';
+  w.innerHTML=form+dyAllBtn()+list;
   if(_dyForm){const [d,t]=dyToday(),e=_dyEditId&&diary.find(x=>x.id===_dyEditId),q=id=>document.getElementById(id);
     q('dyDate').value=e?e.date:d;q('dyTime').value=e?(e.time||''):t;if(e){q('dySpot').value=e.spot||'';q('dyNotes').value=e.notes||'';q('dyLat').value=e.lat||'';q('dyLng').value=e.lng||'';if(e.lat)q('dyGpsSt').textContent='Location saved';}
-    dyRate(_dyRating,1);dyThumbs();if(!e&&!_dyPhotos.length&&!q('dyLat').value)dyGps();}
+    dyRate(_dyRating,1);dyThumbs();_dyRay=!!(e&&e.ray);dyRayUi();_dyLocSrc=e?(e.locSrc||''):'';dyFormMapInit();if(!e&&!_dyPhotos.length&&!q('dyLat').value)dyGps();}
   diary.filter(e=>e.np).forEach(async e=>{const el=document.getElementById('dyp-'+e.id);if(!el)return;for(let i=0;i<e.np;i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)el.insertAdjacentHTML('beforeend',`<img src="${u}" alt="Diary photo" onclick="openLightbox(this.src)">`);}catch(x){}}});}
 async function dyOpen(id){_dyEditId=id||null;_dyForm=true;_dyRating=0;_dyPhotos=[];const e=id&&diary.find(x=>x.id===id);
-  if(e){_dyRating=e.rating||0;for(let i=0;i<(e.np||0);i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)_dyPhotos.push(u);}catch(x){}}}dyRender();window.scrollTo&&document.getElementById('pg-rays').scrollTo&&document.getElementById('pg-rays').scrollTo(0,0);}
+  if(e){_dyRating=e.rating||0;for(let i=0;i<(e.np||0);i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)_dyPhotos.push(u);}catch(x){}}}dyRender();window.scrollTo&&document.getElementById('pg-diary').scrollTo&&document.getElementById('pg-diary').scrollTo(0,0);}
 function dyClose(){_dyWant=false;if(_dyRec)_dyRec.stop();_dyForm=false;_dyEditId=null;dyRender();}
 function dyRate(r,keep){_dyRating=(!keep&&_dyRating===r)?0:r;document.querySelectorAll('.dyr').forEach(b=>b.classList.toggle('on',+b.dataset.r===_dyRating));}
 function dyThumbs(){const el=document.getElementById('dyThumbs');if(el)el.innerHTML=_dyPhotos.map((u,i)=>`<div class="xt"><img src="${u}" alt="Photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="_dyPhotos.splice(${i},1);dyThumbs()">✕</button></div>`).join('');}
 async function dyPhotoPick(ev){const fs=[...ev.target.files];ev.target.value='';for(const f of fs){if(_dyPhotos.length>=4){showToast('Up to 4 photos per entry','error');break;}
+  let g=null,dt=null;try{if(typeof exifr!=='undefined'){g=await exifr.gps(f);const x=await exifr.parse(f,['DateTimeOriginal']);dt=x&&x.DateTimeOriginal;}}catch(e){}
+  if(g&&g.latitude!=null&&_dyLocSrc!=='photo'&&_dyLocSrc!=='map')dyMapSet(g.latitude,g.longitude,'photo','Location taken from the photo');
+  if(dt&&!_dyEditId&&!_dyPhotos.length){const q=n=>String(n).padStart(2,'0');document.getElementById('dyDate').value=dt.getFullYear()+'-'+q(dt.getMonth()+1)+'-'+q(dt.getDate());document.getElementById('dyTime').value=q(dt.getHours())+':'+q(dt.getMinutes());}
   try{const r=await compressImage(f),u=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));if(u)_dyPhotos.push(u);}catch(e){showToast('Could not add a photo','error');}}dyThumbs();}
 function dyGps(){const st=document.getElementById('dyGpsSt');if(!st)return;if(!navigator.geolocation){st.textContent='GPS not available';return;}st.textContent='Finding you…';
-  navigator.geolocation.getCurrentPosition(p=>{document.getElementById('dyLat').value=p.coords.latitude;document.getElementById('dyLng').value=p.coords.longitude;st.textContent='Location saved (±'+Math.round(p.coords.accuracy)+' m)';},()=>{st.textContent='Could not get location — allow location access';},{enableHighAccuracy:true,timeout:15000});}
+  navigator.geolocation.getCurrentPosition(p=>{if(_dyLocSrc==='photo'||_dyLocSrc==='map'){st.textContent='';return;}dyMapSet(p.coords.latitude,p.coords.longitude,'gps','Location saved (±'+Math.round(p.coords.accuracy)+' m)');},()=>{st.textContent='Could not get location — allow location access';},{enableHighAccuracy:true,timeout:15000});}
 let _dyWant=false;
 function dyMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition,b=document.getElementById('dyMic'),ta=document.getElementById('dyNotes'),st=document.getElementById('dyMicSt');
   if(!SR){st.textContent='Dictation isn’t available in this browser. Use the microphone key on your phone’s keyboard instead.';return;}
@@ -6253,13 +6169,38 @@ async function dySave(){const v=id=>document.getElementById(id).value,date=v('dy
   if(!date){showToast('Please choose a date.','error');return;}if(!notes&&!_dyPhotos.length&&!_dyRating){showToast('Add a note, rating or photo first.','error');return;}
   const old=_dyEditId&&diary.find(x=>x.id===_dyEditId),id=old?old.id:'d'+Date.now(),time=v('dyTime'),dt=new Date(`${date}T${time||'12:00'}:00${_nzISOOffset()}`);let tide='—',moon='—';
   try{tide=(_calcTideLabelForCatch(dt)||'—');}catch(e){}try{moon=moonAt(dt).n;}catch(e){}
-  const e=Object.assign(old||{},{id,date,time,lat:parseFloat(v('dyLat'))||null,lng:parseFloat(v('dyLng'))||null,spot:v('dySpot').trim(),rating:_dyRating,notes,tide,moon});
+  const e=Object.assign(old||{},{id,date,time,lat:parseFloat(v('dyLat'))||null,lng:parseFloat(v('dyLng'))||null,spot:v('dySpot').trim(),rating:_dyRating,notes,tide,moon,locSrc:_dyLocSrc,ray:_dyRay?1:0});
   const prev=old?old.np||0:0;for(let i=0;i<prev;i++){try{await idbDel('dy_'+id+'#'+i);}catch(x){}}
   for(let i=0;i<_dyPhotos.length;i++){try{await idbPut('dy_'+id+'#'+i,_dyPhotos[i]);}catch(x){showToast('A photo could not be saved','error');}}e.np=_dyPhotos.length;
   const td=dyToday()[0];if(!e.wx&&date===td){const t=id=>((document.getElementById(id)||{}).textContent||'').trim(),w={temp:t('wxt'),wind:t('wxWindSpd'),dir:t('wxWindDir'),press:t('wxPressVal'),trend:t('wxPressTrend')};if(w.wind&&w.wind!=='—')e.wx=w;}
   if(!old)diary.unshift(e);dySave2();vibrate([40,20,40]);showToast('Diary entry saved','success');_dyForm=false;_dyEditId=null;_dyPhotos=[];dyRender();
-  if(e.lat&&!e.sea)seaFill(e).then(()=>{dySave2();if(currentTab==='rays'&&window_dyTab==='diary')dyRender();});}
+  if(e.lat&&!e.sea)seaFill(e).then(()=>{dySave2();if(currentTab==='diary')dyRender();});}
 async function dyDel(id){if(!confirm('Delete this diary entry?'))return;const e=diary.find(x=>x.id===id);for(let i=0;i<((e&&e.np)||0);i++){try{await idbDel('dy_'+id+'#'+i);}catch(x){}}diary=diary.filter(x=>x.id!==id);dySave2();dyRender();}
+
+// ── diary maps, ray flag, migration of old sightings ──
+let _dyFormMap=null,_dyPin=null,_dyLocSrc='',_dyRay=false,_dyMaps={};
+const _dyTile=()=>L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),_dyIcon=()=>L.divIcon({className:'dypin',html:'<div></div>',iconSize:[22,22],iconAnchor:[11,22]});
+function dyDestroyMaps(){try{_dyFormMap&&_dyFormMap.remove();}catch(e){}_dyFormMap=null;_dyPin=null;Object.values(_dyMaps).forEach(m=>{try{m.remove();}catch(e){}});_dyMaps={};}
+function dyFormMapInit(){const el=document.getElementById('dyFormMap');if(!el||typeof L==='undefined')return;const la=parseFloat(document.getElementById('dyLat').value),ln=parseFloat(document.getElementById('dyLng').value),has=!isNaN(la)&&!isNaN(ln),c=has?[la,ln]:[appLat,appLng];
+  _dyFormMap=L.map(el).setView(c,has?15:12);_dyTile().addTo(_dyFormMap);_dyPin=L.marker(c,{icon:_dyIcon(),draggable:true,opacity:has?1:0}).addTo(_dyFormMap);
+  _dyPin.on('dragend',()=>{const q=_dyPin.getLatLng();dyMapSet(q.lat,q.lng,'map','Pin moved');});_dyFormMap.on('click',e=>dyMapSet(e.latlng.lat,e.latlng.lng,'map','Location set on map'));setTimeout(()=>_dyFormMap&&_dyFormMap.invalidateSize(),200);}
+function dyMapSet(lat,lng,src,msg){document.getElementById('dyLat').value=lat;document.getElementById('dyLng').value=lng;_dyLocSrc=src;const st=document.getElementById('dyGpsSt');if(st)st.textContent=msg||'';
+  if(_dyFormMap&&_dyPin){_dyPin.setLatLng([lat,lng]).setOpacity(1);_dyFormMap.setView([lat,lng],Math.max(_dyFormMap.getZoom(),15));}}
+function dyRay(){_dyRay=!_dyRay;dyRayUi();}function dyRayUi(){const b=document.getElementById('dyRayBtn');if(b)b.classList.toggle('on',_dyRay);}
+function dyCardMap(id){const el=document.getElementById('dyc-'+id),e=diary.find(x=>x.id===id);if(!el||!e)return;const b=el.previousElementSibling;
+  if(_dyMaps[id]){try{_dyMaps[id].remove();}catch(x){}delete _dyMaps[id];el.style.display='none';b.textContent=e.locSrc==='photo'?'Show photo location':'Show map';return;}
+  el.style.display='block';const m=L.map(el).setView([e.lat,e.lng],15);_dyTile().addTo(m);L.marker([e.lat,e.lng],{icon:_dyIcon()}).addTo(m).bindPopup(e.locSrc==='photo'?'Where the photo was taken':'Location');_dyMaps[id]=m;b.textContent='Hide map';setTimeout(()=>m.invalidateSize(),150);}
+function dyAllBtn(){const n=diary.filter(e=>e.lat&&e.lng).length;return n?`<button class="maptoggle" style="margin-bottom:10px;width:100%" onclick="dyAllMap(this)">Show map of all entries (${n})</button><div class="dymap" id="dyAllMap" style="display:none;height:280px;margin-bottom:12px"></div>`:'';}
+function dyAllMap(b){const el=document.getElementById('dyAllMap');if(_dyMaps.all){try{_dyMaps.all.remove();}catch(x){}delete _dyMaps.all;el.style.display='none';b.textContent=b.textContent.replace('Hide','Show');return;}
+  const pts=diary.filter(e=>e.lat&&e.lng);el.style.display='block';const m=L.map(el);_dyTile().addTo(m);
+  pts.forEach(e=>{const ph=e.locSrc==='photo';L.circleMarker([e.lat,e.lng],{radius:9,color:ph?'#0a5c43':'#555',weight:2,fillColor:ph?'#4fc3a1':'#bbb',fillOpacity:0.75}).addTo(m).bindPopup(`<b>${esc(e.spot||'Fishing day')}</b><br>${fmtWhen(e)}${ph?'<br>Photo location':''}${e.notes?'<br>'+esc(e.notes.slice(0,70)):''}`);});
+  m.fitBounds(L.latLngBounds(pts.map(e=>[e.lat,e.lng])).pad(0.3),{maxZoom:15});_dyMaps.all=m;b.textContent=b.textContent.replace('Show','Hide');setTimeout(()=>m.invalidateSize(),150);}
+function sgToDiary(e){const t=[(e.count>1?e.count+' × ':'')+'Shorttail stingray',[e.size&&e.size!=='Not sure'?e.size:'',e.beh,e.depth,e.clar].filter(Boolean).join(', ')].filter(Boolean).join(' — ');
+  return {id:'ds'+e.id,date:e.date,time:e.time||'',lat:e.lat||null,lng:e.lng||null,spot:e.spot||'',rating:0,notes:t+(e.notes?'\n'+e.notes:''),tide:e.tide||'—',moon:e.moon||'—',np:e.has?1:0,ray:1,locSrc:e.lat?'gps':'',
+    sea:e.sea||(e.wt!=null?{v:e.wt,src:'measured'}:undefined),wx:e.env&&e.env.wind!=null?{wind:e.env.wind+' kn',dir:'',press:e.env.press!=null?String(e.env.press):'—',trend:'—',temp:e.env.temp!=null?Math.round(e.env.temp)+'°':'—'}:undefined};}
+async function dyMigrate(list){const have=new Set(diary.map(x=>x.id));let n=0;for(const e of list){const d=sgToDiary(e);if(have.has(d.id))continue;
+  if(e.has){try{const u=await idbGet('sg_'+e.id);if(u)await idbPut('dy_'+d.id+'#0',u);else d.np=0;}catch(x){d.np=0;}}diary.push(d);have.add(d.id);n++;}if(n)dySave2();return n;}
+document.addEventListener('DOMContentLoaded',()=>setTimeout(async()=>{try{if(localStorage.getItem('fishinglog_sg_migrated'))return;const old=JSON.parse(localStorage.getItem('fishinglog_sightings')||'[]');if(old.length){await dyMigrate(old);if(currentTab==='diary')dyRender();}localStorage.setItem('fishinglog_sg_migrated','1');}catch(e){}},1500));
 </script>
 </body>
 </html>
