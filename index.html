@@ -473,6 +473,7 @@ button:active:not(:disabled),.wx-cell:active,.wxrow:active{transform:scale(.97)}
 .tour{position:fixed;inset:0;z-index:9600;background:linear-gradient(160deg,#15283a,#0a1420);color:#fff;display:none;flex-direction:column;align-items:center;justify-content:space-between;padding:max(env(safe-area-inset-top),20px) 24px max(env(safe-area-inset-bottom),24px)}
 .tbody{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;max-width:340px}.tbody svg{width:230px;height:auto}.tbody h2{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:18px 0 8px}.tbody p{font-size:16px;line-height:1.5;color:rgba(255,255,255,.78)}
 .tskip{align-self:flex-end;background:none;border:none;color:rgba(255,255,255,.7);font-size:15px;min-height:44px;padding:0 8px}.tdots{display:flex;gap:8px;margin:8px 0 18px}.tdots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3)}.tdots i.on{background:#4fc3a1;width:22px;border-radius:4px}.tnext{width:100%;max-width:340px;padding:16px;font-size:17px}
+.brow.tap{cursor:pointer;border-radius:8px;padding:2px 0}.brow.tap:active{background:var(--surf)}.chev{width:14px;text-align:right;color:var(--hint)}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -4693,7 +4694,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
     setText('wxd', omDesc(code));
     setText('wxl', displayLoc);
     // Legacy hidden elements used by catch-logging
-    setText('wxwind', wspeed + ' km/h');
+    setText('wxwind', wU(wspeed));
     setText('wxwdir', wdir);
     setText('wxh', humidity + '%');
     setText('wxf', feels + '°C');
@@ -4710,9 +4711,9 @@ async function fetchOpenMeteo(lat, lng, locName) {
     const gustVal    = cur.wind_gusts_10m != null ? Math.round(cur.wind_gusts_10m) : null;
     _windFromDeg = wdirDegCur;
     _updateWindArrow();
-    setText('wxWindSpd', wspeed + ' km/h');
+    setText('wxWindSpd', wU(wspeed));
     setText('wxWindDir', wdir);
-    setText('wxGust', gustVal != null ? 'Gust ' + gustVal + ' km/h' : '');
+    setText('wxGust', gustVal != null ? 'Gust ' + wU(gustVal) : '');
 
     // ── Pressure tile ─────────────────────────────────────────────────────────
     setText('wxPressVal', pressure);
@@ -4759,7 +4760,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
         const isNow = i === 0;
         const h12  = hr===0?'12am':hr<12?hr+'am':hr===12?'12pm':(hr-12)+'pm';
         const windClass = ws==null?'':ws>40?'wx-wind-strong':ws>20?'wx-wind-mod':'wx-wind-calm';
-        const windLabel = ws != null ? ws + ' km/h' : '—';
+        const windLabel = ws != null ? wU(ws) : '—';
         let cellClass = 'wx-cell' + (isNow?' wx-cell-now':bite==='major'?' wx-cell-major':bite==='minor'?' wx-cell-minor':'');
         const bitePin = bite==='major'?'<div style="font-size:11px;line-height:1;margin-bottom:1px;">🐟</div>':bite==='minor'?'<div style="font-size:11px;line-height:1;margin-bottom:1px;">⭐</div>':'';
         cells.push(`<div class="${cellClass}" role="button" tabindex="0" aria-label="Details for ${isNow?'now':h12}" onclick="wxHourSheet(${idx})">
@@ -4802,7 +4803,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
           <div style="font-size:22px;flex-shrink:0;">${omIcon(code2)}</div>
           <div style="flex:1;min-width:0;">
             <div style="font-size:12px;color:var(--text);">${omDesc(code2)}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:1px;">💨 ${wnd} km/h ${wdirLbl} · 🌧 ${rain}%</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:1px;">💨 ${wU(wnd)} ${wdirLbl} · 🌧 ${rain}%</div>
           </div>
           <div style="text-align:right;flex-shrink:0;">
             <div style="font-size:13px;font-weight:600;color:var(--text);">${hi}° <span style="font-weight:400;color:var(--hint);">${lo}°</span></div>
@@ -5627,6 +5628,7 @@ function saveEdit() {
     lat: parseFloat(document.getElementById('elat').value) || catches[idx].lat,
     lng: parseFloat(document.getElementById('elng').value) || catches[idx].lng,
     tide: ti, moon: mi, bite: bi,
+    locApprox: isDefLoc(parseFloat(document.getElementById('elat').value)||catches[idx].lat, parseFloat(document.getElementById('elng').value)||catches[idx].lng) ? 1 : 0,
     photo: resolvedPhoto,
   };
   persist();
@@ -6035,7 +6037,7 @@ async function onPhotosPicked(ev){const files=[...ev.target.files];ev.target.val
   if(!photo){await handlePhoto({target:{files:[files[0]]}});i=1;}
   for(;i<files.length;i++){if(extraPhotos.length>=5){showToast('Up to 6 photos per catch','error');break;}
     try{const r=await compressImage(files[i]);const u=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));if(u)extraPhotos.push(u);}catch(e){showToast('Could not add one of the photos','error');}}
-  renderThumbs();}
+  renderThumbs();if(window._qc){window._qc=false;qcSheet();}}
 function renderThumbs(){document.getElementById('extraThumbs').innerHTML=extraPhotos.map((u,i)=>`<div class="xt"><img src="${u}" alt="Extra photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="extraPhotos.splice(${i},1);renderThumbs()">✕</button></div>`).join('');}
 const _idbDel0=idbDel; idbDel=function(k){const r=_idbDel0(k);if(typeof k==='string'&&!k.includes('#'))for(let i=1;i<=8;i++)_idbDel0(k+'#'+i).catch(()=>{});return r;};
 // defaults + recent species
@@ -6046,7 +6048,7 @@ function pickSp(sp){const sel=document.getElementById('ftype');if([...sel.option
 const _save0=saveCatch;
 saveCatch=async function(){const n=catches.length,ex=extraPhotos.slice(),d={};DEF_FIELDS.forEach(k=>d[k]=document.getElementById(k).value);
   const today=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,10);
-  const snap=document.getElementById('cdate').value===today?{temp:_tx('wxt'),wind:_tx('wxWindSpd'),dir:_tx('wxWindDir'),press:_tx('wxPressVal'),trend:_tx('wxPressTrend')}:null;
+  const snap=document.getElementById('cdate').value===today?{temp:_tx('wxt'),wind:(v=>isNaN(v)?'—':Math.round(v/1.852)+' kn')(wxKmh('wxWindSpd')),dir:_tx('wxWindDir'),press:_tx('wxPressVal'),trend:_tx('wxPressTrend')}:null;
   const wtv=NaN; await _save0(); if(catches.length<=n)return; const c=catches[0]; if(isDefLoc(c.lat,c.lng)){c.locApprox=1;showToast('Saved with an approximate location — edit the catch to set the spot','error');}
   if(wtv>0){seaAddReading(c.lat,c.lng,c.date,c.time,wtv);c.sea={v:wtv,src:'measured'};}else seaFill(c).then(()=>persist());
   try{localStorage.setItem(DEF_KEY,JSON.stringify(d));}catch(e){}
@@ -6055,7 +6057,7 @@ saveCatch=async function(){const n=catches.length,ex=extraPhotos.slice(),d={};DE
   persist(); extraPhotos=[]; renderThumbs(); applyDefaults(); renderSpQuick(); if(currentTab==='today')renderToday();};
 // today
 function renderToday(){const el=document.getElementById('todayContent');if(!el)return;const now=new Date(),hh=now.getHours(),tod=hh<5?'night':hh<8?'dawn':hh<17?'day':hh<20?'dusk':'night',greet=hh<5?'Late night':hh<12?'Good morning':hh<17?'Good afternoon':'Good evening';
-  const wind=parseFloat(_tx('wxWindSpd')),has=!isNaN(wind);
+  const wind=wxKmh('wxWindSpd')/1.852,has=!isNaN(wind);
   const v=!has?['load','Checking conditions…']:wind<=15?['good','Good conditions for fishing']:wind<=22?['warn','Fishable, but take care']:['bad','Strong wind — stay safe'];
   let tide='—',moon='—',bite='—';
   try{tide=_calcTideLabelForCatch(now)||'—';}catch(e){}
@@ -6073,7 +6075,7 @@ function renderToday(){const el=document.getElementById('todayContent');if(!el)r
 document.addEventListener('DOMContentLoaded',()=>{renderToday();renderSpQuick();applyDefaults();setTimeout(renderToday,1500);
   const t=document.getElementById('wxt');if(t)new MutationObserver(()=>{if(currentTab==='today')renderToday();}).observe(t,{childList:true,characterData:true,subtree:true});});
 
-function sgBars(t,rows){const mx=Math.max(1,...rows.map(r=>r[1]));return `<div class="sec"><div class="stitle">${t}</div>${rows.map(([l,n])=>`<div class="brow"><span class="bl">${esc(l)}</span><div class="bt"><i style="width:${n/mx*100}%"></i></div><span class="bn">${n}</span></div>`).join('')}</div>`;}
+function sgBars(t,rows,kind){const mx=Math.max(1,...rows.map(r=>r[1]));return `<div class="sec"><div class="stitle">${t}</div>${rows.map(([l,n])=>{const tp=kind&&n;return `<div class="brow${tp?' tap':''}"${tp?` role="button" tabindex="0" data-l="${esc(l)}" onclick="statDrill('${kind}',this.dataset.l)"`:''}><span class="bl">${esc(l)}</span><div class="bt"><i style="width:${n/mx*100}%"></i></div><span class="bn">${n}</span>${tp?'<span class="chev">›</span>':''}</div>`;}).join('')}</div>`;}
 
 // ═══ SEA TEMPERATURE — shared lookup: measured → satellite (bias-adjusted) → model ═══
 const SEA_R='fishinglog_sea_readings',SEA_C='fishinglog_sea_cache';
@@ -6112,7 +6114,7 @@ renderToday=function(){_rt0();if(_seaBusy||(_seaNow&&Date.now()-_seaNow.t<18e5))
   seaTemp(appLat,appLng,n.slice(0,10),n.slice(11,16)).then(r=>{_seaBusy=false;if(r){_seaNow=Object.assign({t:Date.now()},r);if(currentTab==='today')_rt0();}}).catch(()=>{_seaBusy=false;});};
 const _rs0=renderStats;
 renderStats=function(){_rs0();try{const B=['Under 14°C','14–16°C','16–18°C','18–20°C','20°C+'],bf=v=>v<14?B[0]:v<16?B[1]:v<18?B[2]:v<20?B[3]:B[4],rows=B.map(b=>[b,catches.filter(c=>c.sea&&bf(c.sea.v)===b).length]);let el=document.getElementById('seaStatCard');
-  if(!rows.some(r=>r[1])){if(el)el.remove();return;}if(!el){el=document.createElement('div');el.id='seaStatCard';document.getElementById('pg-stats').appendChild(el);}el.innerHTML=sgBars('Catches by sea temperature',rows);}catch(e){}};
+  if(!rows.some(r=>r[1])){if(el)el.remove();return;}if(!el){el=document.createElement('div');el.id='seaStatCard';document.getElementById('pg-stats').appendChild(el);}el.innerHTML=sgBars('Catches by sea temperature',rows,'sea');}catch(e){}};
 // automatic backfill of anything missing a sea temperature
 document.addEventListener('DOMContentLoaded',()=>{setTimeout(async()=>{if(!navigator.onLine)return;let n=0,ch=0;
   for(const r of seaReadings.filter(x=>x.sat==null||x.mod==null).slice(0,5)){const iso=new Date(r.ms+12*36e5).toISOString(),d=iso.slice(0,10),h=iso.slice(11,16);if(r.sat==null){const v=await seaSat(r.lat,r.lng,d);if(v!=null){r.sat=v;ch=1;}}if(r.mod==null){const m=await seaModel(r.lat,r.lng,d,h);if(m!=null){r.mod=m;ch=1;}}}
@@ -6218,7 +6220,7 @@ async function dySave(){const v=id=>document.getElementById(id).value,date=v('dy
   const e=Object.assign(old||{},{id,date,time,lat:parseFloat(v('dyLat'))||null,lng:parseFloat(v('dyLng'))||null,spot:v('dySpot').trim(),rating:_dyRating,notes,tide,moon,locSrc:_dyLocSrc,ray:_dyRay?1:0,blank:_dyBlank?1:0});
   const prev=old?old.np||0:0;for(let i=0;i<prev;i++){try{await idbDel('dy_'+id+'#'+i);}catch(x){}}
   for(let i=0;i<_dyPhotos.length;i++){try{await idbPut('dy_'+id+'#'+i,_dyPhotos[i]);}catch(x){showToast('A photo could not be saved','error');}}e.np=_dyPhotos.length;
-  const td=dyToday()[0];if(!e.wx&&date===td){const t=id=>((document.getElementById(id)||{}).textContent||'').trim(),w={temp:t('wxt'),wind:t('wxWindSpd'),dir:t('wxWindDir'),press:t('wxPressVal'),trend:t('wxPressTrend')};if(w.wind&&w.wind!=='—')e.wx=w;}
+  const td=dyToday()[0];if(!e.wx&&date===td){const t=id=>((document.getElementById(id)||{}).textContent||'').trim(),w={temp:t('wxt'),wind:(v=>isNaN(v)?'—':Math.round(v/1.852)+' kn')(wxKmh('wxWindSpd')),dir:t('wxWindDir'),press:t('wxPressVal'),trend:t('wxPressTrend')};if(w.wind&&w.wind!=='—')e.wx=w;}
   if(!old)diary.unshift(e);dySave2();localStorage.removeItem(DY_DRAFT);vibrate([40,20,40]);showToast('Diary entry saved','success');_dyForm=false;_dyEditId=null;_dyPhotos=[];dyRender();
   if(e.lat&&!e.sea)seaFill(e).then(()=>{dySave2();if(currentTab==='diary')dyRender();});}
 async function dyDel(id){const i=diary.findIndex(x=>x.id===id);if(i<0)return;const e=diary[i];diary.splice(i,1);dySave2();dyRender();
@@ -6272,7 +6274,7 @@ function unitsHtml(){const b=(t,v,l)=>`<button type="button" class="${units[t]==
 function setUnit(t,v,b){units[t]=v;try{localStorage.setItem(UK,JSON.stringify(units));}catch(e){}b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
 function regroupSettings(){const pg=document.getElementById('pg-settings');if(!pg||pg.dataset.grouped)return;pg.dataset.grouped=1;
   const card=t=>{const e=[...pg.querySelectorAll('.stitle')].find(x=>x.textContent.includes(t));return e&&e.closest('.sec');},hd=t=>{const h=document.createElement('div');h.className='sgroup';h.textContent=t;return h;},mk=h=>{const d=document.createElement('div');d.innerHTML=h;return d.firstElementChild;};
-  [hd('Preferences'),mk(unitsHtml()),card('Fishing Region'),hd('Tide data'),card('Step 1'),card('Step 2'),card('Current Status'),hd('Your data'),mk(bkHtml()),card('Backup'),card('Storage Health'),hd('App'),mk('<div class="sec"><div class="stitle">About</div><button class="sbtn" onclick="showTour()">Replay the intro tour</button><div class="cmeta" style="margin-top:8px">Fishing Log · version '+APP_VER+'</div><button class="sbtn" style="margin-top:10px" onclick="showWhatsNew()">What’s new</button></div>')].filter(Boolean).forEach(n=>pg.appendChild(n));}
+  [hd('Preferences'),mk(unitsHtml()),card('Fishing Region'),hd('Tide data'),card('Step 1'),card('Step 2'),card('Current Status'),hd('Your data'),card('Backup'),card('Storage Health'),hd('App'),mk('<div class="sec"><div class="stitle">About</div><button class="sbtn" onclick="showTour()">Replay the intro tour</button><div class="cmeta" style="margin-top:8px">Fishing Log · version '+APP_VER+'</div><button class="sbtn" style="margin-top:10px" onclick="showWhatsNew()">What’s new</button></div>')].filter(Boolean).forEach(n=>pg.appendChild(n));bkMerge();}
 // ═══ EMOJI → ICONS (moon phases and common labels), applied everywhere automatically ═══
 (()=>{const S=(d,x)=>`<svg class="ei" viewBox="0 0 24 24" width="1.05em" height="1.05em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}${x||''}</svg>`,
   dot=c=>`<svg class="ei" viewBox="0 0 24 24" width=".85em" height=".85em" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="${c}"/></svg>`,
@@ -6290,7 +6292,7 @@ function regroupSettings(){const pg=document.getElementById('pg-settings');if(!p
 const MON3=['J','F','M','A','M','J','J','A','S','O','N','D'];let _calY=null,_calM=null;
 function monthChart(){const n=new Date(),ms=[];for(let i=11;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);ms.push({k:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),l:MON3[d.getMonth()],n:0});}
   catches.forEach(c=>{const m=ms.find(x=>(c.date||'').startsWith(x.k));if(m)m.n++;});const mx=Math.max(1,...ms.map(m=>m.n));
-  return `<div class="sec"><div class="stitle">Catches per month</div><svg viewBox="0 0 312 118" width="100%" role="img" aria-label="Catches per month">${ms.map((m,i)=>{const h=Math.round(m.n/mx*76),x=i*26+4;return `<rect x="${x}" y="${90-h}" width="18" height="${m.n?Math.max(h,3):0}" rx="4" fill="#4fc3a1"/><text x="${x+9}" y="106" text-anchor="middle" font-size="10" fill="#8a8f94">${m.l}</text>${m.n?`<text x="${x+9}" y="${85-h}" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">${m.n}</text>`:''}`;}).join('')}</svg></div>`;}
+  return `<div class="sec"><div class="stitle">Catches per month</div><svg viewBox="0 0 312 118" width="100%" role="img" aria-label="Catches per month">${ms.map((m,i)=>{const h=Math.round(m.n/mx*76),x=i*26+4;return `<rect x="${x}" y="${90-h}" width="18" height="${m.n?Math.max(h,3):0}" rx="4" fill="#4fc3a1"${m.n?` onclick="statDrill('month','${m.k}')" style="cursor:pointer"`:''}/><text x="${x+9}" y="106" text-anchor="middle" font-size="10" fill="#8a8f94">${m.l}</text>${m.n?`<text x="${x+9}" y="${85-h}" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">${m.n}</text>`:''}`;}).join('')}</svg></div>`;}
 function calHtml(){const n=new Date();if(_calY==null){_calY=n.getFullYear();_calM=n.getMonth();}const first=new Date(_calY,_calM,1),days=new Date(_calY,_calM+1,0).getDate(),off=(first.getDay()+6)%7,cnt={},dia={};
   catches.forEach(c=>{if(c.date)cnt[c.date]=(cnt[c.date]||0)+1;});diary.forEach(e=>{dia[e.date]=1;});let cells='';for(let i=0;i<off;i++)cells+='<i></i>';
   for(let d=1;d<=days;d++){const k=_calY+'-'+String(_calM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'),c=cnt[k]||0;cells+=`<button type="button" class="cd l${Math.min(c,4)}${dia[k]?' dd':''}" onclick="calPick('${k}')">${d}</button>`;}
@@ -6302,7 +6304,7 @@ function statsPlus(){const pg=document.getElementById('pg-stats');if(!pg)return;
     td=tods.map((k,i)=>[k,catches.filter(c=>c.time&&todOf(parseInt(c.time,10))===i).length]),sp={};catches.forEach(c=>{if(c.fish)sp[c.fish]=(sp[c.fish]||0)+1;});
   const spR=Object.entries(sp).sort((a,b)=>b[1]-a[1]).slice(0,6),pb={};catches.forEach(c=>{const w=parseFloat(c.weight);if(w>0&&(!pb[c.fish]||w>pb[c.fish].w))pb[c.fish]={w,l:c.length,d:c.date};});
   const pbR=Object.entries(pb).sort((a,b)=>b[1].w-a[1].w).slice(0,5);
-  el.innerHTML=monthChart()+tripStats()+`<div id="calBox">${calHtml()}</div>`+sgBars('By species',spR)+sgBars('By tide',tide)+sgBars('Time of day',td)+windBars()+(pbR.length?`<div class="sec"><div class="stitle">Personal bests</div>${pbR.map(([f,v])=>`<div class="wxrow" style="cursor:default"><span style="flex:1;font-weight:700">${esc(f)}</span><b>${esc(fmtWt(v.w))}</b><span class="cmeta" style="width:70px;text-align:right">${v.l?esc(fmtLen(v.l)):''}</span></div>`).join('')}</div>`:'');}
+  el.innerHTML=monthChart()+tripStats()+`<div id="calBox">${calHtml()}</div>`+sgBars('By species',spR,'species')+sgBars('By tide',tide,'tide')+sgBars('Time of day',td,'tod')+windBars()+(pbR.length?`<div class="sec"><div class="stitle">Personal bests</div>${pbR.map(([f,v])=>`<div class="wxrow" style="cursor:default"><span style="flex:1;font-weight:700">${esc(f)}</span><b>${esc(fmtWt(v.w))}</b><span class="cmeta" style="width:70px;text-align:right">${v.l?esc(fmtLen(v.l)):''}</span></div>`).join('')}</div>`:'');}
 const _rs1=renderStats;renderStats=function(){_rs1();try{statsPlus();}catch(e){}};
 // ═══ PHOTO CAROUSEL + SHARE IMAGE ═══
 function vCarFill(c,a){const car=document.getElementById('vc-'+c.id),dots=document.getElementById('vd-'+c.id);if(!car||!a.length)return;
@@ -6362,8 +6364,8 @@ const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setT
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 
 // ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
-const APP_VER='2026.11';
-const WHATS_NEW=['Diary trips: tick “Caught nothing” so Stats shows your real catch rate by tide and time of day','Catches with a guessed location are flagged and kept off the map and heatmap','Wind, pressure and temperature are added to older catches automatically','Backup status, reminders and CSV export in Settings','Wind speed units (km/h or knots)','New app icon'];
+const APP_VER='2026.12';
+const WHATS_NEW=['Tap any bar in Stats (species, tide, time of day, wind, pressure, sea temperature or month) to see what you caught','Quick catch on the Log tab: photo, species, save','Wind units now apply to the forecast strip and daily rows','Today’s fishing-conditions banner now judges wind in knots','One combined Backup card in Settings'];
 const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
 let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;dyBlankUi();}
 function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.date===e.date)}));if(!T.length)return '';
@@ -6372,8 +6374,8 @@ function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.da
     best=[...byT,...byD].filter(x=>x.n>=3).sort((a,b)=>b.got/b.n-a.got/a.n||b.n-a.n)[0];
   const bars=(t,r)=>r.length?`<div class="sec"><div class="stitle">${t}</div>${r.map(x=>`<div class="brow"><span class="bl" style="width:112px">${esc(x.k)} (${x.n})</span><div class="bt"><i style="width:${x.got/x.n*100}%"></i></div><span class="bn" style="width:40px">${Math.round(x.got/x.n*100)}%</span></div>`).join('')}</div>`:'';
   return `<div class="sec"><div class="stitle">Your fishing trips</div><div class="cstats"><div><b>${T.length}</b><span>trips</span></div><div><b>${all}</b><span>with fish</span></div><div><b>${Math.round(all/T.length*100)}%</b><span>success</span></div></div>${best?`<div class="cmeta" style="margin-top:6px;font-weight:600;color:var(--text)">Best so far: ${esc(best.k)} — fish on ${best.got} of ${best.n} trips</div>`:'<div class="cmeta">Add a diary entry for each trip, including the blank ones, and your best conditions will appear here.</div>'}</div>`+bars('Catch rate by tide',byT)+bars('Catch rate by time of day',byD);}
-function windBars(){const W=catches.filter(c=>c.wx&&parseFloat(c.wx.wind)>=0);if(W.length<3)return '';const B=['Under 6 kn','6–12 kn','12–20 kn','20+ kn'],b=v=>v<6?B[0]:v<12?B[1]:v<20?B[2]:B[3],pr={Rising:0,Steady:0,Falling:0};W.forEach(c=>{if(pr[c.wx.trend]!=null)pr[c.wx.trend]++;});
-  return sgBars('Catches by wind',B.map(k=>[k,W.filter(c=>b(parseFloat(c.wx.wind))===k).length]))+sgBars('Catches by pressure trend',Object.entries(pr));}
+function windBars(){const W=catches.filter(c=>c.wx&&windKn(c.wx.wind)>=0);if(W.length<3)return '';const B=['Under 6 kn','6–12 kn','12–20 kn','20+ kn'],b=v=>v<6?B[0]:v<12?B[1]:v<20?B[2]:B[3],pr={Rising:0,Steady:0,Falling:0};W.forEach(c=>{if(pr[c.wx.trend]!=null)pr[c.wx.trend]++;});
+  return sgBars('Catches by wind',B.map(k=>[k,W.filter(c=>b(windKn(c.wx.wind))===k).length]),'wind')+sgBars('Catches by pressure trend',Object.entries(pr),'press');}
 async function wxHist(c){if(c.wx||c.lat==null||!c.date)return;const age=(Date.now()-new Date(c.date+'T12:00:00'))/864e5,base=age<=80?'https://api.open-meteo.com/v1/forecast':'https://archive-api.open-meteo.com/v1/archive';
   try{const r=await fetch(`${base}?latitude=${c.lat}&longitude=${c.lng}&start_date=${c.date}&end_date=${c.date}&hourly=temperature_2m,pressure_msl,wind_speed_10m,wind_direction_10m&wind_speed_unit=kn&timezone=Pacific%2FAuckland`);if(!r.ok)return;const H=(await r.json()).hourly,h=parseInt((c.time||'12:00').slice(0,2),10);
     if(!H||H.wind_speed_10m[h]==null)return;const p=H.pressure_msl[h],p3=H.pressure_msl[Math.max(0,h-3)];
@@ -6383,7 +6385,6 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(async()=>{let m=0;ca
 // backup status, reminder, CSV
 const LB='fishinglog_lastbackup',bkAge=()=>{const t=parseInt(localStorage.getItem(LB)||'0',10);return t?Math.floor((Date.now()-t)/864e5):null;},bkText=()=>{const a=bkAge();return a==null?'You haven’t backed up yet.':'Last backed up '+(a===0?'today':a===1?'yesterday':a+' days ago')+'.';};
 const _eb0=exportBackup;exportBackup=async function(){const r=await _eb0.apply(this,arguments);try{localStorage.setItem(LB,String(Date.now()));}catch(e){}const el=document.getElementById('bkInfo');if(el)el.textContent=bkText();const nd=document.getElementById('todayNudge');if(nd)nd.remove();return r;};
-function bkHtml(){return `<div class="sec"><div class="stitle">Backup status</div><div id="bkInfo" class="tv" style="font-size:16px">${bkText()}</div><div class="cmeta" style="margin:6px 0 10px">Your data lives only on this phone. Back up regularly and keep the file somewhere safe.</div><div style="display:flex;gap:8px"><button class="sbtn teal-btn" style="flex:1" onclick="exportBackup()">Back up now</button><button class="sbtn" style="flex:1" onclick="csvExport()">Export CSV</button></div></div>`;}
 function csvExport(){const q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"',R=[['type','date','time','species_or_spot','length_cm','weight_kg','lat','lng','tide','moon','sea_temp_c','wind','pressure','notes']];
   catches.forEach(c=>R.push(['catch',c.date,c.time,c.fish,c.length,c.weight,c.locApprox?'':c.lat,c.locApprox?'':c.lng,c.tide,c.moon,c.sea?c.sea.v:'',c.wx?c.wx.wind:'',c.wx?c.wx.press:'',c.notes||'']));
   diary.forEach(e=>R.push(['diary',e.date,e.time,e.spot,'','',e.lat,e.lng,e.tide,e.moon,e.sea?e.sea.v:'',e.wx?e.wx.wind:'',e.wx?e.wx.press:'',e.notes||'']));
@@ -6397,6 +6398,28 @@ document.addEventListener('DOMContentLoaded',()=>{const t=document.getElementByI
 // version + what's new
 function showWhatsNew(){wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">What’s new</div><div class="cmeta">Version ${APP_VER}</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div><div style="padding:4px 4px 22px">${WHATS_NEW.map(x=>`<div style="display:flex;gap:10px;margin:10px 0"><span style="color:var(--teal);font-weight:800">•</span><span style="font-size:15px;line-height:1.45">${esc(x)}</span></div>`).join('')}</div>`);}
 document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{const seen=localStorage.getItem('fishinglog_ver');if(seen!==APP_VER){if(seen&&!document.getElementById('tour')||seen&&document.getElementById('tour').style.display==='none')showWhatsNew();try{localStorage.setItem('fishinglog_ver',APP_VER);}catch(e){}}},2500));
+
+// ═══ STATS DRILL-DOWN, QUICK CATCH, WIND HELPERS, BACKUP CARD ═══
+const windKn=w=>{const v=parseFloat(w);return isNaN(v)?NaN:/km/.test(String(w))?v/1.852:v;};
+function wxKmh(id){const t=((document.getElementById(id)||{}).textContent||'').trim(),v=parseFloat(t);return isNaN(v)?NaN:/kn/.test(t)?v*1.852:v;}
+function wU(v){v=parseFloat(v);return isNaN(v)?'?':units.wind==='kn'?Math.round(v/1.852)+' kn':Math.round(v)+' km/h';}
+function statBucket(kind,l){const todOf=h=>h>=4&&h<7?'Dawn':h>=7&&h<11?'Morning':h>=11&&h<14?'Midday':h>=14&&h<17?'Afternoon':h>=17&&h<20?'Dusk':'Night',wb=v=>v<6?'Under 6 kn':v<12?'6–12 kn':v<20?'12–20 kn':'20+ kn',sb=v=>v<14?'Under 14°C':v<16?'14–16°C':v<18?'16–18°C':v<20?'18–20°C':'20°C+';
+  const f={species:c=>c.fish===l,tide:c=>new RegExp(l.replace(' tide','')).test(c.tide||''),tod:c=>c.time&&todOf(parseInt(c.time,10))===l,wind:c=>c.wx&&wb(windKn(c.wx.wind))===l,press:c=>c.wx&&c.wx.trend===l,sea:c=>c.sea&&sb(c.sea.v)===l,month:c=>(c.date||'').startsWith(l)}[kind];return f?catches.filter(f):[];}
+function statDrill(kind,l){const list=statBucket(kind,l);if(!list.length)return;window._statList=list;const sp={};list.forEach(c=>{sp[c.fish]=(sp[c.fish]||0)+1;});const mx=Math.max(...Object.values(sp)),ttl=kind==='month'?new Date(l+'-01T12:00:00').toLocaleDateString('en-NZ',{month:'long',year:'numeric'}):l;
+  wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">${esc(ttl)}</div><div class="cmeta">${list.length} catch${list.length>1?'es':''} · ${Object.keys(sp).length} species</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
+  <div class="stitle" style="margin:6px 0 4px">Species caught</div>${Object.entries(sp).sort((a,b)=>b[1]-a[1]).map(([f,n])=>`<div class="brow"><span class="bl">${esc(f)}</span><div class="bt"><i style="width:${n/mx*100}%"></i></div><span class="bn">${n}</span></div>`).join('')}
+  <div class="stitle" style="margin:16px 0 2px">Catches</div>${list.map(c=>`<div class="wxrow" role="button" tabindex="0" onclick="statOpen('${c.id}')"><span class="wxrt" style="width:58px">${new Date((c.date||'1970-01-01')+'T12:00:00').toLocaleDateString('en-NZ',{day:'numeric',month:'short'})}</span><b style="flex:1">${esc(c.fish)}</b><span class="cmeta">${esc([c.length?fmtLen(c.length):'',c.weight?fmtWt(c.weight):''].filter(Boolean).join(' · '))}</span><span class="cmeta">›</span></div>`).join('')}<div style="height:18px"></div>`);}
+function statOpen(id){wxSheetClose();window._vList=window._statList;openViewer(id);}
+function quickCatch(){window._qc=true;document.getElementById('fiCam').click();}
+function qcSheet(){const r=[...new Set(catches.map(c=>c.fish).filter(Boolean))].slice(0,6);window._qcSp='';
+  wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">Quick catch</div><div class="cmeta">Date, time and location come from the photo or your GPS</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
+  <label>Species</label><div class="spq" style="flex-wrap:wrap">${r.map(x=>`<button type="button" class="spchip qcs" onclick="qcPick(this)">${esc(x)}</button>`).join('')||'<span class="cmeta">Log a catch the normal way once and your species will appear here.</span>'}</div>
+  <label>Length (cm, optional)</label><input type="number" id="qcLen" inputmode="decimal" placeholder="e.g. 42"><button class="sbtn teal-btn" style="margin:14px 0 8px" onclick="qcSave()">Save catch</button>`);}
+function qcPick(b){document.querySelectorAll('.qcs').forEach(x=>x.classList.toggle('on',x===b));window._qcSp=b.textContent;}
+function qcSave(){if(!window._qcSp){showToast('Pick a species first','error');return;}pickSp(window._qcSp);const l=document.getElementById('qcLen').value;if(l)document.getElementById('flen').value=l;wxSheetClose();saveCatch();}
+function bkMerge(){const t=[...document.querySelectorAll('#pg-settings .stitle')].find(x=>x.textContent.includes('Backup')),card=t&&t.closest('.sec');if(!card||card.dataset.m)return;card.dataset.m=1;
+  t.insertAdjacentHTML('afterend',`<div id="bkInfo" class="tv" style="font-size:16px;margin:4px 0 8px">${bkText()}</div>`);card.insertAdjacentHTML('beforeend','<button class="sbtn" style="margin-top:10px" onclick="csvExport()">Export CSV (spreadsheet)</button>');}
+document.addEventListener('DOMContentLoaded',()=>{const pl=document.getElementById('pg-log');if(pl)pl.insertAdjacentHTML('afterbegin','<button class="sbtn teal-btn" style="margin-bottom:12px" onclick="quickCatch()">Quick catch — take a photo</button>');});
 </script>
 </body>
 </html>
