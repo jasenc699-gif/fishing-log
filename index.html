@@ -6120,7 +6120,7 @@ renderStats=function(){_rs0();try{const B=['Under 14°C','14–16°C','16–18°
 document.addEventListener('DOMContentLoaded',()=>{setTimeout(async()=>{if(!navigator.onLine)return;let n=0,ch=0;
   for(const r of seaReadings.filter(x=>x.sat==null||x.mod==null).slice(0,5)){const iso=new Date(r.ms+12*36e5).toISOString(),d=iso.slice(0,10),h=iso.slice(11,16);if(r.sat==null){const v=await seaSat(r.lat,r.lng,d);if(v!=null){r.sat=v;ch=1;}}if(r.mod==null){const m=await seaModel(r.lat,r.lng,d,h);if(m!=null){r.mod=m;ch=1;}}}
   for(const o of [...catches,...diary]){if(o.sea&&o.sea.src==='model'&&window._seaSatFail===false&&n<10)delete o.sea;if(o.sea||o.lat==null||n>=10)continue;await seaFill(o);if(o.sea)n++;}
-  if(ch)seaSave();if(n){persist();dySave2();if(currentTab==='list')renderList();if(currentTab==='diary')dyRender();}},6000);});
+  if(ch)seaSave();if(n){persist();dySave2();if(currentTab==='list')renderList();if(currentTab==='diary'&&!_dyForm)dyRender();}},6000);});
 
 // ═══ FORECAST DETAIL SHEETS (tap an hour or a day) ═══
 function wxData(){if(window._wxData)return window._wxData;try{return JSON.parse(localStorage.getItem('fishinglog_wxdata'));}catch(e){return null;}}
@@ -6204,7 +6204,7 @@ async function dyPhotoPick(ev){const fs=[...ev.target.files];ev.target.value='';
   if(dt&&!_dyEditId&&!_dyPhotos.length){const q=n=>String(n).padStart(2,'0');document.getElementById('dyDate').value=dt.getFullYear()+'-'+q(dt.getMonth()+1)+'-'+q(dt.getDate());document.getElementById('dyTime').value=q(dt.getHours())+':'+q(dt.getMinutes());}
   try{const r=await compressImage(f),u=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));if(u)_dyPhotos.push(u);}catch(e){showToast('Could not add a photo','error');}}dyThumbs();}
 function dyGps(){const st=document.getElementById('dyGpsSt');if(!st)return;if(!navigator.geolocation){st.textContent='GPS not available';return;}st.textContent='Finding you…';
-  navigator.geolocation.getCurrentPosition(p=>{if(_dyLocSrc==='photo'||_dyLocSrc==='map'){st.textContent='';return;}dyMapSet(p.coords.latitude,p.coords.longitude,'gps','Location saved (±'+Math.round(p.coords.accuracy)+' m)');},()=>{st.textContent='Could not get location — allow location access';},{enableHighAccuracy:true,timeout:15000});}
+  navigator.geolocation.getCurrentPosition(p=>{if(_dyLocSrc==='photo'||_dyLocSrc==='map'||(_dyTouched&&document.getElementById('dyLat').value)){st.textContent='';return;}dyMapSet(p.coords.latitude,p.coords.longitude,'gps','Location saved (±'+Math.round(p.coords.accuracy)+' m)');},()=>{st.textContent='Could not get location — allow location access';},{enableHighAccuracy:true,timeout:15000});}
 let _dyWant=false;
 function dyMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition,b=document.getElementById('dyMic'),ta=document.getElementById('dyNotes'),st=document.getElementById('dyMicSt');
   if(!SR){st.textContent='Dictation isn’t available in this browser. Use the microphone key on your phone’s keyboard instead.';return;}
@@ -6225,17 +6225,17 @@ async function dySave(){const v=id=>document.getElementById(id).value,date=v('dy
   for(let i=0;i<_dyPhotos.length;i++){try{await idbPut('dy_'+id+'#'+i,_dyPhotos[i]);}catch(x){showToast('A photo could not be saved','error');}}e.np=_dyPhotos.length;
   const td=dyToday()[0];if(!e.wx&&date===td){const t=id=>((document.getElementById(id)||{}).textContent||'').trim(),w={temp:t('wxt'),wind:(v=>isNaN(v)?'—':Math.round(v/1.852)+' kn')(wxKmh('wxWindSpd')),dir:t('wxWindDir'),press:t('wxPressVal'),trend:t('wxPressTrend')};if(w.wind&&w.wind!=='—')e.wx=w;}
   if(!old)diary.unshift(e);dySave2();localStorage.removeItem(DY_DRAFT);vibrate([40,20,40]);showToast('Diary entry saved','success');_dyForm=false;_dyEditId=null;_dyPhotos=[];dyRender();setTimeout(()=>dyCatchPrompt(e),600);
-  if(e.lat&&!e.sea)seaFill(e).then(()=>{dySave2();if(currentTab==='diary')dyRender();});}
+  if(e.lat&&!e.sea)seaFill(e).then(()=>{dySave2();if(currentTab==='diary'&&!_dyForm)dyRender();});}
 async function dyDel(id){const i=diary.findIndex(x=>x.id===id);if(i<0)return;const e=diary[i];diary.splice(i,1);dySave2();dyRender();
   undoBar('Entry deleted',()=>{diary.push(e);dySave2();dyRender();},async()=>{for(let k=0;k<(e.np||0);k++){try{await idbDel('dy_'+id+'#'+k);}catch(x){}}});}
 
 // ── diary maps, ray flag, migration of old sightings ──
-let _dyFormMap=null,_dyPin=null,_dyLocSrc='',_dyRay=false,_dyMaps={};
+let _dyTouched=false,_dyFormMap=null,_dyPin=null,_dyLocSrc='',_dyRay=false,_dyMaps={};
 const _dyTile=()=>L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),_dyIcon=()=>L.divIcon({className:'dypin',html:'<div></div>',iconSize:[22,22],iconAnchor:[11,22]});
 function dyDestroyMaps(){try{_dyFormMap&&_dyFormMap.remove();}catch(e){}_dyFormMap=null;_dyPin=null;Object.values(_dyMaps).forEach(m=>{try{m.remove();}catch(e){}});_dyMaps={};}
 function dyFormMapInit(){const el=document.getElementById('dyFormMap');if(!el||typeof L==='undefined')return;const la=parseFloat(document.getElementById('dyLat').value),ln=parseFloat(document.getElementById('dyLng').value),has=!isNaN(la)&&!isNaN(ln),c=has?[la,ln]:[appLat,appLng];
   _dyFormMap=L.map(el).setView(c,has?15:12);dyBase(_dyFormMap);_dyPin=L.marker(c,{icon:_dyIcon(),draggable:true,opacity:has?1:0}).addTo(_dyFormMap);
-  _dyPin.on('dragend',()=>{const q=_dyPin.getLatLng();dyMapSet(q.lat,q.lng,'map','Pin moved');});_dyFormMap.on('click',e=>dyMapSet(e.latlng.lat,e.latlng.lng,'map','Location set on map'));setTimeout(()=>_dyFormMap&&_dyFormMap.invalidateSize(),200);}
+  _dyPin.on('dragend',()=>{const q=_dyPin.getLatLng();dyMapSet(q.lat,q.lng,'map','Pin moved');});_dyFormMap.on('click',e=>{const t=e.originalEvent&&e.originalEvent.target;if(t&&t.closest&&t.closest('.leaflet-control'))return;dyMapSet(e.latlng.lat,e.latlng.lng,'map','Location set on map');});el.addEventListener('pointerdown',()=>{_dyTouched=true;},{passive:true});_dyTouched=false;setTimeout(()=>_dyFormMap&&_dyFormMap.invalidateSize(),200);}
 function dyMapSet(lat,lng,src,msg){document.getElementById('dyLat').value=lat;document.getElementById('dyLng').value=lng;_dyLocSrc=src;const st=document.getElementById('dyGpsSt');if(st)st.textContent=msg||'';
   if(_dyFormMap&&_dyPin){_dyPin.setLatLng([lat,lng]).setOpacity(1);_dyFormMap.setView([lat,lng],Math.max(_dyFormMap.getZoom(),15));}}
 function dyRay(){_dyRay=!_dyRay;dyRayUi();dyDraftSave();}function dyRayUi(){const b=document.getElementById('dyRayBtn');if(b)b.classList.toggle('on',_dyRay);}
@@ -6252,7 +6252,7 @@ function sgToDiary(e){const t=[(e.count>1?e.count+' × ':'')+'Shorttail stingray
     sea:e.sea||(e.wt!=null?{v:e.wt,src:'measured'}:undefined),wx:e.env&&e.env.wind!=null?{wind:e.env.wind+' kn',dir:'',press:e.env.press!=null?String(e.env.press):'—',trend:'—',temp:e.env.temp!=null?Math.round(e.env.temp)+'°':'—'}:undefined};}
 async function dyMigrate(list){const have=new Set(diary.map(x=>x.id));let n=0;for(const e of list){const d=sgToDiary(e);if(have.has(d.id))continue;
   if(e.has){try{const u=await idbGet('sg_'+e.id);if(u)await idbPut('dy_'+d.id+'#0',u);else d.np=0;}catch(x){d.np=0;}}diary.push(d);have.add(d.id);n++;}if(n)dySave2();return n;}
-document.addEventListener('DOMContentLoaded',()=>setTimeout(async()=>{try{if(localStorage.getItem('fishinglog_sg_migrated'))return;const old=JSON.parse(localStorage.getItem('fishinglog_sightings')||'[]');if(old.length){await dyMigrate(old);if(currentTab==='diary')dyRender();}localStorage.setItem('fishinglog_sg_migrated','1');}catch(e){}},1500));
+document.addEventListener('DOMContentLoaded',()=>setTimeout(async()=>{try{if(localStorage.getItem('fishinglog_sg_migrated'))return;const old=JSON.parse(localStorage.getItem('fishinglog_sightings')||'[]');if(old.length){await dyMigrate(old);if(currentTab==='diary'&&!_dyForm)dyRender();}localStorage.setItem('fishinglog_sg_migrated','1');}catch(e){}},1500));
 
 // ═══ POLISH: undo bar, sheet swipe-down, offline pill, app shortcuts ═══
 let _undoT=null,_undoCommit=null;
@@ -6367,7 +6367,7 @@ const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setT
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 
 // ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
-const APP_VER='2026.12.1';
+const APP_VER='2026.12.2';
 const WHATS_NEW=['Diary: search for a place on the map and switch to satellite view','Diary entries now show that day’s catches, and you can log a catch straight from an entry','Mention a catch in your notes and the app offers to log it on the Catches tab'];
 const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
 let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;dyBlankUi();}
@@ -6427,8 +6427,8 @@ document.addEventListener('DOMContentLoaded',()=>{const pl=document.getElementBy
 // ═══ DIARY: place search, satellite view, link with catches ═══
 let _dySat=false;try{_dySat=localStorage.getItem('fishinglog_dysat')==='1';}catch(e){}
 function dyBase(m){let layer=(_dySat?satelliteLayer():_dyTile()).addTo(m);const C=L.control({position:'topright'});
-  C.onAdd=()=>{const b=L.DomUtil.create('button','dysat');b.type='button';b.textContent=_dySat?'Street':'Satellite';L.DomEvent.disableClickPropagation(b);
-    b.onclick=()=>{_dySat=!_dySat;try{localStorage.setItem('fishinglog_dysat',_dySat?'1':'0');}catch(e){}m.removeLayer(layer);layer=(_dySat?satelliteLayer():_dyTile()).addTo(m);layer.bringToBack();b.textContent=_dySat?'Street':'Satellite';};return b;};C.addTo(m);}
+  C.onAdd=()=>{const b=L.DomUtil.create('button','dysat');b.type='button';b.textContent=_dySat?'Street':'Satellite';L.DomEvent.disableClickPropagation(b);L.DomEvent.on(b,'click dblclick mousedown mouseup touchstart touchend pointerdown pointerup',L.DomEvent.stopPropagation);
+    b.onclick=ev=>{if(ev)L.DomEvent.stop(ev);const c0=m.getCenter(),z0=m.getZoom();_dySat=!_dySat;try{localStorage.setItem('fishinglog_dysat',_dySat?'1':'0');}catch(e){}m.removeLayer(layer);layer=(_dySat?satelliteLayer():_dyTile()).addTo(m);layer.bringToBack();m.setView(c0,z0,{animate:false});b.textContent=_dySat?'Street':'Satellite';};return b;};C.addTo(m);}
 async function dySearch(){const q=document.getElementById('dySearch').value.trim(),out=document.getElementById('dySearchRes');if(!q)return;out.innerHTML='<div class="cmeta" style="margin-top:6px">Searching…</div>';
   try{const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`,{headers:{'Accept-Language':'en'}}),d=await r.json();
     if(!d.length){out.innerHTML='<div class="cmeta" style="margin-top:6px">No place found — try a broader name.</div>';return;}
