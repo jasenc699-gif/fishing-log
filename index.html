@@ -474,6 +474,7 @@ button:active:not(:disabled),.wx-cell:active,.wxrow:active{transform:scale(.97)}
 .tbody{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;max-width:340px}.tbody svg{width:230px;height:auto}.tbody h2{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:18px 0 8px}.tbody p{font-size:16px;line-height:1.5;color:rgba(255,255,255,.78)}
 .tskip{align-self:flex-end;background:none;border:none;color:rgba(255,255,255,.7);font-size:15px;min-height:44px;padding:0 8px}.tdots{display:flex;gap:8px;margin:8px 0 18px}.tdots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3)}.tdots i.on{background:#4fc3a1;width:22px;border-radius:4px}.tnext{width:100%;max-width:340px;padding:16px;font-size:17px}
 .brow.tap{cursor:pointer;border-radius:8px;padding:2px 0}.brow.tap:active{background:var(--surf)}.chev{width:14px;text-align:right;color:var(--hint)}
+.dysat{background:#fff;color:#222;border:none;border-radius:8px;padding:8px 12px;font:600 13px Inter,system-ui,sans-serif;box-shadow:0 1px 5px rgba(0,0,0,.35);cursor:pointer;min-height:36px;margin:8px}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -6166,7 +6167,8 @@ function dyRender(){dyDestroyMaps();const w=document.getElementById('dyWrap');
    <label>Where did you fish?</label><div style="display:flex;gap:8px"><input id="dySpot" list="dySpots" placeholder="Spot name" autocomplete="off" style="flex:1"><button type="button" class="gpsbtn" style="margin:0;min-height:44px;font-weight:600" onclick="dyGps()">Use GPS</button></div>
    <datalist id="dySpots">${[...new Set([...catches.map(c=>c.nickname),...diary.map(d=>d.spot)].filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
    <div id="dyGpsSt" class="cmeta" style="min-height:18px;margin-top:4px"></div><input type="hidden" id="dyLat"><input type="hidden" id="dyLng">
-   <div id="dyFormMap" class="dymap" style="height:190px"></div><div class="cmeta" style="margin-top:4px">Tap the map or drag the pin to adjust the location.</div>
+   <div style="display:flex;gap:8px;margin-top:10px"><input id="dySearch" placeholder="Search for a place on the map…" autocomplete="off" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();dySearch();}"><button type="button" class="gpsbtn" style="margin:0;min-height:44px;font-weight:600" onclick="dySearch()">Search</button></div><div id="dySearchRes"></div>
+   <div id="dyFormMap" class="dymap" style="height:210px"></div><div class="cmeta" style="margin-top:4px">Tap the map or drag the pin to adjust the location.</div>
    <button type="button" class="spchip" id="dyRayBtn" style="margin-top:10px" onclick="dyRay()">Saw shorttail rays</button> <button type="button" class="spchip" id="dyBlankBtn" style="margin-top:10px" onclick="dyBlank()">Caught nothing</button>
    <label>How was the fishing?</label><div class="spq" style="flex-wrap:wrap">${DY_R.slice(1).map((r,i)=>`<button type="button" class="spchip dyr" data-r="${i+1}" onclick="dyRate(${i+1})">${r}</button>`).join('')}</div>
    <label>Notes</label><textarea id="dyNotes" rows="6" placeholder="What happened? Bait, tide, weather, what worked…"></textarea>
@@ -6178,6 +6180,7 @@ function dyRender(){dyDestroyMaps();const w=document.getElementById('dyWrap');
   const list=diary.length?diary.map(e=>{const n=catches.filter(c=>c.date===e.date).length,wl=wxLine(e);return `<div class="ccard"><div class="cbody2"><div class="crow"><div style="min-width:0"><div class="cfish">${esc(e.spot||'Fishing day')}</div><div class="cmeta">${fmtWhen(e)}${n?' · '+n+' catch'+(n>1?'es':'')+' logged':''}</div></div><div class="cact"><button class="ibtn" aria-label="Edit entry" onclick="dyOpen('${e.id}')">Edit</button><button class="ibtn danger" aria-label="Delete entry" onclick="dyDel('${e.id}')">Delete</button></div></div>
     ${e.rating?`<span class="tag" style="background:${DY_C[e.rating]};color:${e.rating===3?'#222':'#fff'};margin-top:8px;display:inline-block">${DY_R[e.rating]}</span>`:''}
     ${e.notes?`<div class="noemoji" style="font-size:15px;line-height:1.5;margin-top:10px;white-space:pre-wrap">${esc(e.notes)}</div>`:''}
+    ${dayCatchesHtml(e)}${e.blank?'':`<button class="maptoggle" onclick="logFromDiary('${e.id}')">Log a catch from this entry</button>`}
     ${e.np?`<div class="vthumbs" id="dyp-${e.id}"></div>`:''}
     ${e.lat?`<button class="maptoggle" onclick="dyCardMap('${e.id}')">${e.locSrc==='photo'?'Show photo location':'Show map'}</button><div class="dymap" id="dyc-${e.id}" style="display:none;height:180px"></div>`:''}
     <div class="ctags">${e.blank?'<span class="tag">Caught nothing</span>':''}${e.ray?'<span class="tag ta">Rays seen</span>':''}${e.tide&&e.tide!=='—'?`<span class="tag tg">${esc(e.tide)}</span>`:''}${e.moon&&e.moon!=='—'?`<span class="tag tp">${esc(e.moon)}</span>`:''}</div>${wl?`<div class="cmeta" style="margin-top:6px">${wl}</div>`:''}</div></div>`;}).join(''):emptyArt('book','Your fishing diary','Record how each day went — notes, where you fished and photos. Tide, moon and weather are added automatically.','New diary entry','dyOpen()');
@@ -6221,7 +6224,7 @@ async function dySave(){const v=id=>document.getElementById(id).value,date=v('dy
   const prev=old?old.np||0:0;for(let i=0;i<prev;i++){try{await idbDel('dy_'+id+'#'+i);}catch(x){}}
   for(let i=0;i<_dyPhotos.length;i++){try{await idbPut('dy_'+id+'#'+i,_dyPhotos[i]);}catch(x){showToast('A photo could not be saved','error');}}e.np=_dyPhotos.length;
   const td=dyToday()[0];if(!e.wx&&date===td){const t=id=>((document.getElementById(id)||{}).textContent||'').trim(),w={temp:t('wxt'),wind:(v=>isNaN(v)?'—':Math.round(v/1.852)+' kn')(wxKmh('wxWindSpd')),dir:t('wxWindDir'),press:t('wxPressVal'),trend:t('wxPressTrend')};if(w.wind&&w.wind!=='—')e.wx=w;}
-  if(!old)diary.unshift(e);dySave2();localStorage.removeItem(DY_DRAFT);vibrate([40,20,40]);showToast('Diary entry saved','success');_dyForm=false;_dyEditId=null;_dyPhotos=[];dyRender();
+  if(!old)diary.unshift(e);dySave2();localStorage.removeItem(DY_DRAFT);vibrate([40,20,40]);showToast('Diary entry saved','success');_dyForm=false;_dyEditId=null;_dyPhotos=[];dyRender();setTimeout(()=>dyCatchPrompt(e),600);
   if(e.lat&&!e.sea)seaFill(e).then(()=>{dySave2();if(currentTab==='diary')dyRender();});}
 async function dyDel(id){const i=diary.findIndex(x=>x.id===id);if(i<0)return;const e=diary[i];diary.splice(i,1);dySave2();dyRender();
   undoBar('Entry deleted',()=>{diary.push(e);dySave2();dyRender();},async()=>{for(let k=0;k<(e.np||0);k++){try{await idbDel('dy_'+id+'#'+k);}catch(x){}}});}
@@ -6231,17 +6234,17 @@ let _dyFormMap=null,_dyPin=null,_dyLocSrc='',_dyRay=false,_dyMaps={};
 const _dyTile=()=>L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),_dyIcon=()=>L.divIcon({className:'dypin',html:'<div></div>',iconSize:[22,22],iconAnchor:[11,22]});
 function dyDestroyMaps(){try{_dyFormMap&&_dyFormMap.remove();}catch(e){}_dyFormMap=null;_dyPin=null;Object.values(_dyMaps).forEach(m=>{try{m.remove();}catch(e){}});_dyMaps={};}
 function dyFormMapInit(){const el=document.getElementById('dyFormMap');if(!el||typeof L==='undefined')return;const la=parseFloat(document.getElementById('dyLat').value),ln=parseFloat(document.getElementById('dyLng').value),has=!isNaN(la)&&!isNaN(ln),c=has?[la,ln]:[appLat,appLng];
-  _dyFormMap=L.map(el).setView(c,has?15:12);_dyTile().addTo(_dyFormMap);_dyPin=L.marker(c,{icon:_dyIcon(),draggable:true,opacity:has?1:0}).addTo(_dyFormMap);
+  _dyFormMap=L.map(el).setView(c,has?15:12);dyBase(_dyFormMap);_dyPin=L.marker(c,{icon:_dyIcon(),draggable:true,opacity:has?1:0}).addTo(_dyFormMap);
   _dyPin.on('dragend',()=>{const q=_dyPin.getLatLng();dyMapSet(q.lat,q.lng,'map','Pin moved');});_dyFormMap.on('click',e=>dyMapSet(e.latlng.lat,e.latlng.lng,'map','Location set on map'));setTimeout(()=>_dyFormMap&&_dyFormMap.invalidateSize(),200);}
 function dyMapSet(lat,lng,src,msg){document.getElementById('dyLat').value=lat;document.getElementById('dyLng').value=lng;_dyLocSrc=src;const st=document.getElementById('dyGpsSt');if(st)st.textContent=msg||'';
   if(_dyFormMap&&_dyPin){_dyPin.setLatLng([lat,lng]).setOpacity(1);_dyFormMap.setView([lat,lng],Math.max(_dyFormMap.getZoom(),15));}}
 function dyRay(){_dyRay=!_dyRay;dyRayUi();dyDraftSave();}function dyRayUi(){const b=document.getElementById('dyRayBtn');if(b)b.classList.toggle('on',_dyRay);}
 function dyCardMap(id){const el=document.getElementById('dyc-'+id),e=diary.find(x=>x.id===id);if(!el||!e)return;const b=el.previousElementSibling;
   if(_dyMaps[id]){try{_dyMaps[id].remove();}catch(x){}delete _dyMaps[id];el.style.display='none';b.textContent=e.locSrc==='photo'?'Show photo location':'Show map';return;}
-  el.style.display='block';const m=L.map(el).setView([e.lat,e.lng],15);_dyTile().addTo(m);L.marker([e.lat,e.lng],{icon:_dyIcon()}).addTo(m).bindPopup(e.locSrc==='photo'?'Where the photo was taken':'Location');_dyMaps[id]=m;b.textContent='Hide map';setTimeout(()=>m.invalidateSize(),150);}
+  el.style.display='block';const m=L.map(el).setView([e.lat,e.lng],15);dyBase(m);L.marker([e.lat,e.lng],{icon:_dyIcon()}).addTo(m).bindPopup(e.locSrc==='photo'?'Where the photo was taken':'Location');_dyMaps[id]=m;b.textContent='Hide map';setTimeout(()=>m.invalidateSize(),150);}
 function dyAllBtn(){const n=diary.filter(e=>e.lat&&e.lng).length;return n?`<button class="maptoggle" style="margin-bottom:10px;width:100%" onclick="dyAllMap(this)">Show map of all entries (${n})</button><div class="dymap" id="dyAllMap" style="display:none;height:280px;margin-bottom:12px"></div>`:'';}
 function dyAllMap(b){const el=document.getElementById('dyAllMap');if(_dyMaps.all){try{_dyMaps.all.remove();}catch(x){}delete _dyMaps.all;el.style.display='none';b.textContent=b.textContent.replace('Hide','Show');return;}
-  const pts=diary.filter(e=>e.lat&&e.lng);el.style.display='block';const m=L.map(el);_dyTile().addTo(m);
+  const pts=diary.filter(e=>e.lat&&e.lng);el.style.display='block';const m=L.map(el);dyBase(m);
   pts.forEach(e=>{const ph=e.locSrc==='photo';L.circleMarker([e.lat,e.lng],{radius:9,color:ph?'#0a5c43':'#555',weight:2,fillColor:ph?'#4fc3a1':'#bbb',fillOpacity:0.75}).addTo(m).bindPopup(`<b>${esc(e.spot||'Fishing day')}</b><br>${fmtWhen(e)}${ph?'<br>Photo location':''}${e.notes?'<br>'+esc(e.notes.slice(0,70)):''}`);});
   m.fitBounds(L.latLngBounds(pts.map(e=>[e.lat,e.lng])).pad(0.3),{maxZoom:15});_dyMaps.all=m;b.textContent=b.textContent.replace('Show','Hide');setTimeout(()=>m.invalidateSize(),150);}
 function sgToDiary(e){const t=[(e.count>1?e.count+' × ':'')+'Shorttail stingray',[e.size&&e.size!=='Not sure'?e.size:'',e.beh,e.depth,e.clar].filter(Boolean).join(', ')].filter(Boolean).join(' — ');
@@ -6364,8 +6367,8 @@ const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setT
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 
 // ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
-const APP_VER='2026.12';
-const WHATS_NEW=['Tap any bar in Stats (species, tide, time of day, wind, pressure, sea temperature or month) to see what you caught','Quick catch on the Log tab: photo, species, save','Wind units now apply to the forecast strip and daily rows','Today’s fishing-conditions banner now judges wind in knots','One combined Backup card in Settings'];
+const APP_VER='2026.12.1';
+const WHATS_NEW=['Diary: search for a place on the map and switch to satellite view','Diary entries now show that day’s catches, and you can log a catch straight from an entry','Mention a catch in your notes and the app offers to log it on the Catches tab'];
 const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
 let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;dyBlankUi();}
 function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.date===e.date)}));if(!T.length)return '';
@@ -6420,6 +6423,34 @@ function qcSave(){if(!window._qcSp){showToast('Pick a species first','error');re
 function bkMerge(){const t=[...document.querySelectorAll('#pg-settings .stitle')].find(x=>x.textContent.includes('Backup')),card=t&&t.closest('.sec');if(!card||card.dataset.m)return;card.dataset.m=1;
   t.insertAdjacentHTML('afterend',`<div id="bkInfo" class="tv" style="font-size:16px;margin:4px 0 8px">${bkText()}</div>`);card.insertAdjacentHTML('beforeend','<button class="sbtn" style="margin-top:10px" onclick="csvExport()">Export CSV (spreadsheet)</button>');}
 document.addEventListener('DOMContentLoaded',()=>{const pl=document.getElementById('pg-log');if(pl)pl.insertAdjacentHTML('afterbegin','<button class="sbtn teal-btn" style="margin-bottom:12px" onclick="quickCatch()">Quick catch — take a photo</button>');});
+
+// ═══ DIARY: place search, satellite view, link with catches ═══
+let _dySat=false;try{_dySat=localStorage.getItem('fishinglog_dysat')==='1';}catch(e){}
+function dyBase(m){let layer=(_dySat?satelliteLayer():_dyTile()).addTo(m);const C=L.control({position:'topright'});
+  C.onAdd=()=>{const b=L.DomUtil.create('button','dysat');b.type='button';b.textContent=_dySat?'Street':'Satellite';L.DomEvent.disableClickPropagation(b);
+    b.onclick=()=>{_dySat=!_dySat;try{localStorage.setItem('fishinglog_dysat',_dySat?'1':'0');}catch(e){}m.removeLayer(layer);layer=(_dySat?satelliteLayer():_dyTile()).addTo(m);layer.bringToBack();b.textContent=_dySat?'Street':'Satellite';};return b;};C.addTo(m);}
+async function dySearch(){const q=document.getElementById('dySearch').value.trim(),out=document.getElementById('dySearchRes');if(!q)return;out.innerHTML='<div class="cmeta" style="margin-top:6px">Searching…</div>';
+  try{const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(q)}`,{headers:{'Accept-Language':'en'}}),d=await r.json();
+    if(!d.length){out.innerHTML='<div class="cmeta" style="margin-top:6px">No place found — try a broader name.</div>';return;}
+    out.innerHTML=d.map(x=>`<button type="button" class="wxrow" style="width:100%;background:none;border:none;border-bottom:0.5px solid var(--border);text-align:left;font:inherit;color:inherit" data-la="${x.lat}" data-ln="${x.lon}" data-n="${esc(x.display_name)}" onclick="dyPick(this)"><span style="flex:1;font-size:14px">${esc(x.display_name.split(',').slice(0,3).join(','))}</span><span class="cmeta">›</span></button>`).join('');}
+  catch(e){out.innerHTML='<div class="cmeta" style="margin-top:6px">Search unavailable offline.</div>';}}
+function dyPick(b){const la=parseFloat(b.dataset.la),ln=parseFloat(b.dataset.ln),nm=b.dataset.n.split(',')[0];dyMapSet(la,ln,'map','Location set: '+b.dataset.n.split(',').slice(0,2).join(','));
+  if(_dyFormMap)_dyFormMap.setView([la,ln],14);const sp=document.getElementById('dySpot');if(sp&&!sp.value)sp.value=nm;document.getElementById('dySearchRes').innerHTML='';}
+function dayCatchesHtml(e){const L=catches.filter(c=>c.date===e.date);if(!L.length)return '';
+  return `<div class="stitle" style="margin:12px 0 2px">Catches this day</div>${L.map(c=>`<div class="wxrow" role="button" tabindex="0" onclick="dyOpenCatch('${c.id}','${e.date}')"><b style="flex:1">${esc(c.fish)}</b><span class="cmeta">${esc([c.length?fmtLen(c.length):'',c.weight?fmtWt(c.weight):''].filter(Boolean).join(' · '))}</span><span class="cmeta">›</span></div>`).join('')}`;}
+function dyOpenCatch(id,date){window._statList=catches.filter(c=>c.date===date);statOpen(id);}
+async function logFromDiary(id,sp){const e=diary.find(x=>x.id===id);if(!e)return;wxSheetClose();go('log');await new Promise(r=>setTimeout(r,450));
+  if(e.np){try{const u=await idbGet('dy_'+id+'#0');if(u){const bl=await (await fetch(u)).blob();await onPhotosPicked({target:{files:[new File([bl],'diary.jpg',{type:bl.type||'image/jpeg'})],value:''}});}}catch(x){}}
+  const q=i=>document.getElementById(i);q('cdate').value=e.date;if(e.time)q('ctime').value=e.time;
+  if(e.lat&&e.lng&&!e.locApprox){q('clat').value=(+e.lat).toFixed(4);q('clng').value=(+e.lng).toFixed(4);q('clat').dispatchEvent(new Event('input',{bubbles:true}));q('clng').dispatchEvent(new Event('input',{bubbles:true}));if(typeof logMap!=='undefined'&&logMap&&typeof logPin!=='undefined'&&logPin){logPin.setLatLng([e.lat,e.lng]);logMap.setView([e.lat,e.lng],14);}}
+  if(e.spot&&q('cnickname'))q('cnickname').value=e.spot;if(sp)pickSp(sp);showToast(e.np?'Entry details and photo copied — add the size, then save':'Entry details copied — add a photo and size, then save','success');}
+function dyCatchPrompt(e){if(!e||e.blank||e.catchPrompted||!e.notes||!/\b(caught|landed|got|hooked|pulled|boated|bagged|had a|had some)\b/i.test(e.notes))return;
+  const names=new Set([...[...document.querySelectorAll('#ftype option')].map(o=>o.text.trim()),...catches.map(c=>c.fish)].filter(x=>x&&x.length>2&&!/^(other|select|choose|—|-)/i.test(x))),
+    hit=[...names].find(x=>new RegExp('\\b'+x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'s?\\b','i').test(e.notes));
+  if(!hit||catches.some(c=>c.date===e.date&&c.fish===hit))return;e.catchPrompted=1;dySave2();
+  wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">Log it as a catch?</div><div class="cmeta">You mentioned catching ${esc(hit)}</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
+  <div class="cmeta" style="margin:4px 4px 14px">Add it to your Catches so it shows up in Stats, the map and your personal bests. The date, time and place are copied from this diary entry.</div>
+  <button class="sbtn teal-btn" onclick="logFromDiary('${e.id}','${esc(hit).replace(/'/g,"\\'")}')">Log the catch</button><button class="sbtn" style="margin-top:8px" onclick="wxSheetClose()">Not now</button>`);}
 </script>
 </body>
 </html>
