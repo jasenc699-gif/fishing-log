@@ -476,6 +476,8 @@ button:active:not(:disabled),.wx-cell:active,.wxrow:active{transform:scale(.97)}
 .brow.tap{cursor:pointer;border-radius:8px;padding:2px 0}.brow.tap:active{background:var(--surf)}.chev{width:14px;text-align:right;color:var(--hint)}
 .dysat{background:#fff;color:#222;border:none;border-radius:8px;padding:8px 12px;font:600 13px Inter,system-ui,sans-serif;box-shadow:0 1px 5px rgba(0,0,0,.35);cursor:pointer;min-height:36px;margin:8px}
 .cmap{height:170px!important}
+.ttile{min-width:0}.tgrid>*{min-width:0}.ttile .tv{overflow-wrap:anywhere;line-height:1.2}.tv.sm{font-size:16px}
+.ctags{display:flex;flex-wrap:wrap;gap:6px}.tag{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.3}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -1310,6 +1312,8 @@ button:active:not(:disabled),.wx-cell:active,.wxrow:active{transform:scale(.97)}
           </div>
           <input type="file" id="efiLib" accept="image/*" onchange="handleEditPhoto(event)">
           <div id="editPhotoInfo" style="font-size:11px;color:var(--hint);margin-top:5px;display:none;"></div>
+          <div class="stitle" style="margin:14px 0 6px">More photos</div><div id="editExtras" class="xthumbs"></div><div id="editExtraCount" class="cmeta" style="margin:4px 0 8px"></div>
+          <button class="gpsbtn" type="button" style="width:100%;min-height:44px;font-weight:600" onclick="const i=document.getElementById('efiMore');i.value='';i.click();">Add photos</button><input type="file" id="efiMore" accept="image/*" multiple onchange="editAddPhotos(event)" style="display:none">
         </div>
         <div class="sec" style="margin-bottom:10px;">
           <div class="stitle">Catch Details</div>
@@ -4634,6 +4638,7 @@ async function fetchOpenMeteo(lat, lng, locName) {
     if (landRes.status === 429) throw new Error('RATE_LIMITED');
     if (!landRes.ok) throw new Error(`Open-Meteo API error: ${landRes.status}`);
     const land = await landRes.json();
+    applyTempBias(land);
     window._wxData = land; try{ localStorage.setItem('fishinglog_wxdata', JSON.stringify(land)); }catch(e){}
     const cur = land.current;
     if (!cur) throw new Error('Unexpected API response — no current data');
@@ -6037,11 +6042,11 @@ function wxLine(c){const w=c.wx;if(!w)return '';return [w.wind&&w.wind!=='—'?'
 async function loadExtras(c){if(!c.extra)return [];if(_exCache[c.id])return _exCache[c.id];const a=[];for(let i=1;i<=c.extra;i++){try{const u=await idbGet(c.id+'#'+i);if(u)a.push(u);}catch(e){}}return _exCache[c.id]=a;}
 async function onPhotosPicked(ev){const files=[...ev.target.files];ev.target.value='';if(!files.length)return;let i=0;
   if(!photo){await handlePhoto({target:{files:[files[0]]}});i=1;}
-  for(;i<files.length;i++){if(extraPhotos.length>=5){showToast('Up to 6 photos per catch','error');break;}
+  for(;i<files.length;i++){if(extraPhotos.length>=8){showToast('Up to 9 photos per catch','error');break;}
     try{const r=await compressImage(files[i]);const u=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));if(u)extraPhotos.push(u);}catch(e){showToast('Could not add one of the photos','error');}}
   renderThumbs();if(window._qc){window._qc=false;qcSheet();}}
-function renderThumbs(){document.getElementById('extraThumbs').innerHTML=extraPhotos.map((u,i)=>`<div class="xt"><img src="${u}" alt="Extra photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="extraPhotos.splice(${i},1);renderThumbs()">✕</button></div>`).join('');}
-const _idbDel0=idbDel; idbDel=function(k){const r=_idbDel0(k);if(typeof k==='string'&&!k.includes('#'))for(let i=1;i<=8;i++)_idbDel0(k+'#'+i).catch(()=>{});return r;};
+function renderThumbs(){const bs=document.querySelectorAll('#pg-log .photobtns button');if(bs.length===2){bs[0].textContent=photo?'Take another photo':'Take photo';bs[1].textContent=photo?'Add more photos':'Choose photos';}document.getElementById('extraThumbs').innerHTML=extraPhotos.map((u,i)=>`<div class="xt"><img src="${u}" alt="Extra photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="extraPhotos.splice(${i},1);renderThumbs()">✕</button></div>`).join('');}
+const _idbDel0=idbDel; idbDel=function(k){const r=_idbDel0(k);if(typeof k==='string'&&!k.includes('#'))for(let i=1;i<=12;i++)_idbDel0(k+'#'+i).catch(()=>{});return r;};
 // defaults + recent species
 const DEF_KEY='fishinglog_defaults',DEF_FIELDS=['method','platform','rig','fly','flycol'];
 function applyDefaults(){let d={};try{d=JSON.parse(localStorage.getItem(DEF_KEY)||'{}');}catch(e){}DEF_FIELDS.forEach(k=>{const el=document.getElementById(k);if(el&&!el.value&&d[k])el.value=d[k];});}
@@ -6068,11 +6073,11 @@ function renderToday(){const el=document.getElementById('todayContent');if(!el)r
     const w=[[so.m1,'Major'],[so.m2,'Major'],[so.n1,'Minor'],[so.n2,'Minor']].map(([h,l])=>({d:((h-hn)%24+24)%24,h,l})).sort((a,b)=>a.d-b.d)[0];
     const hh=Math.floor(w.h),mm=Math.round((w.h-hh)*60);bite=w.l+' · '+(w.d<0.1?'now':'in '+(w.d>=1?Math.floor(w.d)+'h ':'')+Math.round((w.d%1)*60)+'m');
   }catch(e){}
-  const tile=(l,x,s)=>`<div class="ttile"><div class="tl2">${l}</div><div class="tv">${esc(x)}</div>${s?`<div class="ts">${esc(s)}</div>`:''}</div>`;
+  const tile=(l,x,s)=>`<div class="ttile"><div class="tl2">${l}</div><div class="tv${String(x).length>16?' sm':''}">${esc(x)}</div>${s?`<div class="ts">${esc(s)}</div>`:''}</div>`;
   const ym=now.toISOString().slice(0,7),mc=catches.filter(c=>(c.date||'').startsWith(ym)).length,last=catches[0];
   el.innerHTML=`<div class="thero" data-tod="${tod}"><div class="tsub" style="margin:0">${now.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'})}</div><div class="tgreet">${greet}</div><div class="tsub">${esc((/could not|network|error|loading/i.test(_tx('wxl'))?'':_tx('wxl'))||'')}</div>
   <div class="verdict ${v[0]}">${v[1]}${has?' · wind '+esc(_tx('wxWindSpd')):''}</div></div>
-  <div class="tgrid">${tile('Temp',_tx('wxt')||'—',_tx('wxd'))}${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,'').slice(0,22))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}${seaTile()}</div>
+  <div class="tgrid"><div class="ttile" role="button" tabindex="0" onclick="tempAsk()" style="cursor:pointer"><div class="tl2">Temp</div><div class="tv">${esc(_tx('wxt')||'—')}</div><div class="ts">${esc(_tx('wxd'))}</div><div class="ts" style="color:var(--teal-d);font-weight:600;margin-top:2px">${window._wxBias&&window._wxBias.w>0.05?'Adjusted '+(window._wxBias.delta*window._wxBias.w>0?'+':'')+(window._wxBias.delta*window._wxBias.w).toFixed(1)+'° · tap to change':'Tap to match your phone'}</div></div>${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,''))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}${seaTile()}</div>
   <div class="sec"><div class="stitle">Your fishing</div>${last?`<div class="cfish">${esc(last.fish)}${last.length?' · '+esc(fmtLen(last.length)):''}</div><div class="cmeta">Last catch · ${fmtWhen(last)}</div><div class="cmeta" style="margin-top:6px">${mc} catch${mc!==1?'es':''} this month · ${catches.length} total</div>`:'<div class="cmeta">No catches yet. Your first one will show up here.</div>'}</div>`;}
 document.addEventListener('DOMContentLoaded',()=>{renderToday();renderSpQuick();applyDefaults();setTimeout(renderToday,1500);
   const t=document.getElementById('wxt');if(t)new MutationObserver(()=>{if(currentTab==='today')renderToday();}).observe(t,{childList:true,characterData:true,subtree:true});});
@@ -6126,7 +6131,7 @@ document.addEventListener('DOMContentLoaded',()=>{setTimeout(async()=>{if(!navig
 // ═══ FORECAST DETAIL SHEETS (tap an hour or a day) ═══
 function wxData(){if(window._wxData)return window._wxData;try{return JSON.parse(localStorage.getItem('fishinglog_wxdata'));}catch(e){return null;}}
 const _kn=k=>k==null?'—':units.wind==='kn'?Math.round(k)+' km/h':Math.round(k/1.852)+' kn',_kmh=k=>k==null?'—':units.wind==='kn'?Math.round(k/1.852)+' kn':Math.round(k)+' km/h',_h12=h=>h===0?'12am':h<12?h+'am':h===12?'12pm':(h-12)+'pm';
-const _wT=(l,v,s,id)=>`<div class="ttile"><div class="tl2">${l}</div><div class="tv" style="font-size:18px">${v}</div>${s||id?`<div class="ts"${id?` id="${id}"`:''}>${s||''}</div>`:''}</div>`;
+const _wT=(l,v,s,id)=>`<div class="ttile"><div class="tl2">${l}</div><div class="tv" style="font-size:${String(v).replace(/<[^>]*>/g,'').length>14?15:18}px">${v}</div>${s||id?`<div class="ts"${id?` id="${id}"`:''}>${s||''}</div>`:''}</div>`;
 function wxSheetOpen(html){let bg=document.getElementById('wxSheetBg');if(!bg){bg=document.createElement('div');bg.id='wxSheetBg';bg.className='wxbg';bg.onclick=e=>{if(e.target===bg)wxSheetClose();};bg.innerHTML='<div class="wxsheet" role="dialog" aria-modal="true" id="wxSheet"></div>';document.body.appendChild(bg);}
   const sh=document.getElementById('wxSheet');sh.innerHTML=html;bg.classList.add('open');sh.scrollTop=0;}
 function wxSheetClose(){const b=document.getElementById('wxSheetBg');if(b)b.classList.remove('open');}
@@ -6142,7 +6147,7 @@ function wxHourSheet(idx){const D=wxData();if(!D||!D.hourly||!D.hourly.time||!D.
   <div class="wxhero"><span style="font-size:42px">${omIcon(code)}</span><div><div style="font-size:30px;font-weight:800;letter-spacing:-.5px">${g('temperature_2m')!=null?Math.round(g('temperature_2m'))+'°':'—'}</div><div class="cmeta">${esc(omDesc(code))}${g('apparent_temperature')!=null?' · feels '+Math.round(g('apparent_temperature'))+'°':''}</div></div></div>
   <div class="verdict ${dot==='#4fc3a1'?'good':dot==='#f39c12'?'warn':'bad'}" style="margin:10px 0">${esc(fo.replace(/^[^A-Za-z]+/,''))}</div>
   <div class="tgrid">${_wT('Wind',_kmh(wk),_kn(wk)+' '+(g('wind_direction_10m')!=null?windDir(g('wind_direction_10m')):''))}${_wT('Gusts',_kmh(g('wind_gusts_10m')),_kn(g('wind_gusts_10m')))}${_wT('Rain',(g('precipitation_probability')??0)+'%',g('precipitation')!=null?g('precipitation')+' mm':'')}${_wT('Pressure',pr!=null?Math.round(pr)+' hPa':'—',tr)}${_wT('Cloud',g('cloud_cover')!=null?g('cloud_cover')+'%':'—',g('relative_humidity_2m')!=null?'Humidity '+g('relative_humidity_2m')+'%':'')}${_wT('Visibility',vis!=null?(vis/1000).toFixed(1)+' km':'—')}</div>
-  <div class="stitle" style="margin:4px 0 6px">Fishing at this time</div><div class="tgrid">${_wT('Bite window',bite)}${_wT('Tide',esc(tide.slice(0,26)))}${_wT('Moon',esc(moon))}${_wT('Sea temp','…','forecast model','wxSheetSea')}</div>`);
+  <div class="stitle" style="margin:4px 0 6px">Fishing at this time</div><div class="tgrid">${_wT('Bite window',bite)}${_wT('Tide',esc(tide))}${_wT('Moon',esc(moon))}${_wT('Sea temp','…','forecast model','wxSheetSea')}</div>`);
   const ds=H.time[idx].slice(0,10),ts=H.time[idx].slice(11,16);
   seaModel(wxLat||appLat,wxLng||appLng,ds,ts).then(v=>{const e=document.getElementById('wxSheetSea');if(e){e.previousElementSibling.textContent=v!=null?v.toFixed(1)+'°C':'—';}});}
 function wxDaySheet(i){const D=wxData(),d=D&&D.daily;if(!d||!d.time||!d.time[i]){_wxNone();return;}
@@ -6199,7 +6204,7 @@ function dyDraftSave(){if(_dyEditId||!document.getElementById('dyNotes'))return;
 function dyClose(){localStorage.removeItem(DY_DRAFT);_dyWant=false;if(_dyRec)_dyRec.stop();_dyForm=false;_dyEditId=null;dyRender();}
 function dyRate(r,keep){_dyRating=(!keep&&_dyRating===r)?0:r;setTimeout(dyDraftSave,0);document.querySelectorAll('.dyr').forEach(b=>b.classList.toggle('on',+b.dataset.r===_dyRating));}
 function dyThumbs(){const el=document.getElementById('dyThumbs');if(el)el.innerHTML=_dyPhotos.map((u,i)=>`<div class="xt"><img src="${u}" alt="Photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="_dyPhotos.splice(${i},1);dyThumbs()">✕</button></div>`).join('');}
-async function dyPhotoPick(ev){const fs=[...ev.target.files];ev.target.value='';for(const f of fs){if(_dyPhotos.length>=4){showToast('Up to 4 photos per entry','error');break;}
+async function dyPhotoPick(ev){const fs=[...ev.target.files];ev.target.value='';for(const f of fs){if(_dyPhotos.length>=8){showToast('Up to 8 photos per entry','error');break;}
   let g=null,dt=null;try{if(typeof exifr!=='undefined'){g=await exifr.gps(f);const x=await exifr.parse(f,['DateTimeOriginal']);dt=x&&x.DateTimeOriginal;}}catch(e){}
   if(g&&g.latitude!=null&&_dyLocSrc!=='photo'&&_dyLocSrc!=='map')dyMapSet(g.latitude,g.longitude,'photo','Location taken from the photo');
   if(dt&&!_dyEditId&&!_dyPhotos.length){const q=n=>String(n).padStart(2,'0');document.getElementById('dyDate').value=dt.getFullYear()+'-'+q(dt.getMonth()+1)+'-'+q(dt.getDate());document.getElementById('dyTime').value=q(dt.getHours())+':'+q(dt.getMinutes());}
@@ -6372,8 +6377,8 @@ const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setT
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 
 // ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
-const APP_VER='2026.12.5';
-const WHATS_NEW=['Settings → Sea temperatures: recalculate the sea temperature on all your past catches and diary entries','Catches now say “Pressure … (falling)” and “Air temp …” so they can’t be mistaken for tide and sea temperature'];
+const APP_VER='2026.12.7';
+const WHATS_NEW=['You can now add and remove extra photos when editing a catch (up to 9 photos per catch, 8 per diary entry)','Long tide and condition labels no longer get cut off on tiles'];
 const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
 let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;dyBlankUi();}
 function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.date===e.date)}));if(!T.length)return '';
@@ -6476,6 +6481,40 @@ async function seaRecalcAll(){const btn=document.getElementById('seaRecalcBtn'),
     done++;msg.textContent='Working… '+done+' of '+N;bar.style.width=Math.round(done/N*100)+'%';if(done%5===0){persist();dySave2();}}
   persist();dySave2();window._seaBusyAll=false;btn.textContent='Recalculate all';
   msg.textContent=(window._seaStop?'Stopped. ':'Done. ')+upd+' updated, '+kept+' kept as they were'+(N-done>0?', '+(N-done)+' not reached':'')+'.';if(!N)msg.textContent='Nothing to update yet — add catches with a location first.';syncSeaTemp();}
+
+// ═══ MATCH THE AIR TEMPERATURE TO YOUR PHONE ═══
+const TB_KEY='fishinglog_tempbias';
+function applyTempBias(land){try{if(!land||!land.current)return;window._wxRawTemp=land.current.temperature_2m;window._wxBias=null;const b=JSON.parse(localStorage.getItem(TB_KEY)||'null');if(!b||!isFinite(b.delta))return;
+  const w=ms=>Math.max(0,1-Math.abs(ms-b.ms)/(12*36e5)),nw=w(Date.now()),d=b.delta;
+  if(nw>0){land.current.temperature_2m+=d*nw;if(land.current.apparent_temperature!=null)land.current.apparent_temperature+=d*nw;}
+  const H=land.hourly;if(H&&H.time&&H.temperature_2m)H.time.forEach((t,i)=>{const x=w(Date.parse(t));if(x>0&&H.temperature_2m[i]!=null){H.temperature_2m[i]+=d*x;if(H.apparent_temperature&&H.apparent_temperature[i]!=null)H.apparent_temperature[i]+=d*x;}});
+  window._wxBias={delta:d,w:nw};}catch(e){}}
+function tempAsk(){const raw=window._wxRawTemp,b=window._wxBias;
+  wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">Match your phone</div><div class="cmeta">Correct the air temperature for where you are</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
+  <div class="cmeta" style="margin:2px 4px 12px;line-height:1.5">The app’s temperature comes from a weather model covering a large area, not a thermometer, so it can differ from your phone by a few degrees. Enter what your phone shows and the app will adjust. The adjustment fades out over 12 hours.</div>
+  ${raw!=null?`<div class="cmeta" style="margin:0 4px 8px">The model says <b>${Math.round(raw)}°C</b> right now</div>`:''}
+  <label>Temperature on your phone (°C)</label><input type="number" step="1" inputmode="decimal" id="tbIn" placeholder="e.g. 17" style="font-size:22px;font-weight:700"><div id="tbMsg" class="cmeta" style="margin:8px 0 12px;min-height:18px"></div>
+  <button class="sbtn teal-btn" onclick="tempSave()">Adjust</button>${b?'<button class="sbtn" style="margin-top:8px" onclick="tempReset()">Remove adjustment</button>':''}`);setTimeout(()=>{const i=document.getElementById('tbIn');if(i)i.focus();},250);}
+function tempSave(){const v=parseFloat(document.getElementById('tbIn').value),raw=window._wxRawTemp,m=document.getElementById('tbMsg');
+  if(!(v>-10&&v<50)){m.textContent='Enter a temperature between -10 and 50.';return;}if(raw==null){m.textContent='The weather hasn’t loaded yet — try again in a moment.';return;}
+  try{localStorage.setItem(TB_KEY,JSON.stringify({ms:Date.now(),delta:Math.max(-8,Math.min(8,v-raw))}));}catch(e){}wxSheetClose();showToast('Temperature adjusted','success');refreshWx();}
+function tempReset(){try{localStorage.removeItem(TB_KEY);}catch(e){}wxSheetClose();refreshWx();}
+function refreshWx(){try{_wxLastFetch=0;}catch(e){}fetchOpenMeteo(typeof wxLat!=='undefined'&&wxLat?wxLat:appLat,typeof wxLng!=='undefined'&&wxLng?wxLng:appLng,null).then(()=>setTimeout(()=>{if(currentTab==='today')renderToday();},500));}
+
+// ═══ EXTRA PHOTOS WHEN EDITING A CATCH ═══
+let editExtras=[];
+const _ec0=editCatch;editCatch=function(id){const r=_ec0.apply(this,arguments);loadEditExtras(id);return r;};
+async function loadEditExtras(id){const c=catches.find(x=>String(x.id)===String(id));editExtras=c&&c.extra?[...await loadExtras(c)]:[];renderEditExtras();}
+function renderEditExtras(){const el=document.getElementById('editExtras');if(!el)return;el.innerHTML=editExtras.map((u,i)=>`<div class="xt"><img src="${u}" alt="Extra photo ${i+1}"><button type="button" aria-label="Remove photo" onclick="editExtras.splice(${i},1);renderEditExtras()">✕</button></div>`).join('');
+  const c=document.getElementById('editExtraCount');if(c)c.textContent=editExtras.length?(editExtras.length+' extra photo'+(editExtras.length>1?'s':'')+' · up to 8 extras per catch'):'Add up to 8 extra photos';}
+async function editAddPhotos(ev){const fs=[...ev.target.files];ev.target.value='';if(!fs.length)return;const c=catches.find(x=>String(x.id)===String(editId));let i=0;
+  const hasMain=editPhoto!==undefined?!!editPhoto:!!(c&&c.photo);if(!hasMain){await handleEditPhoto({target:{files:[fs[0]]}});i=1;}
+  for(;i<fs.length;i++){if(editExtras.length>=8){showToast('Up to 9 photos per catch','error');break;}
+    try{const r=await compressImage(fs[i]),u=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));if(u)editExtras.push(u);}catch(e){showToast('Could not add one of the photos','error');}}renderEditExtras();}
+const _se0=saveEdit;saveEdit=function(){const id=editId,ex=editExtras.slice(),before=catches.find(x=>String(x.id)===String(id)),orig=before&&before.extra||0,r=_se0.apply(this,arguments),after=catches.find(x=>String(x.id)===String(id));
+  if(after&&after!==before)saveEditExtras(id,ex,orig);return r;};
+async function saveEditExtras(id,ex,orig){const c=catches.find(x=>String(x.id)===String(id));if(!c)return;for(let i=1;i<=Math.max(orig,12);i++){try{await _idbDel0(id+'#'+i);}catch(e){}}
+  for(let i=0;i<ex.length;i++){try{await idbPut(id+'#'+(i+1),ex[i]);}catch(e){}}c.extra=ex.length;delete _exCache[id];persist();if(currentTab==='list')renderList();}
 </script>
 </body>
 </html>
