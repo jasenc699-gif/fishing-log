@@ -6107,7 +6107,7 @@ async function seaTemp(lat,lng,d,t){if(lat==null||lng==null||!d)return null;cons
 async function seaFill(o){if(o.sea||o.lat==null||o.lng==null)return;const r=await seaTemp(o.lat,o.lng,o.date,o.time);if(r)o.sea=r;}
 // display helpers
 function wxLine(c){const w=c.wx,a=[];if(c.sea)a.push('Sea temp '+(+c.sea.v).toFixed(1)+'°C ('+seaLbl(c.sea)+')');
-  if(w){if(w.wind&&w.wind!=='—')a.push('Wind '+w.wind+(w.dir&&w.dir!=='—'?' '+w.dir:''));if(w.press&&w.press!=='—')a.push(w.press+' hPa'+(w.trend&&w.trend!=='—'?' · '+w.trend:''));if(w.temp&&w.temp!=='—')a.push(w.temp);}
+  if(w){if(w.wind&&w.wind!=='—')a.push('Wind '+w.wind+(w.dir&&w.dir!=='—'?' '+w.dir:''));if(w.press&&w.press!=='—')a.push('Pressure '+w.press+' hPa'+(w.trend&&w.trend!=='—'?' ('+String(w.trend).toLowerCase()+')':''));if(w.temp&&w.temp!=='—')a.push('Air temp '+w.temp+(/°$/.test(w.temp)?'C':''));}
   return a.map(esc).join(' · ');}
 let _seaNow=null,_seaBusy=false;
 function seaTile(){const n=_seaNow;return `<div class="ttile" role="button" tabindex="0" onclick="seaAsk()" style="grid-column:1/-1;cursor:pointer"><div class="tl2">Sea temperature</div><div class="tv">${n?(+n.v).toFixed(1)+'°C':'<span class="skel" style="display:inline-block;width:72px">&nbsp;</span>'}</div><div class="ts">${n?esc(seaLbl(n))+(window._seaSatFail&&n.src==='model'?' · satellite unreachable':'')+(n.adj?' ('+(n.adj>0?'+':'')+n.adj+'°)':''):'Looking up…'}</div><div class="ts" style="color:var(--teal-d);font-weight:600;margin-top:4px">Tap to add your own reading</div></div>`;}
@@ -6278,7 +6278,7 @@ function unitsHtml(){const b=(t,v,l)=>`<button type="button" class="${units[t]==
 function setUnit(t,v,b){units[t]=v;try{localStorage.setItem(UK,JSON.stringify(units));}catch(e){}b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
 function regroupSettings(){const pg=document.getElementById('pg-settings');if(!pg||pg.dataset.grouped)return;pg.dataset.grouped=1;
   const card=t=>{const e=[...pg.querySelectorAll('.stitle')].find(x=>x.textContent.includes(t));return e&&e.closest('.sec');},hd=t=>{const h=document.createElement('div');h.className='sgroup';h.textContent=t;return h;},mk=h=>{const d=document.createElement('div');d.innerHTML=h;return d.firstElementChild;};
-  [hd('Preferences'),mk(unitsHtml()),card('Fishing Region'),hd('Tide data'),card('Step 1'),card('Step 2'),card('Current Status'),hd('Your data'),card('Backup'),card('Storage Health'),hd('App'),mk('<div class="sec"><div class="stitle">About</div><button class="sbtn" onclick="showTour()">Replay the intro tour</button><div class="cmeta" style="margin-top:8px">Fishing Log · version '+APP_VER+'</div><button class="sbtn" style="margin-top:10px" onclick="showWhatsNew()">What’s new</button></div>')].filter(Boolean).forEach(n=>pg.appendChild(n));bkMerge();}
+  [hd('Preferences'),mk(unitsHtml()),card('Fishing Region'),hd('Tide data'),card('Step 1'),card('Step 2'),card('Current Status'),hd('Your data'),card('Backup'),mk(seaRecalcHtml()),card('Storage Health'),hd('App'),mk('<div class="sec"><div class="stitle">About</div><button class="sbtn" onclick="showTour()">Replay the intro tour</button><div class="cmeta" style="margin-top:8px">Fishing Log · version '+APP_VER+'</div><button class="sbtn" style="margin-top:10px" onclick="showWhatsNew()">What’s new</button></div>')].filter(Boolean).forEach(n=>pg.appendChild(n));bkMerge();}
 // ═══ EMOJI → ICONS (moon phases and common labels), applied everywhere automatically ═══
 (()=>{const S=(d,x)=>`<svg class="ei" viewBox="0 0 24 24" width="1.05em" height="1.05em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}${x||''}</svg>`,
   dot=c=>`<svg class="ei" viewBox="0 0 24 24" width=".85em" height=".85em" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="${c}"/></svg>`,
@@ -6372,8 +6372,8 @@ const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setT
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 
 // ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
-const APP_VER='2026.12.4';
-const WHATS_NEW=['Tide and sea temperature are now labelled in words on catches and diary entries','Tap a day in Fishing days to open its catches and diary entries','Sea temperature on the Tide tab now matches Today'];
+const APP_VER='2026.12.5';
+const WHATS_NEW=['Settings → Sea temperatures: recalculate the sea temperature on all your past catches and diary entries','Catches now say “Pressure … (falling)” and “Air temp …” so they can’t be mistaken for tide and sea temperature'];
 const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
 let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;dyBlankUi();}
 function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.date===e.date)}));if(!T.length)return '';
@@ -6463,6 +6463,19 @@ async function seaNowGet(){if(_seaNow&&Date.now()-_seaNow.t<18e5)return _seaNow;
 async function syncSeaTemp(){const row=document.getElementById('tideWaveRow');if(!row)return;const lab=[...row.querySelectorAll('.wl')].find(x=>/^sea temp/i.test(x.textContent.trim()));if(!lab||!lab.previousElementSibling)return;
   const n=await seaNowGet();if(!n)return;lab.previousElementSibling.textContent=(+n.v).toFixed(1)+'°C';lab.textContent='Sea temp · '+seaLbl(n);}
 document.addEventListener('DOMContentLoaded',()=>{const row=document.getElementById('tideWaveRow');if(row)new MutationObserver(()=>syncSeaTemp()).observe(row,{childList:true});});
+
+// ═══ RECALCULATE SEA TEMPERATURES FOR EVERYTHING ═══
+function seaRecalcHtml(){return `<div class="sec"><div class="stitle">Sea temperatures</div><div class="cmeta" style="margin-bottom:10px">Recalculates the sea temperature saved on your catches and diary entries using satellite data and every reading you have entered. Readings you measured yourself are never changed, and a value is only replaced if the new one is at least as reliable. Keep the app open while it works.</div><div class="bt" style="margin:0 0 8px"><i id="seaRecalcBar" style="width:0%"></i></div><div id="seaRecalcMsg" class="cmeta" style="min-height:18px;margin-bottom:10px"></div><button id="seaRecalcBtn" class="sbtn teal-btn" onclick="seaRecalcAll()">Recalculate all</button></div>`;}
+async function seaRecalcAll(){const btn=document.getElementById('seaRecalcBtn'),msg=document.getElementById('seaRecalcMsg'),bar=document.getElementById('seaRecalcBar');
+  if(window._seaBusyAll){window._seaStop=true;msg.textContent='Stopping…';return;}if(!navigator.onLine){msg.textContent='You need an internet connection for this.';return;}
+  window._seaBusyAll=true;window._seaStop=false;btn.textContent='Stop';msg.textContent='Preparing…';const rank={measured:3,satellite:2,model:1};
+  for(const r of seaReadings.filter(x=>x.sat==null||x.mod==null)){const iso=new Date(r.ms+12*36e5).toISOString(),d=iso.slice(0,10),h=iso.slice(11,16);if(r.sat==null){const v=await seaSat(r.lat,r.lng,d);if(v!=null)r.sat=v;}if(r.mod==null){const m=await seaModel(r.lat,r.lng,d,h);if(m!=null)r.mod=m;}}seaSave();
+  const items=[...catches,...diary].filter(o=>o.lat!=null&&o.lng!=null&&o.date&&!(o.sea&&o.sea.src==='measured')),N=items.length;let done=0,upd=0,kept=0;
+  for(const o of items){if(window._seaStop)break;const old=o.sea;delete o.sea;try{await seaFill(o);}catch(e){}
+    if(o.sea){if(old&&(rank[o.sea.src]||0)<(rank[old.src]||0)){o.sea=old;kept++;}else upd++;}else if(old){o.sea=old;kept++;}
+    done++;msg.textContent='Working… '+done+' of '+N;bar.style.width=Math.round(done/N*100)+'%';if(done%5===0){persist();dySave2();}}
+  persist();dySave2();window._seaBusyAll=false;btn.textContent='Recalculate all';
+  msg.textContent=(window._seaStop?'Stopped. ':'Done. ')+upd+' updated, '+kept+' kept as they were'+(N-done>0?', '+(N-done)+' not reached':'')+'.';if(!N)msg.textContent='Nothing to update yet — add catches with a location first.';syncSeaTemp();}
 </script>
 </body>
 </html>
