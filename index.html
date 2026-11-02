@@ -6077,7 +6077,7 @@ function renderToday(){const el=document.getElementById('todayContent');if(!el)r
   const ym=now.toISOString().slice(0,7),mc=catches.filter(c=>(c.date||'').startsWith(ym)).length,last=catches[0];
   el.innerHTML=`<div class="thero" data-tod="${tod}"><div class="tsub" style="margin:0">${now.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'})}</div><div class="tgreet">${greet}</div><div class="tsub">${esc((/could not|network|error|loading/i.test(_tx('wxl'))?'':_tx('wxl'))||'')}</div>
   <div class="verdict ${v[0]}">${v[1]}${has?' · wind '+esc(_tx('wxWindSpd')):''}</div></div>
-  <div class="tgrid"><div class="ttile" role="button" tabindex="0" onclick="tempAsk()" style="cursor:pointer"><div class="tl2">Temp</div><div class="tv">${esc(_tx('wxt')||'—')}</div><div class="ts">${esc(_tx('wxd'))}</div><div class="ts" style="color:var(--teal-d);font-weight:600;margin-top:2px">${window._wxBias&&window._wxBias.w>0.05?'Adjusted '+(window._wxBias.delta*window._wxBias.w>0?'+':'')+(window._wxBias.delta*window._wxBias.w).toFixed(1)+'° · tap to change':'Tap to match your phone'}</div></div>${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,''))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}${seaTile()}</div>
+  <div class="tgrid"><div class="ttile" role="button" tabindex="0" onclick="tempAsk()" style="cursor:pointer"><div class="tl2">Temp</div><div class="tv">${esc(_tx('wxt')||'—')}</div><div class="ts">${esc(_tx('wxd'))}</div><div class="ts" style="color:var(--teal-d);font-weight:600;margin-top:2px">${window._wxBias&&window._wxBias.w>0.05?(window._wxBias.auto?'Matched to station · ':'')+'Adjusted '+(window._wxBias.delta*window._wxBias.w>0?'+':'')+(window._wxBias.delta*window._wxBias.w).toFixed(1)+'° · tap to change':'Tap to match your phone'}</div></div>${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,''))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}${seaTile()}</div>
   <div class="sec"><div class="stitle">Your fishing</div>${last?`<div class="cfish">${esc(last.fish)}${last.length?' · '+esc(fmtLen(last.length)):''}</div><div class="cmeta">Last catch · ${fmtWhen(last)}</div><div class="cmeta" style="margin-top:6px">${mc} catch${mc!==1?'es':''} this month · ${catches.length} total</div>`:'<div class="cmeta">No catches yet. Your first one will show up here.</div>'}</div>`;}
 document.addEventListener('DOMContentLoaded',()=>{renderToday();renderSpQuick();applyDefaults();setTimeout(renderToday,1500);
   const t=document.getElementById('wxt');if(t)new MutationObserver(()=>{if(currentTab==='today')renderToday();}).observe(t,{childList:true,characterData:true,subtree:true});});
@@ -6283,7 +6283,7 @@ function unitsHtml(){const b=(t,v,l)=>`<button type="button" class="${units[t]==
 function setUnit(t,v,b){units[t]=v;try{localStorage.setItem(UK,JSON.stringify(units));}catch(e){}b.parentNode.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}
 function regroupSettings(){const pg=document.getElementById('pg-settings');if(!pg||pg.dataset.grouped)return;pg.dataset.grouped=1;
   const card=t=>{const e=[...pg.querySelectorAll('.stitle')].find(x=>x.textContent.includes(t));return e&&e.closest('.sec');},hd=t=>{const h=document.createElement('div');h.className='sgroup';h.textContent=t;return h;},mk=h=>{const d=document.createElement('div');d.innerHTML=h;return d.firstElementChild;};
-  [hd('Preferences'),mk(unitsHtml()),card('Fishing Region'),hd('Tide data'),card('Step 1'),card('Step 2'),card('Current Status'),hd('Your data'),card('Backup'),mk(seaRecalcHtml()),card('Storage Health'),hd('App'),mk('<div class="sec"><div class="stitle">About</div><button class="sbtn" onclick="showTour()">Replay the intro tour</button><div class="cmeta" style="margin-top:8px">Fishing Log · version '+APP_VER+'</div><button class="sbtn" style="margin-top:10px" onclick="showWhatsNew()">What’s new</button></div>')].filter(Boolean).forEach(n=>pg.appendChild(n));bkMerge();}
+  [hd('Preferences'),mk(unitsHtml()),card('Fishing Region'),mk(vcHtml()),hd('Tide data'),card('Step 1'),card('Step 2'),card('Current Status'),hd('Your data'),card('Backup'),mk(seaRecalcHtml()),card('Storage Health'),hd('App'),mk('<div class="sec"><div class="stitle">About</div><button class="sbtn" onclick="showTour()">Replay the intro tour</button><div class="cmeta" style="margin-top:8px">Fishing Log · version '+APP_VER+'</div><button class="sbtn" style="margin-top:10px" onclick="showWhatsNew()">What’s new</button></div>')].filter(Boolean).forEach(n=>pg.appendChild(n));bkMerge();}
 // ═══ EMOJI → ICONS (moon phases and common labels), applied everywhere automatically ═══
 (()=>{const S=(d,x)=>`<svg class="ei" viewBox="0 0 24 24" width="1.05em" height="1.05em" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}${x||''}</svg>`,
   dot=c=>`<svg class="ei" viewBox="0 0 24 24" width=".85em" height=".85em" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="${c}"/></svg>`,
@@ -6372,13 +6372,13 @@ function wxSunRender(){const D=wxData();if(!D||!D.daily||!D.daily.sunrise)return
   <div class="tv" style="font-size:16px;margin:4px 0 10px">${next[0]} at ${f(next[1])} · in ${dl(next[1]-now)}</div>
   <div class="tgrid" style="margin-bottom:6px">${_wT('Sunrise',f(sr))}${_wT('Sunset',f(ss))}${_wT('First light',f(sr-30*6e4),'about 30 min before sunrise')}${_wT('Last light',f(ss+30*6e4),'about 30 min after sunset')}</div>
   <div class="cmeta">Daylight ${dl(ss-sr)}${d.sunrise[i+1]?' · Tomorrow '+f(T(i+1))+' – '+f(U(i+1)):''}</div>`;}
-const _fom=fetchOpenMeteo;fetchOpenMeteo=async function(){const b0=window._wxData;try{return await _fom.apply(this,arguments);}finally{if(window._wxData!==b0){try{localStorage.setItem('fishinglog_wxdata_at',String(Date.now()));}catch(e){}}setTimeout(wxSunRender,200);}};
+const _fom=fetchOpenMeteo;fetchOpenMeteo=async function(){const b0=window._wxData;try{return await _fom.apply(this,arguments);}finally{if(window._wxData!==b0){try{localStorage.setItem('fishinglog_wxdata_at',String(Date.now()));}catch(e){}}setTimeout(wxSunRender,200);if(typeof _vcObs!=='undefined'&&_vcObs)setTimeout(vcAutoBias,50);}};
 const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setTimeout(wxSunRender,50);if(p==='tide')setTimeout(syncSeaTemp,300);return r;};
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 
 // ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
-const APP_VER='2026.12.7';
-const WHATS_NEW=['You can now add and remove extra photos when editing a catch (up to 9 photos per catch, 8 per diary entry)','Long tide and condition labels no longer get cut off on tiles'];
+const APP_VER='2026.12.8';
+const WHATS_NEW=['Optional measured weather: add a free Visual Crossing key in Settings to see real readings from the nearest weather station and have the forecast temperature correct itself automatically'];
 const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
 let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;dyBlankUi();}
 function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.date===e.date)}));if(!T.length)return '';
@@ -6488,7 +6488,7 @@ function applyTempBias(land){try{if(!land||!land.current)return;window._wxRawTem
   const w=ms=>Math.max(0,1-Math.abs(ms-b.ms)/(12*36e5)),nw=w(Date.now()),d=b.delta;
   if(nw>0){land.current.temperature_2m+=d*nw;if(land.current.apparent_temperature!=null)land.current.apparent_temperature+=d*nw;}
   const H=land.hourly;if(H&&H.time&&H.temperature_2m)H.time.forEach((t,i)=>{const x=w(Date.parse(t));if(x>0&&H.temperature_2m[i]!=null){H.temperature_2m[i]+=d*x;if(H.apparent_temperature&&H.apparent_temperature[i]!=null)H.apparent_temperature[i]+=d*x;}});
-  window._wxBias={delta:d,w:nw};}catch(e){}}
+  window._wxBias={delta:d,w:nw,auto:b.auto};}catch(e){}}
 function tempAsk(){const raw=window._wxRawTemp,b=window._wxBias;
   wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">Match your phone</div><div class="cmeta">Correct the air temperature for where you are</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
   <div class="cmeta" style="margin:2px 4px 12px;line-height:1.5">The app’s temperature comes from a weather model covering a large area, not a thermometer, so it can differ from your phone by a few degrees. Enter what your phone shows and the app will adjust. The adjustment fades out over 12 hours.</div>
@@ -6515,6 +6515,30 @@ const _se0=saveEdit;saveEdit=function(){const id=editId,ex=editExtras.slice(),be
   if(after&&after!==before)saveEditExtras(id,ex,orig);return r;};
 async function saveEditExtras(id,ex,orig){const c=catches.find(x=>String(x.id)===String(id));if(!c)return;for(let i=1;i<=Math.max(orig,12);i++){try{await _idbDel0(id+'#'+i);}catch(e){}}
   for(let i=0;i<ex.length;i++){try{await idbPut(id+'#'+(i+1),ex[i]);}catch(e){}}c.extra=ex.length;delete _exCache[id];persist();if(currentTab==='list')renderList();}
+
+// ═══ MEASURED WEATHER FROM NEARBY STATIONS (optional, free Visual Crossing key) ═══
+const VC_KEY='fishinglog_vc';let _vcObs=null,_vcErr='';
+const vcCfg=()=>{try{return JSON.parse(localStorage.getItem(VC_KEY)||'{}')||{};}catch(e){return {};}};
+async function vcLoad(force){const c=vcCfg();if(!c.key)return;if(!force&&_vcObs&&Date.now()-_vcObs.t<9e5)return;if(!navigator.onLine){vcInject();return;}
+  const la=typeof wxLat!=='undefined'&&wxLat?wxLat:appLat,ln=typeof wxLng!=='undefined'&&wxLng?wxLng:appLng;
+  try{const r=await fetch(`https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/${la},${ln}/today?unitGroup=metric&include=current&key=${encodeURIComponent(c.key)}&contentType=json`);
+    if(!r.ok)throw new Error(r.status===401||r.status===403?'Key not accepted':r.status===429?'Daily limit reached':'Service error '+r.status);
+    const j=await r.json(),cc=j.currentConditions;if(!cc||cc.temp==null)throw new Error('No current reading returned');_vcObs={t:Date.now(),cc,st:j.stations||null};_vcErr='';vcAutoBias();}
+  catch(e){_vcErr=e&&e.message&&!/fetch|network|load failed/i.test(e.message)?e.message:'Could not reach the service';}vcInject();}
+function vcAutoBias(){const o=_vcObs;if(!o||!/obs|comb/.test(o.cc.source||'obs')||window._wxRawTemp==null)return;const d=Math.max(-8,Math.min(8,o.cc.temp-window._wxRawTemp));let old=null;try{old=JSON.parse(localStorage.getItem(TB_KEY)||'null');}catch(e){}
+  try{localStorage.setItem(TB_KEY,JSON.stringify({ms:Date.now(),delta:d,auto:1}));}catch(e){}
+  if(!old||Math.abs(old.delta-d)>=0.5||old.ms<Date.now()-36e5){if(!window._vcRef||Date.now()-window._vcRef>3e5){window._vcRef=Date.now();setTimeout(refreshWx,300);}}}
+function vcCard(){const c=vcCfg();if(!c.key)return '';const o=_vcObs;
+  if(!o)return `<div class="sec"><div class="tl2">Measured now</div><div class="cmeta" style="margin-top:6px">${_vcErr?esc(_vcErr):'Loading nearby station reading…'}</div></div>`;
+  const cc=o.cc,ids=Array.isArray(cc.stations)?cc.stations.slice(0,2):[],nm=ids.map(i=>o.st&&o.st[i]&&o.st[i].name?o.st[i].name:i).join(', '),lab=/fcst/.test(cc.source||'')?'Forecast estimate (no recent station reading)':'Measured';
+  return `<div class="sec"><div class="tl2">${lab} now${nm?' · '+esc(nm):''}</div><div class="tgrid" style="margin:8px 0 6px"><div class="ttile"><div class="tl2">Temp</div><div class="tv">${(+cc.temp).toFixed(1)}°C</div>${cc.feelslike!=null?`<div class="ts">Feels ${Math.round(cc.feelslike)}°</div>`:''}</div><div class="ttile"><div class="tl2">Wind</div><div class="tv">${esc(wU(cc.windspeed))}</div><div class="ts">${cc.winddir!=null?esc(windDir(cc.winddir)):''}</div></div>${cc.pressure!=null?`<div class="ttile"><div class="tl2">Pressure</div><div class="tv">${Math.round(cc.pressure)} hPa</div></div>`:''}${cc.humidity!=null?`<div class="ttile"><div class="tl2">Humidity</div><div class="tv">${Math.round(cc.humidity)}%</div></div>`:''}</div><div class="cmeta">${esc(String(cc.datetime||'').slice(0,5))} · Source: Visual Crossing</div></div>`;}
+function vcInject(){const t=document.getElementById('todayContent');if(!t)return;const g=t.querySelector('.tgrid');if(!g)return;const h=vcCard();let e=document.getElementById('vcCard');if(!h){if(e)e.remove();return;}if(!e){e=document.createElement('div');e.id='vcCard';g.insertAdjacentElement('afterend',e);}e.innerHTML=h;}
+const _rt4=renderToday;renderToday=function(){_rt4();vcInject();vcLoad();};
+document.addEventListener('DOMContentLoaded',()=>{const t=document.getElementById('todayContent');if(t)new MutationObserver(()=>{if(!document.getElementById('vcCard')&&vcCfg().key)vcInject();}).observe(t,{childList:true});setTimeout(()=>vcLoad(),2500);});
+function vcHtml(){const c=vcCfg();return `<div class="sec"><div class="stitle">Measured weather (optional)</div><div class="cmeta" style="margin-bottom:8px;line-height:1.5">The forecast temperature is a model estimate. With a free Visual Crossing key the app shows real readings from the nearest weather stations and corrects the forecast to match, automatically. Sign up for the free plan at visualcrossing.com, then paste your key here.</div><label>Visual Crossing key</label><input id="vcKey" type="password" autocomplete="off" value="${esc(c.key||'')}" placeholder="Paste key"><button class="sbtn teal-btn" style="margin-top:12px" onclick="vcSave()">Save and test</button>${c.key?'<button class="sbtn" style="margin-top:8px" onclick="vcRemove()">Remove key</button>':''}<div id="vcMsg" class="cmeta" style="margin-top:8px;min-height:18px"></div></div>`;}
+async function vcSave(){const k=document.getElementById('vcKey').value.trim(),m=document.getElementById('vcMsg');try{localStorage.setItem(VC_KEY,JSON.stringify({key:k}));}catch(e){}_vcObs=null;_vcErr='';if(!k){m.textContent='Key removed.';vcInject();return;}m.textContent='Testing…';await vcLoad(true);
+  m.textContent=_vcErr?_vcErr:'Working — latest reading '+(_vcObs?(+_vcObs.cc.temp).toFixed(1)+'°C':'received')+'.';}
+function vcRemove(){try{localStorage.removeItem(VC_KEY);localStorage.removeItem(TB_KEY);}catch(e){}_vcObs=null;_vcErr='';vcInject();const i=document.getElementById('vcKey');if(i)i.value='';const m=document.getElementById('vcMsg');if(m)m.textContent='Key removed.';refreshWx();}
 </script>
 </body>
 </html>
