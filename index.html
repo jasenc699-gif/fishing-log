@@ -478,6 +478,7 @@ button:active:not(:disabled),.wx-cell:active,.wxrow:active{transform:scale(.97)}
 .cmap{height:170px!important}
 .ttile{min-width:0}.tgrid>*{min-width:0}.ttile .tv{overflow-wrap:anywhere;line-height:1.2}.tv.sm{font-size:16px}
 .ctags{display:flex;flex-wrap:wrap;gap:6px}.tag{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.3}
+.thero-wx{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:17px;font-weight:600}.thero-ic{font-size:46px;line-height:0;display:inline-flex}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -6075,9 +6076,9 @@ function renderToday(){const el=document.getElementById('todayContent');if(!el)r
   }catch(e){}
   const tile=(l,x,s)=>`<div class="ttile"><div class="tl2">${l}</div><div class="tv${String(x).length>16?' sm':''}">${esc(x)}</div>${s?`<div class="ts">${esc(s)}</div>`:''}</div>`;
   const ym=now.toISOString().slice(0,7),mc=catches.filter(c=>(c.date||'').startsWith(ym)).length,last=catches[0];
-  el.innerHTML=`<div class="thero" data-tod="${tod}"><div class="tsub" style="margin:0">${now.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'})}</div><div class="tgreet">${greet}</div><div class="tsub">${esc((/could not|network|error|loading/i.test(_tx('wxl'))?'':_tx('wxl'))||'')}</div>
+  el.innerHTML=`<div class="thero" data-tod="${tod}"><div class="tsub" style="margin:0">${now.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'})}</div><div class="tgreet">${greet}</div>${heroWx(tod)}<div class="tsub">${esc((/could not|network|error|loading/i.test(_tx('wxl'))?'':_tx('wxl'))||'')}</div>
   <div class="verdict ${v[0]}">${v[1]}${has?' · wind '+esc(_tx('wxWindSpd')):''}</div></div>
-  <div class="tgrid"><div class="ttile" role="button" tabindex="0" onclick="tempAsk()" style="cursor:pointer"><div class="tl2">Temp</div><div class="tv">${esc(_tx('wxt')||'—')}</div><div class="ts">${esc(_tx('wxd'))}</div><div class="ts" style="color:var(--teal-d);font-weight:600;margin-top:2px">${window._wxBias&&window._wxBias.w>0.05?(window._wxBias.auto?'Matched to station · ':'')+'Adjusted '+(window._wxBias.delta*window._wxBias.w>0?'+':'')+(window._wxBias.delta*window._wxBias.w).toFixed(1)+'° · tap to change':'Tap to match your phone'}</div></div>${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,''))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}${seaTile()}</div>
+  <div class="tgrid"><div class="ttile"><div class="tl2">Temp</div><div class="tv">${esc(_tx('wxt')||'—')}</div><div class="ts">${esc(_tx('wxd'))}</div>${window._wxBias&&window._wxBias.auto&&window._wxBias.w>0.05?'<div class="ts" style="color:var(--teal-d);font-weight:600;margin-top:2px">Matched to nearby station</div>':''}</div>${tile('Wind',_tx('wxWindSpd')||'—',_tx('wxWindDir'))}${tile('Pressure',(_tx('wxPressVal')||'—')+' hPa',_tx('wxPressTrend'))}${tile('Tide',tide.replace(/^[^A-Za-z]+/,''))}${tile('Next bite window',bite)}${tile('Moon',moon.replace(/^[^A-Za-z]+/,''))}${seaTile()}</div>
   <div class="sec"><div class="stitle">Your fishing</div>${last?`<div class="cfish">${esc(last.fish)}${last.length?' · '+esc(fmtLen(last.length)):''}</div><div class="cmeta">Last catch · ${fmtWhen(last)}</div><div class="cmeta" style="margin-top:6px">${mc} catch${mc!==1?'es':''} this month · ${catches.length} total</div>`:'<div class="cmeta">No catches yet. Your first one will show up here.</div>'}</div>`;}
 document.addEventListener('DOMContentLoaded',()=>{renderToday();renderSpQuick();applyDefaults();setTimeout(renderToday,1500);
   const t=document.getElementById('wxt');if(t)new MutationObserver(()=>{if(currentTab==='today')renderToday();}).observe(t,{childList:true,characterData:true,subtree:true});});
@@ -6377,8 +6378,8 @@ const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setT
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 
 // ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
-const APP_VER='2026.12.8';
-const WHATS_NEW=['Optional measured weather: add a free Visual Crossing key in Settings to see real readings from the nearest weather station and have the forecast temperature correct itself automatically'];
+const APP_VER='2026.12.9';
+const WHATS_NEW=['Today header now shows a weather icon and the current conditions (cloudy, rain, clear and so on)','Removed the manual temperature adjustment — the temperature now matches nearby stations automatically when a Visual Crossing key is set'];
 const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
 let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;dyBlankUi();}
 function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.date===e.date)}));if(!T.length)return '';
@@ -6484,21 +6485,11 @@ async function seaRecalcAll(){const btn=document.getElementById('seaRecalcBtn'),
 
 // ═══ MATCH THE AIR TEMPERATURE TO YOUR PHONE ═══
 const TB_KEY='fishinglog_tempbias';
-function applyTempBias(land){try{if(!land||!land.current)return;window._wxRawTemp=land.current.temperature_2m;window._wxBias=null;const b=JSON.parse(localStorage.getItem(TB_KEY)||'null');if(!b||!isFinite(b.delta))return;
+function applyTempBias(land){try{if(!land||!land.current)return;window._wxRawTemp=land.current.temperature_2m;window._wxBias=null;const b=JSON.parse(localStorage.getItem(TB_KEY)||'null');if(b&&!b.auto){try{localStorage.removeItem(TB_KEY);}catch(e){}return;}if(!b||!isFinite(b.delta))return;
   const w=ms=>Math.max(0,1-Math.abs(ms-b.ms)/(12*36e5)),nw=w(Date.now()),d=b.delta;
   if(nw>0){land.current.temperature_2m+=d*nw;if(land.current.apparent_temperature!=null)land.current.apparent_temperature+=d*nw;}
   const H=land.hourly;if(H&&H.time&&H.temperature_2m)H.time.forEach((t,i)=>{const x=w(Date.parse(t));if(x>0&&H.temperature_2m[i]!=null){H.temperature_2m[i]+=d*x;if(H.apparent_temperature&&H.apparent_temperature[i]!=null)H.apparent_temperature[i]+=d*x;}});
   window._wxBias={delta:d,w:nw,auto:b.auto};}catch(e){}}
-function tempAsk(){const raw=window._wxRawTemp,b=window._wxBias;
-  wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">Match your phone</div><div class="cmeta">Correct the air temperature for where you are</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
-  <div class="cmeta" style="margin:2px 4px 12px;line-height:1.5">The app’s temperature comes from a weather model covering a large area, not a thermometer, so it can differ from your phone by a few degrees. Enter what your phone shows and the app will adjust. The adjustment fades out over 12 hours.</div>
-  ${raw!=null?`<div class="cmeta" style="margin:0 4px 8px">The model says <b>${Math.round(raw)}°C</b> right now</div>`:''}
-  <label>Temperature on your phone (°C)</label><input type="number" step="1" inputmode="decimal" id="tbIn" placeholder="e.g. 17" style="font-size:22px;font-weight:700"><div id="tbMsg" class="cmeta" style="margin:8px 0 12px;min-height:18px"></div>
-  <button class="sbtn teal-btn" onclick="tempSave()">Adjust</button>${b?'<button class="sbtn" style="margin-top:8px" onclick="tempReset()">Remove adjustment</button>':''}`);setTimeout(()=>{const i=document.getElementById('tbIn');if(i)i.focus();},250);}
-function tempSave(){const v=parseFloat(document.getElementById('tbIn').value),raw=window._wxRawTemp,m=document.getElementById('tbMsg');
-  if(!(v>-10&&v<50)){m.textContent='Enter a temperature between -10 and 50.';return;}if(raw==null){m.textContent='The weather hasn’t loaded yet — try again in a moment.';return;}
-  try{localStorage.setItem(TB_KEY,JSON.stringify({ms:Date.now(),delta:Math.max(-8,Math.min(8,v-raw))}));}catch(e){}wxSheetClose();showToast('Temperature adjusted','success');refreshWx();}
-function tempReset(){try{localStorage.removeItem(TB_KEY);}catch(e){}wxSheetClose();refreshWx();}
 function refreshWx(){try{_wxLastFetch=0;}catch(e){}fetchOpenMeteo(typeof wxLat!=='undefined'&&wxLat?wxLat:appLat,typeof wxLng!=='undefined'&&wxLng?wxLng:appLng,null).then(()=>setTimeout(()=>{if(currentTab==='today')renderToday();},500));}
 
 // ═══ EXTRA PHOTOS WHEN EDITING A CATCH ═══
@@ -6539,6 +6530,12 @@ function vcHtml(){const c=vcCfg();return `<div class="sec"><div class="stitle">M
 async function vcSave(){const k=document.getElementById('vcKey').value.trim(),m=document.getElementById('vcMsg');try{localStorage.setItem(VC_KEY,JSON.stringify({key:k}));}catch(e){}_vcObs=null;_vcErr='';if(!k){m.textContent='Key removed.';vcInject();return;}m.textContent='Testing…';await vcLoad(true);
   m.textContent=_vcErr?_vcErr:'Working — latest reading '+(_vcObs?(+_vcObs.cc.temp).toFixed(1)+'°C':'received')+'.';}
 function vcRemove(){try{localStorage.removeItem(VC_KEY);localStorage.removeItem(TB_KEY);}catch(e){}_vcObs=null;_vcErr='';vcInject();const i=document.getElementById('vcKey');if(i)i.value='';const m=document.getElementById('vcMsg');if(m)m.textContent='Key removed.';refreshWx();}
+
+// ═══ TODAY HEADER: WEATHER ICON ═══
+function heroWx(tod){const D=wxData(),c=D&&D.current;if(!c||c.weather_code==null)return '';const code=c.weather_code,night=tod==='night',
+  W=i=>`<svg class="wic" viewBox="0 0 24 24" width="1em" height="1em" aria-hidden="true">${i}</svg>`,cloud='<path d="M7 19h10a4 4 0 000-8 5.5 5.5 0 00-10.7-1.2A4.6 4.6 0 007 19z" fill="#c9d4e0" transform="translate(1.5 1)"/>',moon='<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#f4e9b8"/>',
+  ic=night&&code<=2?(code===0?W(moon):W('<g transform="translate(9 -2) scale(.65)">'+moon+'</g>'+cloud)):omIcon(code);
+  return `<div class="thero-wx"><span class="thero-ic">${ic}</span><span>${esc(omDesc(code))}</span></div>`;}
 </script>
 </body>
 </html>
