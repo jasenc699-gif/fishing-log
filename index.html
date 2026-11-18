@@ -479,6 +479,7 @@ button:active:not(:disabled),.wx-cell:active,.wxrow:active{transform:scale(.97)}
 .ttile{min-width:0}.tgrid>*{min-width:0}.ttile .tv{overflow-wrap:anywhere;line-height:1.2}.tv.sm{font-size:16px}
 .ctags{display:flex;flex-wrap:wrap;gap:6px}.tag{max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.3}
 .thero-wx{display:flex;align-items:center;gap:10px;margin-top:6px;font-size:17px;font-weight:600}.thero-ic{font-size:46px;line-height:0;display:inline-flex}
+.dybtn{display:flex;align-items:center;justify-content:center;width:100%;min-height:50px;margin-top:10px;border-radius:12px;border:1.5px solid var(--teal);background:transparent;color:var(--teal-d);font:700 15px Inter,system-ui,sans-serif;cursor:pointer}.dybtn-fill{background:var(--teal);color:#06382b;margin-top:0}
 /* dark mode */
 @media(prefers-color-scheme:dark){
  :root{--text:#f1f1ee;--muted:#b5b5b0;--hint:#8a8a85;--border:#3a3a3a;--surf:#2b2b2b;--surf2:#1c1c1c;--white:#262626;}
@@ -6171,11 +6172,11 @@ function dyToday(){const n=new Date(Date.now()-new Date().getTimezoneOffset()*6e
 function dyRender(){dyDestroyMaps();const w=document.getElementById('dyWrap');
   const form=_dyForm?`<div class="sec"><div class="stitle">${_dyEditId?'Edit entry':'New entry'}</div>
    <div class="r2"><div><label>Date</label><input type="date" id="dyDate"></div><div><label>Time (optional)</label><input type="time" id="dyTime"></div></div>
-   <label>Where did you fish?</label><div style="display:flex;gap:8px"><input id="dySpot" list="dySpots" placeholder="Spot name" autocomplete="off" style="flex:1"><button type="button" class="gpsbtn" style="margin:0;min-height:44px;font-weight:600" onclick="dyGps()">Use GPS</button></div>
+   <label>Where did you fish?</label><input id="dySpot" list="dySpots" placeholder="Spot name, e.g. Pilot Bay" autocomplete="off" style="font-size:16px"><button type="button" class="dybtn" onclick="dyGps(true)">Use my current location</button>
    <datalist id="dySpots">${[...new Set([...catches.map(c=>c.nickname),...diary.map(d=>d.spot)].filter(Boolean))].map(x=>`<option value="${esc(x)}">`).join('')}</datalist>
    <div id="dyGpsSt" class="cmeta" style="min-height:18px;margin-top:4px"></div><input type="hidden" id="dyLat"><input type="hidden" id="dyLng">
-   <div style="display:flex;gap:8px;margin-top:10px"><input id="dySearch" placeholder="Search for a place on the map…" autocomplete="off" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();dySearch();}"><button type="button" class="gpsbtn" style="margin:0;min-height:44px;font-weight:600" onclick="dySearch()">Search</button></div><div id="dySearchRes"></div>
-   <div id="dyFormMap" class="dymap" style="height:210px"></div><div class="cmeta" style="margin-top:4px">Tap the map or drag the pin to adjust the location.</div>
+   <div style="display:flex;gap:8px;margin-top:12px"><input id="dySearch" type="search" enterkeyhint="search" placeholder="Search for a place on the map…" autocomplete="off" style="flex:1;font-size:16px" onkeydown="if(event.key==='Enter'){event.preventDefault();dySearch();}" oninput="clearTimeout(window._dyST);window._dyST=setTimeout(()=>{if(this.value.trim().length>=3)dySearch();},900)"><button type="button" class="dybtn dybtn-fill" style="width:auto;padding:0 20px;margin:0" onclick="dySearch()">Search</button></div><div id="dySearchRes"></div>
+   <div id="dyFormMap" class="dymap" style="height:210px"></div><div id="dyPinTxt" class="cmeta" style="margin-top:4px;font-variant-numeric:tabular-nums"></div><div class="cmeta" style="margin-top:4px">Tap the map or drag the pin to adjust the location.</div>
    <button type="button" class="spchip" id="dyRayBtn" style="margin-top:10px" onclick="dyRay()">Saw shorttail rays</button> <button type="button" class="spchip" id="dyBlankBtn" style="margin-top:10px" onclick="dyBlank()">Caught nothing</button>
    <label>How was the fishing?</label><div class="spq" style="flex-wrap:wrap">${DY_R.slice(1).map((r,i)=>`<button type="button" class="spchip dyr" data-r="${i+1}" onclick="dyRate(${i+1})">${r}</button>`).join('')}</div>
    <label>Notes</label><textarea id="dyNotes" rows="6" placeholder="What happened? Bait, tide, weather, what worked…"></textarea>
@@ -6196,7 +6197,7 @@ function dyRender(){dyDestroyMaps();const w=document.getElementById('dyWrap');
     q('dyDate').value=e?e.date:d;q('dyTime').value=e?(e.time||''):t;if(e){q('dySpot').value=e.spot||'';q('dyNotes').value=e.notes||'';q('dyLat').value=e.lat||'';q('dyLng').value=e.lng||'';if(e.lat)q('dyGpsSt').textContent='Location saved';}
     dyRate(_dyRating,1);dyThumbs();_dyRay=!!(e&&e.ray);dyRayUi();_dyBlank=!!(e&&e.blank);dyBlankUi();
     if(!e){try{const d=JSON.parse(localStorage.getItem(DY_DRAFT)||'null');if(d){q('dySpot').value=d.spot||'';q('dyNotes').value=d.notes||'';_dyRay=!!d.ray;dyRayUi();dyRate(d.rating||0,1);showToast('Draft restored','success');}}catch(x){}}
-    ['dySpot','dyNotes'].forEach(i=>q(i).addEventListener('input',dyDraftSave));_dyLocSrc=e?(e.locSrc||''):'';dyFormMapInit();if(!e&&!_dyPhotos.length&&!q('dyLat').value)dyGps();}
+    ['dySpot','dyNotes'].forEach(i=>q(i).addEventListener('input',dyDraftSave));_dyLocSrc=e?(e.locSrc||''):'';dyFormMapInit();dyPinInit();if(!e&&!_dyPhotos.length&&!q('dyLat').value)dyGps();}
   diary.filter(e=>e.np).forEach(async e=>{const el=document.getElementById('dyp-'+e.id);if(!el)return;for(let i=0;i<e.np;i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)el.insertAdjacentHTML('beforeend',`<img src="${u}" alt="Diary photo" onclick="openLightbox(this.src)">`);}catch(x){}}});}
 async function dyOpen(id){_dyEditId=id||null;_dyForm=true;_dyRating=0;_dyPhotos=[];const e=id&&diary.find(x=>x.id===id);
   if(e){_dyRating=e.rating||0;for(let i=0;i<(e.np||0);i++){try{const u=await idbGet('dy_'+e.id+'#'+i);if(u)_dyPhotos.push(u);}catch(x){}}}dyRender();window.scrollTo&&document.getElementById('pg-diary').scrollTo&&document.getElementById('pg-diary').scrollTo(0,0);}
@@ -6210,8 +6211,14 @@ async function dyPhotoPick(ev){const fs=[...ev.target.files];ev.target.value='';
   if(g&&g.latitude!=null&&_dyLocSrc!=='photo'&&_dyLocSrc!=='map')dyMapSet(g.latitude,g.longitude,'photo','Location taken from the photo');
   if(dt&&!_dyEditId&&!_dyPhotos.length){const q=n=>String(n).padStart(2,'0');document.getElementById('dyDate').value=dt.getFullYear()+'-'+q(dt.getMonth()+1)+'-'+q(dt.getDate());document.getElementById('dyTime').value=q(dt.getHours())+':'+q(dt.getMinutes());}
   try{const r=await compressImage(f),u=typeof r==='string'?r:Object.values(r||{}).find(v=>typeof v==='string'&&v.startsWith('data:'));if(u)_dyPhotos.push(u);}catch(e){showToast('Could not add a photo','error');}}dyThumbs();}
-function dyGps(){const st=document.getElementById('dyGpsSt');if(!st)return;if(!navigator.geolocation){st.textContent='GPS not available';return;}st.textContent='Finding you…';
-  navigator.geolocation.getCurrentPosition(p=>{if(_dyLocSrc==='photo'||_dyLocSrc==='map'||(_dyTouched&&document.getElementById('dyLat').value)){st.textContent='';return;}dyMapSet(p.coords.latitude,p.coords.longitude,'gps','Location saved (±'+Math.round(p.coords.accuracy)+' m)');},()=>{st.textContent='Could not get location — allow location access';},{enableHighAccuracy:true,timeout:15000});}
+function dyGps(manual){const st=document.getElementById('dyGpsSt');if(!st)return;if(!navigator.geolocation){st.textContent='This device can’t provide a location.';return;}
+  if(manual){_dyTouched=false;_dyLocSrc='';}st.textContent='Finding your location…';
+  const ok=p=>{if(!manual&&(_dyLocSrc==='photo'||_dyLocSrc==='map'||(_dyTouched&&document.getElementById('dyLat').value))){st.textContent='';return;}dyMapSet(p.coords.latitude,p.coords.longitude,'gps','Location set from GPS (±'+Math.round(p.coords.accuracy)+' m)');},
+    bad=(e,retry)=>{if(e&&e.code===1){st.textContent='Location is blocked — allow location access for this app in your phone settings.';return;}
+      if(retry){st.textContent='Still looking for your location…';navigator.geolocation.getCurrentPosition(ok,e2=>bad(e2,false),{enableHighAccuracy:false,timeout:12000,maximumAge:60000});return;}
+      st.textContent='Couldn’t get your location — try again outside, search for a place, or tap the map.';};
+  navigator.geolocation.getCurrentPosition(ok,e=>bad(e,true),{enableHighAccuracy:true,timeout:10000});}
+function dyPinInit(){const pt=document.getElementById('dyPinTxt'),la=parseFloat((document.getElementById('dyLat')||{}).value),ln=parseFloat((document.getElementById('dyLng')||{}).value);if(pt)pt.textContent=isNaN(la)||isNaN(ln)?'No location set yet':'Pin: '+la.toFixed(5)+', '+ln.toFixed(5);}
 let _dyWant=false;
 function dyMic(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition,b=document.getElementById('dyMic'),ta=document.getElementById('dyNotes'),st=document.getElementById('dyMicSt');
   if(!SR){st.textContent='Dictation isn’t available in this browser. Use the microphone key on your phone’s keyboard instead.';return;}
@@ -6240,11 +6247,13 @@ async function dyDel(id){const i=diary.findIndex(x=>x.id===id);if(i<0)return;con
 let _dyTouched=false,_dyFormMap=null,_dyPin=null,_dyLocSrc='',_dyRay=false,_dyMaps={};
 const _dyTile=()=>L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}),_dyIcon=()=>L.divIcon({className:'dypin',html:'<div></div>',iconSize:[22,22],iconAnchor:[11,22]});
 function dyDestroyMaps(){try{_dyFormMap&&_dyFormMap.remove();}catch(e){}_dyFormMap=null;_dyPin=null;Object.values(_dyMaps).forEach(m=>{try{m.remove();}catch(e){}});_dyMaps={};}
-function dyFormMapInit(){const el=document.getElementById('dyFormMap');if(!el||typeof L==='undefined')return;const la=parseFloat(document.getElementById('dyLat').value),ln=parseFloat(document.getElementById('dyLng').value),has=!isNaN(la)&&!isNaN(ln),c=has?[la,ln]:[appLat,appLng];
+function dyFormMapInit(){try{dyFormMapInit0();}catch(e){const st=document.getElementById('dyGpsSt');if(st&&!st.textContent)st.textContent='The map couldn’t load — you can still search or use your location.';}}
+function dyFormMapInit0(){const el=document.getElementById('dyFormMap');if(!el||typeof L==='undefined')return;const la=parseFloat(document.getElementById('dyLat').value),ln=parseFloat(document.getElementById('dyLng').value),has=!isNaN(la)&&!isNaN(ln),c=has?[la,ln]:[appLat,appLng];
   _dyFormMap=L.map(el).setView(c,has?15:12);dyBase(_dyFormMap);_dyPin=L.marker(c,{icon:_dyIcon(),draggable:true,opacity:has?1:0}).addTo(_dyFormMap);
   _dyPin.on('dragend',()=>{const q=_dyPin.getLatLng();dyMapSet(q.lat,q.lng,'map','Pin moved');});_dyFormMap.on('click',e=>{const t=e.originalEvent&&e.originalEvent.target;if(t&&t.closest&&t.closest('.leaflet-control'))return;dyMapSet(e.latlng.lat,e.latlng.lng,'map','Location set on map');});el.addEventListener('pointerdown',()=>{_dyTouched=true;},{passive:true});_dyTouched=false;setTimeout(()=>_dyFormMap&&_dyFormMap.invalidateSize(),200);}
 function dyMapSet(lat,lng,src,msg){document.getElementById('dyLat').value=lat;document.getElementById('dyLng').value=lng;_dyLocSrc=src;const st=document.getElementById('dyGpsSt');if(st)st.textContent=msg||'';
-  if(_dyFormMap&&_dyPin){_dyPin.setLatLng([lat,lng]).setOpacity(1);_dyFormMap.setView([lat,lng],Math.max(_dyFormMap.getZoom(),15));}}
+  const pt=document.getElementById('dyPinTxt');if(pt)pt.textContent='Pin: '+(+lat).toFixed(5)+', '+(+lng).toFixed(5);
+  try{if(_dyFormMap&&_dyPin){_dyPin.setLatLng([lat,lng]).setOpacity(1);_dyFormMap.setView([lat,lng],Math.max(_dyFormMap.getZoom(),15));}}catch(e){}}
 function dyRay(){_dyRay=!_dyRay;dyRayUi();dyDraftSave();}function dyRayUi(){const b=document.getElementById('dyRayBtn');if(b)b.classList.toggle('on',_dyRay);}
 function dyCardMap(id){const el=document.getElementById('dyc-'+id),e=diary.find(x=>x.id===id);if(!el||!e)return;const b=el.previousElementSibling;
   if(_dyMaps[id]){try{_dyMaps[id].remove();}catch(x){}delete _dyMaps[id];el.style.display='none';b.textContent=e.locSrc==='photo'?'Show photo location':'Show map';return;}
@@ -6378,8 +6387,8 @@ const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setT
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 
 // ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
-const APP_VER='2026.12.10';
-const WHATS_NEW=['Today now lists all of today’s high and low tide times, read from the same source as the Tide tab','Removed the duplicate weather card on Today — the header, tiles and Weather tab all use the same data'];
+const APP_VER='2026.12.11';
+const WHATS_NEW=['Diary: “Use my current location” now always works, even after searching or touching the map','Diary: bigger location and search buttons, results as you type, and clear messages if location access is blocked'];
 const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
 let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;dyBlankUi();}
 function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.date===e.date)}));if(!T.length)return '';
