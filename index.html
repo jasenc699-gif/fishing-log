@@ -5457,7 +5457,7 @@ function renderList() {
     </div>`).join('');
 }
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
-function fmtWhen(c){try{const d=new Date((c.date||'1970-01-01')+'T'+(c.time||'00:00'));return d.toLocaleDateString('en-NZ',{weekday:'short',day:'numeric',month:'short'})+(c.time?' · '+d.toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'}):'');}catch(e){return esc(c.date||'');}}
+function fmtWhen(c){try{const d=new Date((c.date||'1970-01-01')+'T'+(c.time||'00:00'));return d.toLocaleDateString('en-NZ',{weekday:'short',day:'numeric',month:'short',...(new Date((c.date||'1970-01-01')+'T12:00:00').getFullYear()!==new Date().getFullYear()?{year:'numeric'}:{})})+(c.time?' · '+d.toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'}):'');}catch(e){return esc(c.date||'');}}
 function openLightboxId(id){const c=catches.find(x=>String(x.id)===String(id)); if(c&&c.photo) openLightbox(c.photo);}
 function toggleCardMap(id){const el=document.getElementById('cm-'+id), btn=el.previousElementSibling.querySelector('.maptoggle');
   if(el.style.display==='none'){el.style.display='block';const c=catches.find(x=>String(x.id)===String(id));initCatchMap(c.id,c.lat,c.lng,c.fish+(c.location?' — '+c.location:''),c.fish,c.nickname||'');btn.textContent='Hide map';}
@@ -6288,7 +6288,7 @@ document.addEventListener('DOMContentLoaded',()=>setTimeout(()=>{const g=new URL
 
 // ═══ UNITS ═══
 const UK='fishinglog_units';let units={len:'cm',wt:'kg',wind:'kmh'};try{Object.assign(units,JSON.parse(localStorage.getItem(UK)||'{}'));}catch(e){}
-const unitNum=(v,t)=>{v=parseFloat(v);return isNaN(v)?'—':t==='len'&&units.len==='in'?(v/2.54).toFixed(1):t==='wt'&&units.wt==='lb'?(v*2.2046).toFixed(1):String(v);};
+const unitNum=(v,t)=>{v=parseFloat(v);return isNaN(v)?'—':t==='len'&&units.len==='in'?(v/2.54).toFixed(1):t==='wt'&&units.wt==='lb'?(v*2.2046).toFixed(1):String(+v.toFixed(2));};
 const fmtLen=v=>isNaN(parseFloat(v))?'':unitNum(v,'len')+' '+units.len,fmtWt=v=>isNaN(parseFloat(v))?'':unitNum(v,'wt')+' '+units.wt;
 function unitsHtml(){const b=(t,v,l)=>`<button type="button" class="${units[t]===v?'on':''}" onclick="setUnit('${t}','${v}',this)">${l}</button>`;
   return `<div class="sec" id="unitsCard"><div class="stitle">Units</div><label>Length</label><div class="seg" style="margin:0 0 10px">${b('len','cm','Centimetres')}${b('len','in','Inches')}</div><label>Weight</label><div class="seg" style="margin:0 0 8px">${b('wt','kg','Kilograms')}${b('wt','lb','Pounds')}</div><label>Wind speed</label><div class="seg" style="margin:0 0 8px">${b('wind','kmh','km/h')}${b('wind','kn','Knots')}</div><div class="cmeta">Saved catches use these units. The entry fields on the Log tab stay in cm and kg.</div></div>`;}
@@ -6311,15 +6311,15 @@ function regroupSettings(){const pg=document.getElementById('pg-settings');if(!p
   document.addEventListener('DOMContentLoaded',()=>conv(document.body));setTimeout(()=>conv(document.body),300);})();
 // ═══ STATS: charts, fishing-days calendar, personal bests ═══
 const MON3=['J','F','M','A','M','J','J','A','S','O','N','D'];let _calY=null,_calM=null;
-function monthChart(){const n=new Date(),ms=[];for(let i=11;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);ms.push({k:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),l:MON3[d.getMonth()],n:0});}
+function monthChart(){const n=new Date(),ms=[];for(let i=11;i>=0;i--){const d=new Date(n.getFullYear(),n.getMonth()-i,1);ms.push({k:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'),l:MON3[d.getMonth()],y:d.getFullYear(),mo:d.getMonth(),n:0});}
   catches.forEach(c=>{const m=ms.find(x=>(c.date||'').startsWith(x.k));if(m)m.n++;});const mx=Math.max(1,...ms.map(m=>m.n));
-  return `<div class="sec"><div class="stitle">Catches per month</div><svg viewBox="0 0 312 118" width="100%" role="img" aria-label="Catches per month">${ms.map((m,i)=>{const h=Math.round(m.n/mx*76),x=i*26+4;return `<rect x="${x}" y="${90-h}" width="18" height="${m.n?Math.max(h,3):0}" rx="4" fill="#4fc3a1"${m.n?` onclick="statDrill('month','${m.k}')" style="cursor:pointer"`:''}/><text x="${x+9}" y="106" text-anchor="middle" font-size="10" fill="#8a8f94">${m.l}</text>${m.n?`<text x="${x+9}" y="${85-h}" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">${m.n}</text>`:''}`;}).join('')}</svg></div>`;}
+  return `<div class="sec"><div class="stitle">Catches per month · last 12 months</div><svg viewBox="0 0 312 134" width="100%" role="img" aria-label="Catches per month">${ms.map((m,i)=>{const h=Math.round(m.n/mx*76),x=i*26+4;return `<rect x="${x}" y="${90-h}" width="18" height="${m.n?Math.max(h,3):0}" rx="4" fill="#4fc3a1"${m.n?` onclick="statDrill('month','${m.k}')" style="cursor:pointer"`:''}/><text x="${x+9}" y="106" text-anchor="middle" font-size="10" fill="#8a8f94">${m.l}</text>${i===0||m.mo===0?`<text x="${x+1}" y="122" text-anchor="start" font-size="9" font-weight="700" fill="#8a8f94">${m.y}</text>`:''}${m.n?`<text x="${x+9}" y="${85-h}" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">${m.n}</text>`:''}`;}).join('')}</svg></div>`;}
 function calHtml(){const n=new Date();if(_calY==null){_calY=n.getFullYear();_calM=n.getMonth();}const first=new Date(_calY,_calM,1),days=new Date(_calY,_calM+1,0).getDate(),off=(first.getDay()+6)%7,cnt={},dia={};
   catches.forEach(c=>{if(c.date)cnt[c.date]=(cnt[c.date]||0)+1;});const hot={};diary.forEach(e=>{dia[e.date]=1;if(e.hot)hot[e.date]=1;});let cells='';for(let i=0;i<off;i++)cells+='<i></i>';
   for(let d=1;d<=days;d++){const k=_calY+'-'+String(_calM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'),c=cnt[k]||0;cells+=`<button type="button" class="cd l${Math.min(c,4)}${dia[k]?' dd':''}${hot[k]?' hot':''}" onclick="calPick('${k}')">${d}</button>`;}
   return `<div class="sec"><div class="stitle">Fishing days</div><div class="calh"><button class="wxn" onclick="calStep(-1)" aria-label="Previous month">‹</button><b>${first.toLocaleDateString('en-NZ',{month:'long',year:'numeric'})}</b><button class="wxn" onclick="calStep(1)" aria-label="Next month">›</button></div><div class="calg">${['M','T','W','T','F','S','S'].map(x=>`<span>${x}</span>`).join('')}${cells}</div><div id="calInfo" class="cmeta" style="margin-top:8px">Darker teal means more catches. A dot means a diary entry. An orange ring means a hot day. Tap a day to open its records.</div></div>`;}
 function calStep(d){_calM+=d;if(_calM<0){_calM=11;_calY--;}if(_calM>11){_calM=0;_calY++;}document.getElementById('calBox').innerHTML=calHtml();}
-function calPick(k){const c=catches.filter(x=>x.date===k),d=diary.filter(x=>x.date===k),info=document.getElementById('calInfo'),ttl=new Date(k+'T12:00:00').toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'});
+function calPick(k){const c=catches.filter(x=>x.date===k),d=diary.filter(x=>x.date===k),info=document.getElementById('calInfo'),ttl=new Date(k+'T12:00:00').toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   if(!c.length&&!d.length){if(info)info.textContent=ttl+': no records';return;}window._statList=c;
   wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">${esc(ttl)}</div><div class="cmeta">${c.length} catch${c.length===1?'':'es'} · ${d.length} diary entr${d.length===1?'y':'ies'}</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
   ${c.length?`<div class="stitle" style="margin:6px 0 2px">Catches</div>${c.map(x=>`<div class="wxrow" role="button" tabindex="0" onclick="statOpen('${x.id}')"><b style="flex:1">${esc(x.fish)}</b><span class="cmeta">${esc([x.length?fmtLen(x.length):'',x.weight?fmtWt(x.weight):''].filter(Boolean).join(' · '))}</span><span class="cmeta">›</span></div>`).join('')}`:''}
@@ -6328,8 +6328,8 @@ function statsPlus(){const pg=document.getElementById('pg-stats');if(!pg)return;
   const tide=['Incoming','High','Outgoing','Low'].map(k=>[k==='High'||k==='Low'?k+' tide':k,catches.filter(c=>new RegExp(k).test(c.tide||'')).length]),tods=['Dawn','Morning','Midday','Afternoon','Dusk','Night'],todOf=h=>h>=4&&h<7?0:h>=7&&h<11?1:h>=11&&h<14?2:h>=14&&h<17?3:h>=17&&h<20?4:5,
     td=tods.map((k,i)=>[k,catches.filter(c=>c.time&&todOf(parseInt(c.time,10))===i).length]),sp={};catches.forEach(c=>{if(c.fish)sp[c.fish]=(sp[c.fish]||0)+1;});
   const spR=Object.entries(sp).sort((a,b)=>b[1]-a[1]).slice(0,6),pb={};catches.forEach(c=>{const w=parseFloat(c.weight);if(w>0&&(!pb[c.fish]||w>pb[c.fish].w))pb[c.fish]={w,l:c.length,d:c.date};});
-  const pbR=Object.entries(pb).sort((a,b)=>b[1].w-a[1].w).slice(0,5);
-  el.innerHTML=monthChart()+tripStats()+`<div id="calBox">${calHtml()}</div>`+sgBars('By species',spR,'species')+sgBars('By tide',tide,'tide')+sgBars('Time of day',td,'tod')+windBars()+(pbR.length?`<div class="sec"><div class="stitle">Personal bests</div>${pbR.map(([f,v])=>`<div class="wxrow" style="cursor:default"><span style="flex:1;font-weight:700">${esc(f)}</span><b>${esc(fmtWt(v.w))}</b><span class="cmeta" style="width:70px;text-align:right">${v.l?esc(fmtLen(v.l)):''}</span></div>`).join('')}</div>`:'');}
+  const pbR=Object.entries(pb).sort((a,b)=>b[1].w-a[1].w).slice(0,5),wc=catches.map(c=>parseFloat(c.weight)).filter(x=>x>0),wN=wc.length,avgW=wN?wc.reduce((a,b)=>a+b,0)/wN:0;
+  el.innerHTML=monthChart()+tripStats()+`<div id="calBox">${calHtml()}</div>`+sgBars('By species',spR,'species')+sgBars('By tide',tide,'tide')+sgBars('Time of day',td,'tod')+windBars()+(pbR.length?`<div class="sec"><div class="stitle">Personal bests</div>${avgW?`<div class="cmeta" style="margin:0 0 6px">Average weight ${esc(fmtWt(avgW))} · ${wN} weighed catch${wN>1?'es':''}</div>`:''}${pbR.map(([f,v])=>`<div class="wxrow" style="cursor:default"><span style="flex:1;min-width:0"><b>${esc(f)}</b><div class="cmeta">${esc(fmtDay(v.d))}</div></span><b>${esc(fmtWt(v.w))}</b><span class="cmeta" style="width:70px;text-align:right">${v.l?esc(fmtLen(v.l)):''}</span></div>`).join('')}</div>`:'');}
 const _rs1=renderStats;renderStats=function(){_rs1();try{statsPlus();}catch(e){}};
 // ═══ PHOTO CAROUSEL + SHARE IMAGE ═══
 function vCarFill(c,a){const car=document.getElementById('vc-'+c.id),dots=document.getElementById('vd-'+c.id);if(!car||!a.length)return;
@@ -6389,8 +6389,8 @@ const _go1=go;go=function(p){const r=_go1.apply(this,arguments);if(p==='wx')setT
 document.addEventListener('DOMContentLoaded',()=>setTimeout(wxSunRender,1200));
 
 // ═══ ACCURACY, BACKUP SAFETY, VERSIONING ═══
-const APP_VER='2026.12.12';
-const WHATS_NEW=['Diary: tag a day as a “Hot day — full of action”. Hot days stand out with an orange ring in Stats → Fishing days, and Stats shows what they had in common'];
+const APP_VER='2026.12.13';
+const WHATS_NEW=['Stats page reorganised into sections: Overview, When you fish, What you catch, Conditions and Your trips','Removed duplicate cards (species breakdown, catches by month, trophies) — Personal bests now show dates and your average weight','Years now show next to dates on the Stats page and on older catches'];
 const isDefLoc=(la,ln)=>la!=null&&ln!=null&&Math.abs(la-appLat)<0.0006&&Math.abs(ln-appLng)<0.0006;
 let _dyBlank=false;function dyBlankUi(){const b=document.getElementById('dyBlankBtn');if(b)b.classList.toggle('on',_dyBlank);}function dyBlank(){_dyBlank=!_dyBlank;if(_dyBlank){_dyHot=false;dyHotUi();}dyBlankUi();}
 function tripStats(){const T=diary.map(e=>({e,got:!e.blank&&catches.some(c=>c.date===e.date)}));if(!T.length)return '';
@@ -6434,7 +6434,7 @@ function statBucket(kind,l){const todOf=h=>h>=4&&h<7?'Dawn':h>=7&&h<11?'Morning'
 function statDrill(kind,l){const list=statBucket(kind,l);if(!list.length)return;window._statList=list;const sp={};list.forEach(c=>{sp[c.fish]=(sp[c.fish]||0)+1;});const mx=Math.max(...Object.values(sp)),ttl=kind==='month'?new Date(l+'-01T12:00:00').toLocaleDateString('en-NZ',{month:'long',year:'numeric'}):l;
   wxSheetOpen(`<div class="wxh"><div style="flex:1;padding-left:4px"><div class="wxt">${esc(ttl)}</div><div class="cmeta">${list.length} catch${list.length>1?'es':''} · ${Object.keys(sp).length} species</div></div><button class="wxx" onclick="wxSheetClose()" aria-label="Close">✕</button></div>
   <div class="stitle" style="margin:6px 0 4px">Species caught</div>${Object.entries(sp).sort((a,b)=>b[1]-a[1]).map(([f,n])=>`<div class="brow"><span class="bl">${esc(f)}</span><div class="bt"><i style="width:${n/mx*100}%"></i></div><span class="bn">${n}</span></div>`).join('')}
-  <div class="stitle" style="margin:16px 0 2px">Catches</div>${list.map(c=>`<div class="wxrow" role="button" tabindex="0" onclick="statOpen('${c.id}')"><span class="wxrt" style="width:58px">${new Date((c.date||'1970-01-01')+'T12:00:00').toLocaleDateString('en-NZ',{day:'numeric',month:'short'})}</span><b style="flex:1">${esc(c.fish)}</b><span class="cmeta">${esc([c.length?fmtLen(c.length):'',c.weight?fmtWt(c.weight):''].filter(Boolean).join(' · '))}</span><span class="cmeta">›</span></div>`).join('')}<div style="height:18px"></div>`);}
+  <div class="stitle" style="margin:16px 0 2px">Catches</div>${list.map(c=>`<div class="wxrow" role="button" tabindex="0" onclick="statOpen('${c.id}')"><span class="wxrt" style="width:96px">${fmtDay(c.date)}</span><b style="flex:1">${esc(c.fish)}</b><span class="cmeta">${esc([c.length?fmtLen(c.length):'',c.weight?fmtWt(c.weight):''].filter(Boolean).join(' · '))}</span><span class="cmeta">›</span></div>`).join('')}<div style="height:18px"></div>`);}
 function statOpen(id){wxSheetClose();window._vList=window._statList;openViewer(id);}
 function quickCatch(){window._qc=true;document.getElementById('fiCam').click();}
 function qcSheet(){const r=[...new Set(catches.map(c=>c.fish).filter(Boolean))].slice(0,6);window._qcSp='';
@@ -6555,6 +6555,17 @@ function vcStationName(){const o=_vcObs,id=o&&o.cc&&Array.isArray(o.cc.stations)
 // ═══ HOT DAY TAG ═══
 let _dyHot=false;function dyHotUi(){const b=document.getElementById('dyHotBtn');if(b)b.classList.toggle('on',_dyHot);}
 function dyHot(){_dyHot=!_dyHot;if(_dyHot){_dyBlank=false;dyBlankUi();}dyHotUi();}
+
+// ═══ STATS PAGE: ONE CLEAR FLOW ═══
+const fmtDay=d=>{try{return new Date(d+'T12:00:00').toLocaleDateString('en-NZ',{day:'numeric',month:'short',year:'numeric'});}catch(e){return d||'';}};
+function statsLayout(){const root=document.getElementById('statsContent');if(!root||!catches.length)return;const plus=document.getElementById('statsPlus'),pk=plus?[...plus.children]:[],orig=[...root.children],sea=document.getElementById('seaStatCard');
+  const T=e=>(e.textContent||'').trim().toUpperCase().slice(0,70),O=k=>orig.find(e=>T(e).includes(k)),P=t=>pk.find(e=>{const x=e.querySelector&&e.querySelector('.stitle');return x&&x.textContent.trim().toUpperCase().startsWith(t);});
+  [O('TROPHIES'),O('CATCHES BY MONTH'),O('SPECIES BREAKDOWN')].forEach(e=>{if(e)e.style.display='none';});
+  const seq=[['',[O('OVERVIEW')]],['When you fish',[P('CATCHES PER MONTH'),pk.find(e=>e.id==='calBox'),P('TIME OF DAY')]],['What you catch',[P('BY SPECIES'),P('PERSONAL BESTS')]],
+    ['Conditions',[O('CONDITIONS & TACTICS'),P('BY TIDE'),P('CATCHES BY WIND'),P('CATCHES BY PRESSURE'),sea]],['Your trips',[P('YOUR FISHING TRIPS'),P('CATCH RATE BY TIDE'),P('CATCH RATE BY TIME')]]];
+  seq.forEach(([title,nodes])=>{const ns=nodes.filter(Boolean);if(!ns.length)return;if(title){const h=document.createElement('div');h.className='sgroup';h.textContent=title;root.appendChild(h);}ns.forEach(n=>root.appendChild(n));});
+  if(plus)plus.style.display='none';}
+const _rs3=renderStats;renderStats=function(){_rs3();try{statsLayout();}catch(e){}};
 </script>
 </body>
 </html>
